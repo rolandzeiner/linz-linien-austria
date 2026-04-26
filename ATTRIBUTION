@@ -1,0 +1,37 @@
+Datenquelle: LINZ AG LINIEN
+
+Data source
+-----------
+LINZ AG LINIEN GmbH
+Elektronische Fahrplanauskunft (EFA) — Mentz EFA system
+Live JSON endpoint: https://www.linzag.at/static/
+OGD catalogue:      https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/
+
+License
+-------
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Required attribution string
+---------------------------
+This integration emits the following attribution on every entity (via
+the standard `attribution` state attribute) and in every diagnostics
+download:
+
+    Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0
+
+If you build a Lovelace card or any other user-facing UI on top of
+this integration, please keep this attribution visible. The
+contractual attribution string is defined as a single source of truth
+in `custom_components/linz_linien_austria/const.py` (`ATTRIBUTION`)
+and imported by `sensor.py`. The bundled Lovelace card displays it in
+its footer.
+
+Disclaimer
+----------
+This integration is not affiliated with, endorsed by, or sponsored by
+LINZ AG LINIEN GmbH. The "LINZ AG" and "LINZ LINIEN" names and logos
+are trademarks of their respective owners. The integration uses the
+publicly documented EFA interface; if at any point LINZ AG asks the
+maintainer to discontinue use of the live JSON endpoint, this
+integration will be reworked to use the OGD XML mirror or shut down.

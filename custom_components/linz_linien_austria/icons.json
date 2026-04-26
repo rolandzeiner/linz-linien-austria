@@ -1,0 +1,7 @@
+{
+  "entity": {
+    "sensor": {
+      "next_departure": { "default": "mdi:tram" }
+    }
+  }
+}

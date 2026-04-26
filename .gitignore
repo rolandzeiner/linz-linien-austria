@@ -1,0 +1,117 @@
+# IMPORTANT: review before committing — this default assumes a HACS integration
+# repo. Loosen only with intention. Order = most likely to leak first.
+
+# ---------------------------------------------------------------------------
+# Secrets — API keys and credentials are the #1 leak vector for HA integrations
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+secrets.yaml
+.secrets
+*.secret
+credentials.json
+token.json
+auth.json
+*.pem
+*.key
+*.p12
+*.pfx
+local_*.py
+private_*.py
+
+# ---------------------------------------------------------------------------
+# Claude / AI tooling — transcripts, plans, local state
+# ---------------------------------------------------------------------------
+.claude/
+.claude-cache/
+.claude-*
+CLAUDE.local.md
+*.local.md
+.aider*
+.cursor/
+.cursorrules.local
+.continue/
+.windsurf/
+
+# ---------------------------------------------------------------------------
+# Virtual environments
+# ---------------------------------------------------------------------------
+.venv/
+venv/
+env/
+.python-version
+
+# ---------------------------------------------------------------------------
+# HA-local test state (from running a local HA against the integration)
+# ---------------------------------------------------------------------------
+config/
+home-assistant.log*
+home-assistant_*.log*
+.storage/
+
+# ---------------------------------------------------------------------------
+# IDE / editor state
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+**/.DS_Store
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.pyc
+*.py[cod]
+.Python
+
+# ---------------------------------------------------------------------------
+# Tool caches
+# ---------------------------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---------------------------------------------------------------------------
+# Coverage & build artifacts
+# ---------------------------------------------------------------------------
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+build/
+dist/
+*.egg-info/
+
+# ---------------------------------------------------------------------------
+# Node (only relevant if the Lovelace-card subtree is in use)
+# package-lock.json should stay COMMITTED — do not add it here.
+# ---------------------------------------------------------------------------
+node_modules/
+.rollup.cache/
+.parcel-cache/
+.vite-cache/
+
+# ---------------------------------------------------------------------------
+# Logs / pip
+# ---------------------------------------------------------------------------
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---------------------------------------------------------------------------
+# Personal dev tooling — push/sync scripts that target a specific dev box.
+# Each contributor sets these up from the skill template; not shared.
+# ---------------------------------------------------------------------------
+scripts/

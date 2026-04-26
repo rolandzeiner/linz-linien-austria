@@ -1,0 +1,95 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Haltestelle suchen",
+        "description": "Teil eines Haltestellennamens eingeben (zum Beispiel: {example}). LINZ AG LINIEN liefert dazu passende Haltestellen in und um Linz.",
+        "data": {
+          "search_query": "Haltestellenname"
+        }
+      },
+      "pick": {
+        "title": "Haltestelle auswählen",
+        "description": "Treffer für „{query}". Bitte die gewünschte Haltestelle wählen.",
+        "data": {
+          "stop_id": "Haltestelle"
+        }
+      },
+      "settings": {
+        "title": "{stop_name} konfigurieren",
+        "description": "Wie oft Abfahrten geholt werden und wie viele zur Verfügung stehen sollen.",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "limit": "Anzahl der Abfahrten"
+        },
+        "data_description": {
+          "scan_interval": "Untergrenze 30 s. Zusätzlich wirkt eine domänenweite Schonzeit von 15 s, damit parallele Haltestellen die Frequenz nicht insgesamt unterlaufen.",
+          "limit": "Wie viele Abfahrten pro Aktualisierung geholt werden. Die Attribute sind auf 30 begrenzt."
+        }
+      },
+      "reconfigure": {
+        "title": "Neu konfigurieren",
+        "description": "Abfrageintervall oder Anzahl der Abfahrten anpassen. Für eine andere Haltestelle bitte einen neuen Eintrag anlegen.",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "limit": "Anzahl der Abfahrten"
+        }
+      }
+    },
+    "error": {
+      "search_too_short": "Bitte mindestens zwei Zeichen eingeben.",
+      "no_results": "Keine Haltestelle gefunden. Andere Schreibweise versuchen.",
+      "cannot_connect": "LINZ AG LINIEN ist gerade nicht erreichbar. Bitte später erneut versuchen."
+    },
+    "abort": {
+      "already_configured": "Diese Haltestelle ist bereits konfiguriert.",
+      "reconfigure_successful": "Neukonfiguration erfolgreich abgeschlossen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen",
+        "description": "Abfrageintervall anpassen und optional auf bestimmte Linien filtern.",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "limit": "Anzahl der Abfahrten",
+          "lines": "Linien filtern (leer = alle)"
+        },
+        "data_description": {
+          "lines": "Format pro Eintrag: linie:richtung (z. B. 2:solarCity). Leer lassen, um alle Abfahrten zu sehen."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_departure": {
+        "name": "Nächste Abfahrt"
+      }
+    }
+  },
+  "exceptions": {
+    "api_timeout": {
+      "message": "LINZ AG LINIEN API: Zeitüberschreitung nach {seconds} s"
+    },
+    "api_http_error": {
+      "message": "LINZ AG LINIEN API lieferte HTTP {status}: {reason}"
+    },
+    "api_connection_error": {
+      "message": "LINZ AG LINIEN nicht erreichbar ({error_type}): {error}"
+    },
+    "api_invalid_response": {
+      "message": "LINZ AG LINIEN lieferte eine unerwartete Antwort: {error}"
+    },
+    "api_rate_limited": {
+      "message": "LINZ AG LINIEN Rate-Limit erreicht. Frequenz reduzieren und neu versuchen."
+    }
+  },
+  "issues": {
+    "rate_limited": {
+      "title": "Linz Linien Austria Rate-Limit erreicht",
+      "description": "Die LINZ AG LINIEN API meldet ein Rate-Limit für **{entry_title}**. Bitte das Abfrageintervall erhöhen oder die Anzahl gleichzeitiger Einträge reduzieren."
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Search for a stop",
+        "description": "Type part of a stop name (for example: {example}). LINZ AG LINIEN will return matching stops in and around Linz.",
+        "data": {
+          "search_query": "Stop name"
+        }
+      },
+      "pick": {
+        "title": "Pick a stop",
+        "description": "Found these stops for \"{query}\". Pick the one you want to monitor.",
+        "data": {
+          "stop_id": "Stop"
+        }
+      },
+      "settings": {
+        "title": "Configure {stop_name}",
+        "description": "How often to poll for departures and how many to surface.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "limit": "Departures to fetch"
+        },
+        "data_description": {
+          "scan_interval": "Lower bound 30 s. The integration also enforces a 15 s domain-wide cooldown so concurrent stops never breach the floor.",
+          "limit": "How many departures to fetch per refresh. The state attributes cap at 30."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure",
+        "description": "Adjust polling cadence or departure limit. To change the stop, add a new integration entry instead.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "limit": "Departures to fetch"
+        }
+      }
+    },
+    "error": {
+      "search_too_short": "Type at least two characters.",
+      "no_results": "No stops matched. Try a different spelling.",
+      "cannot_connect": "Could not reach LINZ AG LINIEN. Try again in a moment."
+    },
+    "abort": {
+      "already_configured": "This stop is already configured.",
+      "reconfigure_successful": "Reconfigure completed successfully."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Adjust polling cadence and optionally filter to specific lines.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "limit": "Departures to fetch",
+          "lines": "Lines to keep (empty = all)"
+        },
+        "data_description": {
+          "lines": "Each entry uses the form line:direction (for example 2:solarCity). Leave empty to surface every departure."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_departure": {
+        "name": "Next departure"
+      }
+    }
+  },
+  "exceptions": {
+    "api_timeout": {
+      "message": "LINZ AG LINIEN API timed out after {seconds} s"
+    },
+    "api_http_error": {
+      "message": "LINZ AG LINIEN API returned HTTP {status}: {reason}"
+    },
+    "api_connection_error": {
+      "message": "Could not reach LINZ AG LINIEN ({error_type}): {error}"
+    },
+    "api_invalid_response": {
+      "message": "LINZ AG LINIEN returned an unexpected response: {error}"
+    },
+    "api_rate_limited": {
+      "message": "LINZ AG LINIEN rate limit hit. Back off and retry."
+    }
+  },
+  "issues": {
+    "rate_limited": {
+      "title": "Linz Linien Austria rate limit hit",
+      "description": "The upstream LINZ AG LINIEN API replied with a rate-limit error to polls for **{entry_title}**. Raise the scan interval or reduce the number of concurrent entries."
+    }
+  }
+}

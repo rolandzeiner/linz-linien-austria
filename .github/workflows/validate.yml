@@ -1,0 +1,81 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  validate-hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hacs/action@main
+        with:
+          category: integration
+
+  validate-hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: home-assistant/actions/hassfest@master
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: pip install -r requirements_test.txt
+      - name: Run Linter (Ruff)
+        run: |
+          pip install ruff
+          ruff check .
+      - name: Run mypy (strict)
+        run: mypy --strict --ignore-missing-imports custom_components/linz_linien_austria
+      - name: Run tests
+        run: pytest tests/ -v
+
+  validate-card:
+    # Rebuilds the Lovelace card bundle from src/ and verifies the output
+    # is valid JS. Catches TS errors, missing deps, and high-severity npm
+    # advisories before they reach the served www/linz-linien-austria-card.js.
+    #
+    # Skipped for Python-only integrations: the job-level `if` checks for
+    # a top-level package.json so scaffolders that didn't apply the
+    # ha-lovelace-card skill don't see a spurious failure on every push.
+    runs-on: ubuntu-latest
+    if: hashFiles('package.json') != ''
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install card deps
+        run: npm ci
+      - name: Audit production deps
+        # --omit=dev keeps the gate enforceable; without it Rollup-plugin
+        # advisories (which never ship to users) flood the report and the
+        # team learns to ignore failures.
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build card bundle
+        run: npm run build
+      - name: Syntax-check bundle
+        # `node -c` parses without executing — cheapest possible check that
+        # Rollup didn't somehow produce malformed JS.
+        run: node -c custom_components/linz_linien_austria/www/linz-linien-austria-card.js

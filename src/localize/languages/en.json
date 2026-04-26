@@ -1,0 +1,30 @@
+{
+  "common": {
+    "version": "Version",
+    "invalid_configuration": "Invalid configuration",
+    "no_entity_picked": "No entity selected. Open the visual editor and pick a Linz Linien sensor.",
+    "entity_unavailable": "The selected entity is not available right now.",
+    "entity_required": "An entity is required. Pick a sensor.*_next_departure entity from this integration.",
+    "loading": "Loading…"
+  },
+  "card": {
+    "no_departures": "No upcoming departures.",
+    "next_departure_label": "Next departure",
+    "minutes": "minutes",
+    "minutes_short": "min",
+    "now": "Now",
+    "unknown": "—",
+    "realtime": "Live",
+    "attribution": "Source: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0"
+  },
+  "editor": {
+    "entity": "Sensor",
+    "entity_helper": "Pick a sensor.*_next_departure produced by this integration.",
+    "name": "Title",
+    "name_helper": "Optional override for the card heading.",
+    "show_hero": "Show hero block",
+    "show_hero_helper": "Big countdown for the next departure.",
+    "max_departures": "Max departures",
+    "max_departures_helper": "Cap the rendered list. The integration already caps at 30."
+  }
+}

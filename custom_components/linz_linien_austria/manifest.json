@@ -1,0 +1,14 @@
+{
+  "domain": "linz_linien_austria",
+  "name": "Linz Linien Austria",
+  "after_dependencies": ["frontend", "http", "lovelace"],
+  "codeowners": ["@rolandzeiner"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/rolandzeiner/linz-linien-austria",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/rolandzeiner/linz-linien-austria/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

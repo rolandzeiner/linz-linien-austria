@@ -1,0 +1,135 @@
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: This integration does not provide any service actions.
+  appropriate-polling:
+    status: done
+  brands:
+    status: done
+    comment: Icons shipped in custom_components/linz_linien_austria/brand/ (icon.png 256x256, icon@2x.png 512x512). HA 2026.3+ reads this locally; the home-assistant/brands repo no longer accepts custom-integration PRs.
+  common-modules:
+    status: done
+  config-flow:
+    status: done
+  config-flow-test-coverage:
+    status: done
+  dependency-transparency:
+    status: done
+  docs-actions:
+    status: exempt
+    comment: No service actions.
+  docs-high-level-description:
+    status: done
+  docs-installation-instructions:
+    status: done
+  docs-removal-instructions:
+    status: done
+  entity-event-setup:
+    status: exempt
+    comment: Coordinator pattern; entities don't subscribe to events directly.
+  entity-unique-id:
+    status: done
+  has-entity-name:
+    status: done
+  runtime-data:
+    status: done
+  test-before-configure:
+    status: done
+    comment: Config flow probes STOPFINDER + DM_REQUEST before saving.
+  test-before-setup:
+    status: done
+  unique-config-entry:
+    status: done
+    comment: unique_id = "stop_<id>" — one entry per stop.
+
+  # Silver
+  action-exceptions:
+    status: exempt
+    comment: No service actions.
+  config-entry-unloading:
+    status: done
+  docs-configuration-parameters:
+    status: done
+  docs-installation-parameters:
+    status: done
+  entity-unavailable:
+    status: done
+    comment: CoordinatorEntity marks entities unavailable on coordinator failure.
+  integration-owner:
+    status: done
+  log-when-unavailable:
+    status: done
+    comment: DataUpdateCoordinator handles the warn-on-first-failure / info-on-recovery cadence by default.
+  parallel-updates:
+    status: done
+  reauthentication-flow:
+    status: exempt
+    comment: LINZ AG LINIEN EFA is a public open-data endpoint (no API key, no per-user credentials). There is nothing to re-authenticate.
+  test-coverage:
+    status: done
+
+  # Gold
+  devices:
+    status: done
+    comment: DeviceInfo on entities + explicit dr.async_get_or_create in __init__.py.
+  diagnostics:
+    status: done
+  discovery:
+    status: exempt
+    comment: Cloud HTTP integration with no local discoverable component.
+  discovery-update-info:
+    status: exempt
+    comment: No discovery.
+  docs-data-update:
+    status: done
+  docs-examples:
+    status: done
+  docs-known-limitations:
+    status: done
+  docs-supported-devices:
+    status: exempt
+    comment: Cloud API; no physical devices.
+  docs-supported-functions:
+    status: done
+  docs-troubleshooting:
+    status: done
+  docs-use-cases:
+    status: done
+  dynamic-devices:
+    status: exempt
+    comment: Single device per config entry; no runtime device discovery.
+  entity-category:
+    status: exempt
+    comment: All entities are primary data.
+  entity-device-class:
+    status: done
+    comment: SensorDeviceClass.DURATION on the next-departure countdown.
+  entity-disabled-by-default:
+    status: exempt
+    comment: No non-essential entities.
+  entity-translations:
+    status: done
+  exception-translations:
+    status: done
+  icon-translations:
+    status: done
+  reconfiguration-flow:
+    status: done
+  repair-issues:
+    status: done
+    comment: Coordinator raises a per-entry "rate_limited" issue on HTTP 429; cleared on next successful refresh.
+  stale-devices:
+    status: exempt
+    comment: See dynamic-devices.
+
+  # Platinum
+  async-dependency:
+    status: done
+    comment: Only aiohttp (async) used.
+  inject-websession:
+    status: done
+    comment: async_get_clientsession(hass) in api.py / coordinator / config flow.
+  strict-typing:
+    status: done
+    comment: py.typed marker present; CI runs mypy --strict.

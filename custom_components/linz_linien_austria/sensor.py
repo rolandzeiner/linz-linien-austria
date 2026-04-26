@@ -1,0 +1,130 @@
+"""Sensor platform for Linz Linien Austria.
+
+Each config entry produces:
+
+* one ``next_departure`` sensor whose state is the countdown (in minutes)
+  to the next departure from the configured stop, with the full departure
+  list surfaced via ``extra_state_attributes`` for the card/templates.
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import ATTRIBUTION, DOMAIN
+from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 0
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: LinzLinienAustriaConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up sensor entities from a config entry."""
+    coordinator = entry.runtime_data
+    async_add_entities([NextDepartureSensor(coordinator, entry)])
+
+
+class NextDepartureSensor(
+    CoordinatorEntity[LinzLinienAustriaCoordinator], SensorEntity
+):
+    """Countdown to the next departure from the configured stop."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = "min"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_attribution = ATTRIBUTION
+
+    def __init__(
+        self,
+        coordinator: LinzLinienAustriaCoordinator,
+        entry: LinzLinienAustriaConfigEntry,
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator)
+        self._entry = entry
+        # KEEP THIS FORMAT STABLE — changes wipe existing registry rows.
+        self._attr_unique_id = f"{entry.entry_id}_next_departure"
+        self._attr_translation_key = "next_departure"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.title,
+            manufacturer="LINZ AG LINIEN",
+            model="EFA Echtzeit",
+            configuration_url="https://www.linzag.at/portal/de/privatkunden/unterwegs/linzmobil/",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the realtime-aware countdown of the first departure."""
+        first = self._first_departure()
+        if first is None:
+            return None
+        # Prefer the realtime-corrected countdown; fall back to scheduled.
+        if "countdown_rt" in first:
+            return int(first["countdown_rt"])
+        if "countdown" in first:
+            return int(first["countdown"])
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the full departure list and resolved-stop metadata.
+
+        Consumed by the Lovelace card and by user templates. Schema:
+
+        - ``departures``: list of normalised departures (see api.py).
+        - ``departures_count``: int.
+        - ``stop_id`` / ``stop_name``: the configured stop.
+        - ``resolved_stop``: the stop metadata as returned by EFA on the
+          last successful refresh (may differ in casing/place suffix).
+        - Convenience top-level fields for template ergonomics:
+          ``next_line``, ``next_direction``, ``next_delay_minutes``,
+          ``next_is_realtime``, ``next_scheduled``, ``next_realtime``.
+        """
+        data = self.coordinator.data or {}
+        first = self._first_departure()
+        attrs: dict[str, Any] = {
+            "stop_id": data.get("stop_id"),
+            "stop_name": data.get("stop_name"),
+            "resolved_stop": data.get("resolved_stop") or {},
+            "departures": data.get("departures") or [],
+            "departures_count": data.get("departures_count", 0),
+        }
+        if first is not None:
+            attrs["next_line"] = first.get("line")
+            attrs["next_direction"] = first.get("direction")
+            attrs["next_mot"] = first.get("mot_name")
+            if "delay_minutes" in first:
+                attrs["next_delay_minutes"] = first["delay_minutes"]
+            if "is_realtime" in first:
+                attrs["next_is_realtime"] = first["is_realtime"]
+            if "scheduled" in first:
+                attrs["next_scheduled"] = first["scheduled"]
+            if "realtime" in first:
+                attrs["next_realtime"] = first["realtime"]
+        return attrs
+
+    def _first_departure(self) -> dict[str, Any] | None:
+        """Return the first upcoming departure (None if list empty)."""
+        data = self.coordinator.data or {}
+        departures = data.get("departures") or []
+        if not departures:
+            return None
+        first = departures[0]
+        return first if isinstance(first, dict) else None
