@@ -272,29 +272,6 @@ narrowed away don't surface.
       custom_components.linz_linien_austria: debug
   ```
 
-## Known limitations
-
-- The OGD XML mirror at `data.linz.gv.at` no longer surfaces realtime
-  data (since Dec 2015). This integration uses the live JSON endpoint
-  at `linzag.at/static` which still does — same one the LinzMobil
-  app hits. If LINZ AG changes that, realtime would degrade
-  gracefully to scheduled-only and the `is_realtime` flag on each
-  departure would flip to `false`.
-- **Accessibility info not available.** Unlike Wiener Linien (whose
-  monitor API publishes a per-departure `barrierFree` boolean), LINZ
-  AG LINIEN's EFA `XML_DM_REQUEST` does not expose a low-floor /
-  wheelchair-accessibility flag — `attrs[]` on each departure
-  carries only an internal trip identifier. If/when the upstream
-  starts publishing the flag, this integration will surface it as
-  `departures[].barrier_free` automatically.
-- **HTTP cache validators not supported.** The Mentz EFAController
-  returns `Cache-Control: no-cache`, no `ETag`, no `Last-Modified` —
-  `If-Modified-Since` / `If-None-Match` requests come back as 200
-  with the full body. We rely on `Accept-Encoding: gzip` instead
-  (~87 % saving on departure responses).
-- Stop search is fuzzy but case-sensitive on diacritics — type
-  `Mühlkreis` not `muhlkreis`.
-
 ## Events
 
 This integration does not currently fire HA bus events. State-change
@@ -319,5 +296,10 @@ carries a CC BY 4.0 attribution requirement. See
 integration emits this string on every sensor via the `attribution`
 state attribute, and the bundled card displays it in its footer.
 
-This integration is **not** affiliated with or endorsed by LINZ AG
-LINIEN.
+## Disclaimer
+
+This integration is not affiliated with or endorsed by LINZ AG LINIEN GmbH. All departure, stop, and service-disruption data is provided by LINZ AG LINIEN's [open EFA endpoint](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/) and published under the Creative Commons Attribution (CC BY 4.0) license. The developer assumes no liability for the accuracy, completeness, or timeliness of the displayed departures, including delays, cancellations, or disruptions. Use at your own risk.
+
+---
+
+Diese Integration steht in keiner Verbindung zur LINZ AG LINIEN GmbH und wird von dieser nicht unterstützt. Alle Abfahrts-, Haltestellen- und Verkehrsmeldungsdaten stammen von der [offenen EFA-Schnittstelle der LINZ AG LINIEN](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/) und werden unter der Creative-Commons-Lizenz Namensnennung 4.0 (CC BY 4.0) veröffentlicht. Für die Richtigkeit, Vollständigkeit und Aktualität der angezeigten Abfahrten — einschließlich Verspätungen, Ausfällen oder Störungen — wird keine Haftung übernommen. Nutzung auf eigene Verantwortung.
