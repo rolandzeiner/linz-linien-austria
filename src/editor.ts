@@ -270,11 +270,24 @@ export class LinzLinienAustriaCardEditor
   }
 
   private _computeLabel = (field: { name: string }): string => {
+    // 1. Try HA's own translations first — common field names ("name",
+    //    "entity", "icon") are localised by HA core in every supported
+    //    language. Reusing those means the card only needs to translate
+    //    its bespoke fields. `hass.localize` returns "" for misses, not
+    //    the lookup key, so a falsy check is the right miss signal.
+    const haKey = `ui.panel.lovelace.editor.card.generic.${field.name}`;
+    const ha = this.hass?.localize?.(haKey);
+    if (ha) return ha;
+
+    // 2. Fall back to the card's own translation bundle.
     const key = `editor.${field.name}`;
     const localised = translate(key, {
       hassLanguage: this.hass?.language,
     });
-    return localised === key ? field.name : localised;
+    if (localised !== key) return localised;
+
+    // 3. Last resort: raw field name (editor still works, dev sees the gap).
+    return field.name;
   };
 
   private _computeHelper = (field: { name: string }): string | undefined => {
