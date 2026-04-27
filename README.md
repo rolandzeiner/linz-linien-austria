@@ -99,6 +99,8 @@ them.
 3. Search for "Linz Linien Austria" and install.
 4. Restart Home Assistant.
 
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=linz-linien-austria&category=integration)
+
 ### Manual
 
 1. Copy `custom_components/linz_linien_austria/` into your HA
@@ -106,6 +108,8 @@ them.
 2. Restart Home Assistant.
 
 ## Setup
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=linz_linien_austria)
 
 1. **Settings → Devices & Services → + Add Integration**.
 2. Search for **Linz Linien Austria**.
