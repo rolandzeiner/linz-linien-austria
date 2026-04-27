@@ -11,6 +11,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .alerts import get_alerts_for_lines
@@ -83,6 +84,17 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             config_entry=entry,
             name=DOMAIN,
             update_interval=self._normal_interval,
+            # Absorb request storms (options-flow save, manual reload,
+            # dashboard edit-mode flip) so the EFA endpoint isn't hit
+            # 3-4× in quick succession. Cooldown matches the existing
+            # DOMAIN_COOLDOWN_SECONDS fair-use floor — first call goes
+            # through, subsequent calls within the window piggy-back.
+            request_refresh_debouncer=Debouncer(
+                hass,
+                _LOGGER,
+                cooldown=15,
+                immediate=False,
+            ),
         )
 
     async def _async_setup(self) -> None:
