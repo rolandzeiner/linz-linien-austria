@@ -39,24 +39,29 @@ export const cardStyles = css`
   /* Header row — icon tile + title block.
      Matches the wiener-linien card layout (40 px tinted icon tile,
      12 px gap, two-line title-block) so a stacked dashboard reads as
-     one visual family. */
+     one visual family. The card sets a --header-color CSS variable on
+     .head from the next departure's MoT (tram = orange default,
+     U-Bahn = blue, bus = plum, train = grey) — icon-tile's tint and
+     icon colour both inherit, so the header recolours every refresh. */
   .head {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: var(--linz-pad-y) var(--linz-pad-x) 0;
+    --header-color: var(--linz-accent);
   }
   .icon-tile {
     width: var(--linz-tile-size);
     height: var(--linz-tile-size);
     border-radius: var(--linz-radius-md);
-    background: color-mix(in srgb, var(--linz-accent) 18%, transparent);
-    color: var(--linz-accent);
+    background: color-mix(in srgb, var(--header-color) 18%, transparent);
+    color: var(--header-color);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     forced-color-adjust: none;
+    transition: background-color 0.16s ease, color 0.16s ease;
   }
   .icon-tile ha-icon {
     --mdc-icon-size: 22px;
@@ -87,7 +92,50 @@ export const cardStyles = css`
     white-space: nowrap;
   }
 
-  /* Hero block — large countdown to next departure. */
+  /* Header right-side actions (maps link). Same affordance + sizing as
+     wiener-linien-austria's .icon-action so a stacked dashboard reads
+     as one visual family. min-width/min-height meet WCAG 2.5.8 AA. */
+  .head-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--secondary-text-color);
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+  }
+  .icon-action:hover {
+    background: color-mix(
+      in srgb,
+      var(--primary-text-color) 8%,
+      transparent
+    );
+    color: var(--primary-text-color);
+  }
+  .icon-action:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+  .icon-action ha-icon {
+    --mdc-icon-size: 22px;
+  }
+
+  /* Hero block — large countdown to next departure.
+     The hero hosts a --hero-color CSS variable that the card sets on
+     the element via inline style based on the next departure's MoT.
+     Tram/default use --linz-accent; U-Bahn / bus / train get their own
+     hue so the big number visually agrees with the line badge below. */
   .hero {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -96,17 +144,14 @@ export const cardStyles = css`
     padding: var(--ha-space-3, 12px) var(--linz-pad-x);
     margin: var(--ha-space-2, 8px) var(--linz-pad-x) 0;
     border-radius: var(--ha-border-radius-lg, 12px);
-    background: color-mix(
-      in srgb,
-      var(--linz-accent) 12%,
-      transparent
-    );
+    --hero-color: var(--linz-accent);
+    background: color-mix(in srgb, var(--hero-color) 12%, transparent);
   }
   .hero-time {
     display: flex;
     align-items: baseline;
     gap: 4px;
-    color: var(--linz-accent);
+    color: var(--hero-color);
   }
   .hero-min {
     font-size: 2.75rem;
@@ -119,25 +164,59 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
   }
+  /* Hero meta — single flex row so line badge, direction, Live pill and
+     Steig tag sit beside each other when there is space. flex-wrap lets
+     them spill to a second line on a narrow column instead of forcing
+     ellipsis. */
   .hero-meta {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  .hero-line {
-    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--ha-space-2, 8px);
+    gap: 8px;
     min-width: 0;
   }
   .hero-direction {
     font-weight: 500;
     color: var(--primary-text-color);
     overflow-wrap: anywhere;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .hero-platform {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--primary-text-color);
+    font-variant-numeric: tabular-nums;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(
+      in srgb,
+      var(--primary-text-color) 10%,
+      transparent
+    );
+  }
+
+  /* Cancelled hero — recolour to the late/cancel red so the user
+     reads the state at a glance, dim the line badge + direction with
+     strikethrough so it matches the row treatment, and shrink the
+     "Entfällt" label since it no longer competes with a giant
+     numeric countdown. */
+  .hero-cancelled {
+    --hero-color: var(--linz-late);
+    background: color-mix(in srgb, var(--linz-late) 12%, transparent);
+  }
+  .hero-cancelled .hero-min {
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .hero-cancelled .line-badge,
+  .hero-cancelled .hero-direction {
+    text-decoration: line-through;
+    opacity: 0.7;
   }
   .rt-pill {
-    align-self: flex-start;
     font-size: 0.6875rem;
     font-weight: 600;
     color: white;
@@ -145,6 +224,7 @@ export const cardStyles = css`
     padding: 2px 8px;
     border-radius: 999px;
     letter-spacing: 0.04em;
+    flex-shrink: 0;
   }
 
   /* Departures list — tightened to match the wiener-linien tile-card
@@ -160,11 +240,27 @@ export const cardStyles = css`
   }
   .row {
     display: grid;
+    /* Three columns: badge | direction | tail. The tail is a single
+       flex container that holds the optional platform pill and the
+       time. Collapsing platform+time into one trailing column keeps
+       the time anchored at the row's right edge regardless of whether
+       platform is present, so minute values line up vertically across
+       rows even when only some have a platform set. */
     grid-template-columns: max-content 1fr auto;
     align-items: center;
     gap: 8px;
     padding: 6px 2px;
     border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
+  }
+  .row-tail {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    /* Reserve a fixed minimum so the time text right-aligns inside a
+       consistent slot. Long values ("12 Min") and short ones ("Jetzt")
+       both end at the same right edge across rows. */
+    min-width: 3.6em;
+    justify-content: flex-end;
   }
   .row:last-child {
     border-bottom: none;
@@ -181,6 +277,21 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
     white-space: nowrap;
+  }
+  /* Trailing platform marker — small, muted, monospace digits so
+     "Steig 7" / "Steig 12" line up visually across rows. */
+  .row-platform {
+    font-size: 0.7rem;
+    color: var(--secondary-text-color);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: color-mix(
+      in srgb,
+      var(--secondary-text-color) 12%,
+      transparent
+    );
   }
   .row-time.now {
     color: var(--linz-accent);
@@ -312,12 +423,15 @@ export const cardStyles = css`
     font-size: 0.7rem;
   }
 
-  /* Line badge — compact pill, accent-tinted. Line number stands alone
-     in the row badge; the mode icon only appears in the hero block (so
-     the row stays a simple "badge | direction | time" grid). */
+  /* Line badge — compact pill, accent-tinted, FIXED width so 1-digit
+     ("2"), 2-digit ("45"), and 3-digit ("191") line numbers all occupy
+     the same horizontal slot and the row text columns line up. The
+     icon is fixed-size; the number column gets centered inside the
+     remaining space via justify-content: center. */
   .line-badge {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     text-align: center;
     font-weight: 700;
@@ -325,12 +439,17 @@ export const cardStyles = css`
     color: #fff;
     background: var(--linz-accent);
     border-radius: 6px;
-    padding: 3px 8px;
-    min-width: 2.4em;
+    padding: 3px 6px;
+    /* Width sized for icon + 3 digits. Use 'width' (not just min-width)
+       so all badges share the same footprint regardless of line number
+       length. box-sizing default of content-box would have the padding
+       expand the visual width — keep border-box explicit. */
+    box-sizing: border-box;
+    width: 3.6em;
     font-size: 0.85rem;
     box-shadow: inset 0 -2px 0 color-mix(in srgb, #000 18%, transparent);
-    justify-content: center;
     forced-color-adjust: none;
+    flex-shrink: 0;
   }
   .line-icon {
     --mdc-icon-size: 1rem;
@@ -415,7 +534,8 @@ export const cardStyles = css`
 `;
 
 /** Editor styles. HA form components ship their own theming — keep
- *  editor CSS to layout + spacing only. */
+ *  editor CSS to layout + spacing only. The per-line widgets at the
+ *  bottom mirror wiener-linien-austria's editor section pattern. */
 export const editorStyles = css`
   :host {
     display: block;
@@ -425,5 +545,260 @@ export const editorStyles = css`
     display: flex;
     flex-direction: column;
     gap: var(--ha-space-3, 12px);
+  }
+
+  .editor-section {
+    background: var(--secondary-background-color, rgba(0, 0, 0, 0.04));
+    border-radius: var(--ha-border-radius-lg, 12px);
+    padding: var(--ha-space-3, 14px) var(--ha-space-4, 16px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ha-space-2, 10px);
+  }
+  .section-header {
+    font-size: var(--ha-font-size-xs, 11px);
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--secondary-text-color);
+  }
+  .editor-hint {
+    font-size: 0.75rem;
+    color: var(--secondary-text-color);
+    line-height: 1.4;
+  }
+
+  /* Line-filter chip grid — visual replacement for the ha-form select
+     dropdown, since the dropdown can't render MDI icons in options.
+     Chip drives the badge colour from --chip-color (set inline by
+     editor.ts based on the line's MoT). Selected chips fill, unselected
+     keep an outlined treatment so the active set is clear. */
+  .line-chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .line-chip {
+    --chip-color: var(--linz-accent, #f08000);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    height: 28px;
+    border-radius: 999px;
+    border: 1.5px solid var(--chip-color);
+    background: transparent;
+    color: var(--primary-text-color);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+    forced-color-adjust: none;
+  }
+  .line-chip ha-icon {
+    --mdc-icon-size: 16px;
+    color: var(--chip-color);
+    flex-shrink: 0;
+    transition: color 0.16s ease;
+  }
+  .line-chip:hover {
+    background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+  }
+  .line-chip.is-selected {
+    background: var(--chip-color);
+    color: #fff;
+    border-color: var(--chip-color);
+  }
+  .line-chip.is-selected ha-icon {
+    color: #fff;
+  }
+  .line-chip:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+  .line-chip-add {
+    display: flex;
+    gap: 6px;
+  }
+  .line-chip-input {
+    flex: 1;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 1px solid var(--divider-color);
+    border-radius: 6px;
+    background: var(--card-background-color, transparent);
+    color: var(--primary-text-color);
+    font-size: 0.85rem;
+  }
+  .line-chip-input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+    border-color: transparent;
+  }
+
+  .per-line-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  /* Row layout: badge | walk-group | (1fr spacer) | colour-chip | clear.
+     Walk group is fixed-width and visually one unit (no internal gap).
+     Spacer (1fr) absorbs slack so the colour chip sits flush at the
+     right edge regardless of badge width. The clear button collapses
+     to a small × that doesn't dominate the row. */
+  .per-line-row {
+    display: grid;
+    grid-template-columns: 3.6em auto 1fr auto 24px;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+  }
+  .per-line-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary-text-color) 12%, transparent);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary-text-color);
+    font-size: 0.85rem;
+  }
+
+  /* Walk-time group — input + unit pinned together so they read as one
+     widget, no whitespace gap between them. */
+  .per-line-walk-group {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--divider-color);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--card-background-color, transparent);
+    height: 28px;
+  }
+  .per-line-walk {
+    width: 3.5em;
+    box-sizing: border-box;
+    padding: 0 4px 0 8px;
+    border: none;
+    background: transparent;
+    color: var(--primary-text-color);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .per-line-walk::-webkit-outer-spin-button,
+  .per-line-walk::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+  .per-line-walk:focus {
+    outline: none;
+  }
+  .per-line-walk-group:focus-within {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+  }
+  .per-line-walk-unit {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 0.7rem;
+    color: var(--secondary-text-color);
+    background: color-mix(in srgb, var(--primary-text-color) 6%, transparent);
+    border-left: 1px solid var(--divider-color);
+  }
+
+  /* Colour pill — the wiener-linien chip pattern: tinted pill with
+     icon + hex text, the actual <input type=color> sits invisibly on
+     top so the OS picker opens on click anywhere on the chip. */
+  .per-line-color-chip {
+    --swatch-color: var(--linz-accent, #f08000);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--swatch-color) 22%, transparent);
+    color: var(--primary-text-color);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.16s ease, transform 0.16s ease;
+    min-width: 0;
+    height: 28px;
+    box-sizing: border-box;
+  }
+  .per-line-color-chip:hover {
+    background: color-mix(in srgb, var(--swatch-color) 30%, transparent);
+  }
+  .per-line-color-chip:active {
+    transform: translateY(1px);
+  }
+  .per-line-color-chip:focus-within {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+  .per-line-color-chip ha-icon {
+    --mdc-icon-size: 16px;
+    color: var(--swatch-color);
+    flex-shrink: 0;
+  }
+  .per-line-color-hex {
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  /* The actual <input type="color"> covers the chip at opacity 0 so
+     clicking anywhere on the chip opens the OS picker. */
+  .per-line-color-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  /* Clear (×) button — small, circular, only visually present when a
+     custom colour is set. Stays in the layout (the is-hidden class
+     keeps the grid stable) but goes invisible + non-interactive
+     otherwise. */
+  .per-line-clear {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.16s ease, color 0.16s ease;
+  }
+  .per-line-clear.is-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .per-line-clear:hover {
+    color: var(--linz-late, #c62828);
+    background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+  }
+  .per-line-clear:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 `;

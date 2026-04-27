@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import time
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
@@ -22,7 +21,9 @@ from .api import (
     EfaTimeoutError,
     fetch_departures,
 )
+from .rate_limit import async_enforce_domain_cooldown
 from .const import (
+    BACKOFF_CAP_SECONDS,
     CONF_LIMIT,
     CONF_LINES,
     CONF_STOP_ID,
@@ -30,8 +31,6 @@ from .const import (
     DEFAULT_LIMIT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    DOMAIN_COOLDOWN_SECONDS,
-    DOMAIN_LAST_CALL_KEY,
     MAX_DEPARTURES_IN_ATTRS,
     MIN_POLL_SECONDS,
 )
@@ -66,16 +65,24 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._rate_limited: bool = False
         self._unsub: list[Callable[[], None]] = []
 
+        # Exponential-backoff bookkeeping for sustained API outages.
+        # ``self._normal_interval`` is the immutable user-configured
+        # cadence; ``self.update_interval`` is what HA actually polls
+        # at. After a failure the latter doubles per consecutive miss
+        # up to BACKOFF_CAP_SECONDS, restored to ``_normal_interval``
+        # on the first success.
+        self._consecutive_failures = 0
         scan_seconds = max(
             MIN_POLL_SECONDS,
             int(config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
         )
+        self._normal_interval = timedelta(seconds=scan_seconds)
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=DOMAIN,
-            update_interval=timedelta(seconds=scan_seconds),
+            update_interval=self._normal_interval,
         )
 
     async def _async_setup(self) -> None:
@@ -90,27 +97,45 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._unsub.clear()
 
     # ------------------------------------------------------------------
-    # Domain-wide cooldown
+    # Backoff bookkeeping
     # ------------------------------------------------------------------
 
-    def _domain_cooldown_remaining(self) -> float:
-        """Return seconds remaining until the next refresh is allowed.
+    def _note_success(self) -> None:
+        """Reset the failure counter and restore the normal cadence."""
+        if self._consecutive_failures == 0:
+            return
+        self._consecutive_failures = 0
+        if self.update_interval != self._normal_interval:
+            _LOGGER.info(
+                "Recovered from outage; restoring normal poll cadence"
+            )
+            self.update_interval = self._normal_interval
 
-        Multiple config entries share the same upstream EFA. Without a
-        domain-wide floor, two stops polling at 30s independently can
-        end up firing simultaneous requests every cycle. The shared
-        timestamp lives in ``hass.data[DOMAIN]`` and is written *before*
-        the refresh begins so a slow request still consumes the budget.
+    def _note_failure(self) -> None:
+        """Bump the failure counter and apply exponential backoff.
+
+        First failure stays at the user-configured cadence (transient
+        hiccups shouldn't slow down the loop). From the second failure
+        onwards, the update interval doubles each time, capped at
+        BACKOFF_CAP_SECONDS so a sustained outage settles into a slow
+        poll instead of hammering the upstream.
         """
-        domain_data = self.hass.data.setdefault(DOMAIN, {})
-        last = float(domain_data.get(DOMAIN_LAST_CALL_KEY, 0.0))
-        now = time.monotonic()
-        elapsed = now - last
-        return max(0.0, DOMAIN_COOLDOWN_SECONDS - elapsed)
-
-    def _stamp_domain_cooldown(self) -> None:
-        domain_data = self.hass.data.setdefault(DOMAIN, {})
-        domain_data[DOMAIN_LAST_CALL_KEY] = time.monotonic()
+        self._consecutive_failures += 1
+        if self._consecutive_failures < 2:
+            return
+        normal_secs = self._normal_interval.total_seconds()
+        backoff_secs = min(
+            normal_secs * (2 ** (self._consecutive_failures - 1)),
+            BACKOFF_CAP_SECONDS,
+        )
+        new_interval = timedelta(seconds=backoff_secs)
+        if self.update_interval != new_interval:
+            _LOGGER.info(
+                "%d consecutive failures; backing off to %ds poll cadence",
+                self._consecutive_failures,
+                int(backoff_secs),
+            )
+            self.update_interval = new_interval
 
     # ------------------------------------------------------------------
     # Repair issues
@@ -143,25 +168,45 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # ------------------------------------------------------------------
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch fresh departures from the upstream EFA endpoint."""
-        # Domain cooldown: if a sibling entry just polled, defer to it
-        # rather than stacking a second request inside the floor.
-        wait = self._domain_cooldown_remaining()
-        if wait > 0 and self.data is not None:
-            _LOGGER.debug(
-                "Skipping refresh — domain cooldown %.1fs remaining; "
-                "reusing previous data",
-                wait,
-            )
-            return self.data
+        """Fetch fresh departures with backoff + cooldown wrappers.
 
-        # Stamp before the request — failed calls "use up" the budget
-        # like successful ones, so retries don't break the floor.
-        self._stamp_domain_cooldown()
+        Two layers around the actual fetch:
 
+        1. ``async_enforce_domain_cooldown`` — lock-serialised 15 s
+           floor across every entry + the alerts refresh. Concurrent
+           callers queue inside the lock; the first one fires
+           immediately, subsequent callers wait their slice.
+        2. ``_note_success`` / ``_note_failure`` — exponential-backoff
+           bookkeeping. The user-configured cadence is preserved as
+           ``self._normal_interval``; ``self.update_interval`` widens
+           on consecutive failures and snaps back on first success.
+        """
+        try:
+            data = await self._fetch_departures()
+        except UpdateFailed:
+            self._note_failure()
+            raise
+        self._note_success()
+        return data
+
+    async def _fetch_departures(self) -> dict[str, Any]:
+        """Inner fetch — separated so the backoff wrapper stays clean."""
+        await async_enforce_domain_cooldown(self.hass)
+
+        # Pad the upstream limit a bit beyond the user's configured
+        # display count so the realtime sort has headroom. Without the
+        # padding, the upstream's scheduled-order tail can hide a row
+        # whose realtime would have ranked above the cap. EFA accepts
+        # 100+ readily; we cap at MAX_DEPARTURES_IN_ATTRS + 15 so the
+        # recorder cap stays the binding constraint and there's still
+        # room for entries that get dropped by `_normalise_departure`.
+        upstream_limit = min(
+            MAX_DEPARTURES_IN_ATTRS + 15,
+            max(self._limit + 5, self._limit * 2),
+        )
         try:
             payload = await fetch_departures(
-                self._session, self._stop_id, limit=self._limit
+                self._session, self._stop_id, limit=upstream_limit
             )
         except EfaTimeoutError as err:
             raise UpdateFailed(
@@ -210,9 +255,13 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             departures = [
                 d for d in departures if _line_dir_key(d) in self._lines_filter
             ]
-        # Cap at MAX_DEPARTURES_IN_ATTRS so the recorder doesn't choke on
-        # a stop like Hauptbahnhof that returns 40+ departures in a
-        # single fetch.
+        # Cap only at MAX_DEPARTURES_IN_ATTRS (30) — the recorder hard
+        # limit. We deliberately do NOT trim to ``self._limit`` here:
+        # that's the *upstream fetch* size, not a display cap. Card-side
+        # filters (lines, max_departures) need a deeper pool than the
+        # display count to find enough matching rows. Bumping the
+        # integration's `limit` raises the upstream fetch; rendering
+        # is capped per-card via ``max_departures`` on the card config.
         departures = departures[:MAX_DEPARTURES_IN_ATTRS]
 
         # Slice the domain-wide alerts cache to alerts whose

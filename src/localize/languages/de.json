@@ -10,6 +10,9 @@
   "card": {
     "no_departures": "Keine kommenden Abfahrten.",
     "no_matches_for_filter": "Keine kommenden Abfahrten passen zum Linienfilter.",
+    "platform": "Steig",
+    "platform_short": "Steig",
+    "open_in_maps": "In Google Maps öffnen",
     "next_departure_label": "Nächste Abfahrt",
     "minutes": "Minuten",
     "minutes_short": "Min",
@@ -29,8 +32,21 @@
     "show_hero": "Hauptbereich anzeigen",
     "show_hero_helper": "Großer Countdown zur nächsten Abfahrt.",
     "max_departures": "Max. Abfahrten",
-    "max_departures_helper": "Begrenzt die Liste. Die Integration begrenzt bereits auf 30.",
+    "max_departures_helper": "Begrenzt die Liste. Karten-Filter (Linien + Fußweg) entfernen Zeilen VOR diesem Limit — 10 hier bedeutet also nicht zwingend 10 sichtbare Zeilen. Falls weniger als erwartet erscheinen, in der Integration die ‚Anzahl der Abfahrten' erhöhen (Einstellungen → Geräte & Dienste → Linz Linien Austria → Konfigurieren) — das ist der Pool, aus dem die Karte filtert. 0 zeigt nur den Nächste-Abfahrt-Block ohne Zeilen.",
     "lines": "Linien filtern",
-    "lines_helper": "Leer = alle Linien anzeigen. Eine oder mehrere Liniennummern wählen, um nur diese Zeilen darzustellen."
+    "lines_helper": "Leer (keine Chips ausgewählt) = alle Linien anzeigen. Chips antippen, um Linien ein- oder auszuschließen. Bei engem Filter an stark frequentierten Haltestellen (Hauptbahnhof) ggf. in der Integration die ‚Anzahl der Abfahrten' erhöhen, damit die Karte genügend Zeilen zum Filtern hat.",
+    "lines_custom_placeholder": "Linie hinzufügen, die oben nicht angezeigt wird (Enter)",
+    "show_platform": "Steig anzeigen",
+    "show_platform_helper": "Steig in der Untertitelzeile (nächste Abfahrt) und am Ende jeder Zeile einblenden.",
+    "show_alerts": "Verkehrsinfo anzeigen",
+    "show_alerts_helper": "Aufklappbares Verkehrsinfo-Banner über der Abfahrtsliste anzeigen, wenn LINZ AG aktuelle Hinweise veröffentlicht.",
+    "section_per_line": "Fußweg & Farbe pro Linie",
+    "per_line_hint": "Fußweg: Abfahrten, deren Countdown unter dieser Minutenzahl liegt, werden ausgeblendet — sie sind ohnehin nicht erreichbar. Farbe: überschreibt die Linienbadge-Tönung. Bei längerem Fußweg gegebenenfalls in der Integration die ‚Anzahl der Abfahrten' erhöhen.",
+    "per_line_no_data": "Oben einen Sensor wählen, dann erscheinen hier die Linien.",
+    "walk_time": "Fußweg",
+    "walk_time_placeholder": "Min",
+    "minutes_short": "Min",
+    "line_color": "Linienfarbe",
+    "line_color_clear": "Standardfarbe wiederherstellen"
   }
 }

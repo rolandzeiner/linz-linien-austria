@@ -99,6 +99,50 @@ def test_parse_dm_resolves_stop_metadata() -> None:
     assert payload["departures"][1]["line"] == "3"
 
 
+def test_parse_dm_sorts_by_realtime_countdown() -> None:
+    """Upstream returns scheduled-order; we re-sort by realtime arrival."""
+    payload = {
+        "departureList": [
+            # scheduled-order: a delayed line listed before an on-time one
+            # whose realtime puts it ahead.
+            {
+                "countdown": 1,
+                "servingLine": {
+                    "number": "17",
+                    "direction": "Hitzing",
+                    "delay": "12",
+                    "motType": "4",
+                },
+            },
+            {
+                "countdown": 0,
+                "servingLine": {
+                    "number": "2",
+                    "direction": "solarCity",
+                    "delay": "0",
+                    "motType": "4",
+                },
+            },
+            # cancelled — must sink below all live rows regardless of cd.
+            {
+                "countdown": 2,
+                "realtimeTripStatus": "TRIP_CANCELLED",
+                "servingLine": {
+                    "number": "12",
+                    "direction": "Karlhof",
+                    "delay": "0",
+                    "motType": "5",
+                },
+            },
+        ]
+    }
+    out = _parse_dm(payload)["departures"]
+    # Effective ordering: line 2 (0 min, no delay) → line 17 (13 min) →
+    # line 12 cancelled (always sinks).
+    assert [d["line"] for d in out] == ["2", "17", "12"]
+    assert out[-1].get("is_cancelled") is True
+
+
 # ---------------------------------------------------------------------
 # Coordinator integration tests
 # ---------------------------------------------------------------------

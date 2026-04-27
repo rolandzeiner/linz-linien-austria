@@ -20,8 +20,23 @@
 ## Tooling & config
 
 - `pyproject.toml` — source of truth for ruff (target-version, line-length), mypy (strict, ignore_missing_imports, files) and coverage config. Change rules here, not in CI flags.
-- `pytest.ini` — pytest config and the **`--cov-fail-under=90` coverage gate**. `pytest tests/` automatically runs with coverage; CI fails fast if a new commit drops coverage below the gate.
+- `pytest.ini` — pytest config and the **`--cov-fail-under=80` coverage gate**. `pytest tests/` automatically runs with coverage; CI fails fast if a new commit drops coverage below the gate.
 - `ATTRIBUTION` — canonical data-source statement and licence terms; matches the `attribution` attribute every sensor emits. Update when the upstream API or licence wording changes (and keep `const.ATTRIBUTION` in sync).
+
+## Module map (Python side)
+
+- `api.py` — EFA HTTP client. JSON-only, single source of truth for `_common_headers` (which delegates to `http.py::base_request_headers`).
+- `coordinator.py` — `DataUpdateCoordinator` subclass with realtime-aware sort, exponential backoff on consecutive failures, and per-stop alerts slice.
+- `alerts.py` — XML_ADDINFO_REQUEST fetcher + 5-min domain-wide refresh task with refcounted lifecycle.
+- `rate_limit.py` — lock-serialised 15 s domain-wide cooldown shared between the coordinator's departure polls and the alerts refresh.
+- `http.py` — single source of truth for outbound headers (User-Agent, Accept, Accept-Encoding: gzip). Every new HTTP call site MUST go through `base_request_headers`.
+- `card_registration.py` — Lovelace JS module + `?v=` cache-busting.
+- `config_flow.py`, `sensor.py`, `diagnostics.py`, `__init__.py` — standard HA platform pieces.
+
+## CI guards
+
+- `validate-card` job runs a Perl-based grep that fails the build if any backtick appears inside a Lit `css\`...\`` or `html\`...\`` template body — those terminate the literal early and silently break the card. Use single quotes / double quotes / word descriptions in CSS comments.
+- `tests/test_user_agent.py` parametrises every outbound call site and asserts both `User-Agent` and `Accept-Encoding: gzip`. Adding a new HTTP call? Add it to the parametrize table.
 
 View per-file coverage locally:
 

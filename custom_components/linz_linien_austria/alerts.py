@@ -39,6 +39,7 @@ from .const import (
     DOMAIN,
     USER_AGENT,
 )
+from .http import base_request_headers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -238,11 +239,7 @@ async def async_fetch_alerts(
         "outputFormat": "JSON",
         "filterPublicationStatus": "current",
     }
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-    }
+    headers = base_request_headers(USER_AGENT)
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
     try:
         resp = await session.get(url, params=params, headers=headers, timeout=timeout)
@@ -263,6 +260,12 @@ async def async_fetch_alerts(
 
 async def async_refresh_alerts(hass: HomeAssistant) -> None:
     """Refresh the cached alerts list and push it into hass.data."""
+    # Alerts share the same 15 s domain-wide floor as the departure
+    # polls. Without this, the 5-min alerts tick can collide with a
+    # departure refresh and burn two slots in one second.
+    from .rate_limit import async_enforce_domain_cooldown
+
+    await async_enforce_domain_cooldown(hass)
     session = async_get_clientsession(hass)
     alerts = await async_fetch_alerts(session)
     domain_data = hass.data.setdefault(DOMAIN, {})

@@ -27,6 +27,7 @@ from .const import (
     STOPFINDER_ENDPOINT,
     USER_AGENT,
 )
+from .http import base_request_headers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,17 +56,12 @@ class EfaPayloadError(EfaApiError):
 
 
 def _common_headers() -> dict[str, str]:
-    """Headers sent on every outbound request.
+    """Headers sent on every DM_REQUEST / STOPFINDER_REQUEST call.
 
-    `Accept-Encoding: gzip` is harmless if the upstream doesn't honour it
-    and yields meaningful bandwidth savings if it does — aiohttp
-    transparently decompresses gzip responses.
+    Thin wrapper around the shared ``base_request_headers`` helper so a
+    future header addition lands in one place.
     """
-    return {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-    }
+    return base_request_headers(USER_AGENT)
 
 
 async def _get_json(
@@ -235,8 +231,18 @@ async def fetch_departures(
 def _parse_dm(payload: dict[str, Any]) -> dict[str, Any]:
     """Extract a normalised departures payload from a DM_REQUEST response.
 
-    Returns a dict with ``stop`` (resolved metadata), ``departures`` (list
-    of normalised entries), and ``raw`` for diagnostics.
+    Returns a dict with ``stop`` (resolved metadata) and ``departures``
+    (list of normalised entries, sorted by effective arrival time).
+
+    Sort key explanation: the upstream returns departures in *scheduled*
+    order, not realtime-corrected order. Two on-time-vs-late departures
+    on adjacent rows therefore appear out of order to the user (a line
+    delayed 12 min jumps ahead of an on-time line leaving in 0 min).
+    Re-sort by ``countdown_rt`` (realtime-corrected) when present,
+    falling back to ``countdown``. Cancelled rows are pinned to the
+    bottom (they aren't going to leave at all). Rows missing both
+    countdowns drop to the very bottom — typically transient parser
+    artefacts that the user cares about least.
     """
     stop_meta = _resolve_stop_meta(payload)
     raw_departures = payload.get("departureList") or []
@@ -249,10 +255,32 @@ def _parse_dm(payload: dict[str, Any]) -> dict[str, Any]:
         if normalised is not None:
             departures.append(normalised)
 
+    departures.sort(key=_departure_sort_key)
+
     return {
         "stop": stop_meta,
         "departures": departures,
     }
+
+
+def _departure_sort_key(dep: dict[str, Any]) -> tuple[int, int]:
+    """Tuple sort key: (group, effective-countdown-minutes).
+
+    Group 0 = active (live data), group 1 = cancelled, group 2 =
+    countdown unknown. Within a group sort ascending by effective
+    countdown — realtime when present, else scheduled.
+    """
+    if dep.get("is_cancelled"):
+        return (1, int(dep.get("countdown") or 0))
+    cd_rt = dep.get("countdown_rt")
+    if isinstance(cd_rt, int):
+        return (0, cd_rt)
+    cd = dep.get("countdown")
+    if isinstance(cd, int):
+        return (0, cd)
+    # Neither countdown — push to the very bottom but keep relative order
+    # stable by returning the same large sentinel for everyone.
+    return (2, 10_000)
 
 
 def _resolve_stop_meta(payload: dict[str, Any]) -> dict[str, Any]:

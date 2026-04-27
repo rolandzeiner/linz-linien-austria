@@ -10,6 +10,9 @@
   "card": {
     "no_departures": "No upcoming departures.",
     "no_matches_for_filter": "No upcoming departures match the line filter.",
+    "platform": "Platform",
+    "platform_short": "Pl.",
+    "open_in_maps": "Open in Google Maps",
     "next_departure_label": "Next departure",
     "minutes": "minutes",
     "minutes_short": "min",
@@ -29,8 +32,21 @@
     "show_hero": "Show hero block",
     "show_hero_helper": "Big countdown for the next departure.",
     "max_departures": "Max departures",
-    "max_departures_helper": "Cap the rendered list. The integration already caps at 30.",
+    "max_departures_helper": "Cap the rendered list. Card-side filters (lines + Fußweg) trim rows BEFORE this cap, so setting it to 10 doesn't guarantee 10 rows. If you see fewer than expected, raise the integration's 'Departures to fetch' under Settings → Devices & Services → Linz Linien Austria → Configure — that's the pool the card filters from. Set 0 to render only the next-departure block above without any rows.",
     "lines": "Filter by lines",
-    "lines_helper": "Empty = show every line. Pick one or more line numbers to render only those rows."
+    "lines_helper": "Empty (no chips selected) = show every line. Tap chips to toggle which lines to keep. Tight filters at busy stops (Hauptbahnhof) may need the integration's 'Departures to fetch' raised so the card has enough pre-filter rows to find matches.",
+    "lines_custom_placeholder": "Add a line not shown above (press Enter)",
+    "show_platform": "Show platform",
+    "show_platform_helper": "Show the platform / bay (Steig) on the next-departure subtitle and at the trailing edge of each row.",
+    "show_alerts": "Show traffic info",
+    "show_alerts_helper": "Show the collapsible traffic-info banner above the departure list when LINZ AG has active service notices.",
+    "section_per_line": "Per-line walk time & colour",
+    "per_line_hint": "Walk time (Fußweg): drop a departure when its countdown is below this many minutes — you couldn't catch it anyway. Colour: override the line badge tint. Raise the integration's `Departures to fetch` if a long walk leaves too few rows visible.",
+    "per_line_no_data": "Pick an entity above to see its lines here.",
+    "walk_time": "Walk time",
+    "walk_time_placeholder": "min",
+    "minutes_short": "min",
+    "line_color": "Line colour",
+    "line_color_clear": "Reset to default colour"
   }
 }

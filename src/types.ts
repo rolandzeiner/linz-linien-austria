@@ -138,4 +138,26 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  upstream payload, this one trims what the card displays from
    *  whatever the sensor publishes. */
   lines?: string[];
+  /** When true, surface the platform / bay number in the header
+   *  subtitle and at the trailing edge of each departure row. Useful
+   *  at multi-platform stops (Hauptbahnhof, Bulgariplatz). Defaults
+   *  off so single-platform stops stay clutter-free. */
+  show_platform?: boolean;
+  /** When false, hide the collapsible service-disruption banner
+   *  (XML_ADDINFO_REQUEST data) above the departure list. Defaults
+   *  true — alerts are user-facing operational info and disabling
+   *  them is the unusual case. */
+  show_alerts?: boolean;
+  /** Walk time (Fußweg) to the stop, per line, in minutes. Departures
+   *  whose effective countdown is less than this value are dropped from
+   *  the visible list — the user couldn't catch them anyway. Keyed by
+   *  the line number string ("2", "45", "191"); a missing or zero
+   *  entry means "no walk-time filter for that line". */
+  walk_times?: Record<string, number>;
+  /** Per-line badge colour override, keyed by line number string. The
+   *  value is any CSS colour string (typically a `#rrggbb` hex). When
+   *  set, replaces the default mode-of-transport tint on both the
+   *  badge and (for the next departure's line) the header / hero
+   *  accent. Missing entries fall back to the MoT default. */
+  line_colors?: Record<string, string>;
 }
