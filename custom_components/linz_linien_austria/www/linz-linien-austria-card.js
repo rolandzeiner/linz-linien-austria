@@ -1035,6 +1035,7 @@ function e(e,t,i,n){var r,a=arguments.length,o=a<3?t:null===n?n=Object.getOwnPro
                     .value=${o}
                     aria-label="${Ie("editor.line_color",{hassLanguage:this.hass?.language})}: ${e}"
                     title="${Ie("editor.line_color",{hassLanguage:this.hass?.language})}: ${e}"
+                    @input=${t=>this._onLineColorChange(e,t)}
                     @change=${t=>this._onLineColorChange(e,t)}
                   />
                 </label>

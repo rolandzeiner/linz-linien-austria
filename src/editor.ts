@@ -440,6 +440,8 @@ export class LinzLinienAustriaCardEditor
                     title="${translate("editor.line_color", {
                       hassLanguage: this.hass?.language,
                     })}: ${line}"
+                    @input=${(ev: Event) =>
+                      this._onLineColorChange(line, ev)}
                     @change=${(ev: Event) =>
                       this._onLineColorChange(line, ev)}
                   />
