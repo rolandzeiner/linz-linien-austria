@@ -30,6 +30,8 @@
     "entity_helper": "Einen sensor.*_next_departure Sensor dieser Integration wählen.",
     "name": "Titel",
     "name_helper": "Optionaler Überschreib-Titel für die Karte.",
+    "hide_header": "Kopfzeile ausblenden",
+    "hide_header_helper": "Blendet das Symbol, den Haltestellennamen, die Untertitelzeile und den Karten-Link aus. Hero und Abfahrtsliste bleiben sichtbar.",
     "show_hero": "Hauptbereich anzeigen",
     "show_hero_helper": "Großer Countdown zur nächsten Abfahrt.",
     "max_departures": "Max. Abfahrten",

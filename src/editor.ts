@@ -252,6 +252,7 @@ export class LinzLinienAustriaCardEditor
       // label without crowding. Order is by salience: hero first
       // (biggest visual element), then platform (per-row decoration),
       // then alerts (the optional disruption banner).
+      { name: "hide_header", selector: { boolean: {} } },
       { name: "show_hero", selector: { boolean: {} } },
       { name: "show_platform", selector: { boolean: {} } },
       { name: "show_alerts", selector: { boolean: {} } },

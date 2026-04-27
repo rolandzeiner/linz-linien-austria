@@ -364,35 +364,37 @@ export class LinzLinienAustriaCard extends LitElement {
           "with-animations": enableAnimations,
         })}
       >
-        <header class="head" style=${headerStyle}>
-          <span class="icon-tile" aria-hidden="true">
-            <ha-icon icon=${headerIcon}></ha-icon>
-          </span>
-          <div class="title-block">
-            <h3 class="title">${stopName}</h3>
-            ${subtitle
-              ? html`<p class="subtitle">${subtitle}</p>`
-              : nothing}
-          </div>
-          ${mapsUrl
-            ? html`<div class="head-actions">
-                <a
-                  class="icon-action"
-                  href=${mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title=${openInMapsLabel}
-                  aria-label="${openInMapsLabel}: ${stopName}"
-                  @click=${(ev: Event) => ev.stopPropagation()}
-                >
-                  <ha-icon
-                    icon="mdi:map-marker"
-                    aria-hidden="true"
-                  ></ha-icon>
-                </a>
-              </div>`
-            : nothing}
-        </header>
+        ${this.config.hide_header
+          ? nothing
+          : html`<header class="head" style=${headerStyle}>
+              <span class="icon-tile" aria-hidden="true">
+                <ha-icon icon=${headerIcon}></ha-icon>
+              </span>
+              <div class="title-block">
+                <h3 class="title">${stopName}</h3>
+                ${subtitle
+                  ? html`<p class="subtitle">${subtitle}</p>`
+                  : nothing}
+              </div>
+              ${mapsUrl
+                ? html`<div class="head-actions">
+                    <a
+                      class="icon-action"
+                      href=${mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title=${openInMapsLabel}
+                      aria-label="${openInMapsLabel}: ${stopName}"
+                      @click=${(ev: Event) => ev.stopPropagation()}
+                    >
+                      <ha-icon
+                        icon="mdi:map-marker"
+                        aria-hidden="true"
+                      ></ha-icon>
+                    </a>
+                  </div>`
+                : nothing}
+            </header>`}
         ${this.config.show_alerts !== false && alerts.length > 0
           ? this._renderAlerts(alerts)
           : nothing}

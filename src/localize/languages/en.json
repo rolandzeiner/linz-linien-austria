@@ -30,6 +30,8 @@
     "entity_helper": "Pick a sensor.*_next_departure produced by this integration.",
     "name": "Title",
     "name_helper": "Optional override for the card heading.",
+    "hide_header": "Hide header",
+    "hide_header_helper": "Hides the icon tile, stop name, subtitle and maps link. Hero and departure list remain visible.",
     "show_hero": "Show hero block",
     "show_hero_helper": "Big countdown for the next departure.",
     "max_departures": "Max departures",

@@ -174,4 +174,8 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  changes). Static feel by default; opt-in for a more lively
    *  card. ``prefers-reduced-motion`` overrides regardless. */
   enable_animations?: boolean;
+  /** Hide the card header (icon-tile + stop name + subtitle + maps link).
+   *  Defaults to false (header shown). Useful for stripped-down dashboards
+   *  where the user only wants the hero + departure rows. */
+  hide_header?: boolean;
 }
