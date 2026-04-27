@@ -171,8 +171,30 @@ action:
   hits. If LINZ AG changes that, realtime would degrade gracefully to
   scheduled-only and the `is_realtime` flag on each departure would
   flip to `false`.
+- **Accessibility info not available.** Unlike Wiener Linien (whose
+  monitor API publishes a per-departure `barrierFree` boolean), LINZ
+  AG LINIEN's EFA `XML_DM_REQUEST` does not expose a low-floor /
+  wheelchair-accessibility flag — `attrs[]` on each departure carries
+  only an internal trip identifier. If/when the upstream starts
+  publishing the flag, this integration will surface it as
+  `departures[].barrier_free` automatically.
 - Stop search is fuzzy but case-sensitive on diacritics — type
   `Mühlkreis` not `muhlkreis`.
+
+## Service-disruption alerts
+
+Active line-info / stop-info notices are fetched from
+`XML_ADDINFO_REQUEST` on a domain-wide 5-minute cadence (one shared
+request, regardless of how many entries you have). Each
+`next_departure` sensor surfaces the alerts whose `affected_lines`
+overlap the lines currently serving its stop, plus any system-wide
+notices, via the `alerts` state attribute. The bundled card renders
+them as a collapsible banner above the departure list.
+
+The `is_cancelled` flag on a departure is derived from the EFA
+`realtimeTripStatus` enum (set when upstream reports
+`TRIP_CANCELLED`). Cancelled rows are visually struck through and
+labelled "Entfällt" / "Cancelled" instead of a countdown.
 
 ## Events
 

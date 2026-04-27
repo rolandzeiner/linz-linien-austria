@@ -9,8 +9,13 @@ from homeassistant.core import CoreState, Event, HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
+from .alerts import (
+    async_refresh_alerts,
+    async_start_alerts_refresh,
+    async_stop_alerts_refresh,
+)
 from .card_registration import JSModuleRegistration
-from .const import DOMAIN
+from .const import DOMAIN, ENTRY_COUNT_KEY
 from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordinator
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -45,6 +50,16 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: LinzLinienAustriaConfigEntry
 ) -> bool:
     """Set up Linz Linien Austria from a config entry."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+
+    # Domain-wide alerts refresh — start lazily when the first entry
+    # comes up, run a one-shot refresh now so the coordinator's first
+    # fetch can already slice alerts into its payload.
+    if not domain_data.get(ENTRY_COUNT_KEY):
+        await async_refresh_alerts(hass)
+        async_start_alerts_refresh(hass)
+    domain_data[ENTRY_COUNT_KEY] = (domain_data.get(ENTRY_COUNT_KEY) or 0) + 1
+
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
     # HA auto-invokes coordinator._async_setup() inside this call before the
     # first fetch; raises ConfigEntryNotReady on fetch failure.
@@ -86,7 +101,14 @@ async def async_unload_entry(
     hass: HomeAssistant, entry: LinzLinienAustriaConfigEntry
 ) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        domain_data = hass.data.setdefault(DOMAIN, {})
+        remaining = max(0, (domain_data.get(ENTRY_COUNT_KEY) or 1) - 1)
+        domain_data[ENTRY_COUNT_KEY] = remaining
+        if remaining == 0:
+            async_stop_alerts_refresh(hass)
+    return unloaded
 
 
 async def async_remove_entry(

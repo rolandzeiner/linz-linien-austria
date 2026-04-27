@@ -335,6 +335,13 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
 
     platform = str(raw.get("platform") or raw.get("platformName") or "").strip()
 
+    # `realtimeTripStatus` is an enum that includes MONITORED (normal)
+    # and TRIP_CANCELLED among other values. Surface only the cancellation
+    # signal to the card — the other states are operator-side and don't
+    # affect the user-facing readout.
+    trip_status = str(raw.get("realtimeTripStatus") or "").upper()
+    is_cancelled = trip_status == "TRIP_CANCELLED"
+
     if not line and not direction and countdown is None:
         # Pure noise row — skip.
         return None
@@ -361,6 +368,10 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
     if realtime:
         out["realtime"] = realtime
     out["is_realtime"] = realtime is not None
+    if is_cancelled:
+        out["is_cancelled"] = True
+    if trip_status:
+        out["trip_status"] = trip_status
     return out
 
 

@@ -6,9 +6,13 @@ import {
   LovelaceCardEditor,
 } from "custom-card-helpers";
 
-import type { HaFormSchema, LinzLinienAustriaCardConfig } from "./types";
+import type {
+  Departure,
+  HaFormSchema,
+  LinzLinienAustriaCardConfig,
+} from "./types";
 import { editorStyles } from "./styles";
-import { localize } from "./localize/localize";
+import { translate } from "./localize/localize";
 
 @customElement("linz-linien-austria-card-editor")
 export class LinzLinienAustriaCardEditor
@@ -25,10 +29,49 @@ export class LinzLinienAustriaCardEditor
     this._config = { ...config };
   }
 
+  /** Build the available-lines option list from the picked entity's
+   *  live `departures` attribute. Sorted natural-numerically (so "2"
+   *  comes before "10") with case-insensitive tiebreaker for letter
+   *  lines (e.g. "L161" / "S2"). Falls back to whatever the user
+   *  already configured if no entity is picked yet. */
+  private _availableLines(): string[] {
+    const seen = new Set<string>();
+    const entityId = this._config.entity;
+    if (entityId && this.hass) {
+      const stateObj = this.hass.states[entityId];
+      const deps = stateObj?.attributes?.departures as
+        | Departure[]
+        | undefined;
+      if (Array.isArray(deps)) {
+        for (const d of deps) {
+          if (d.line) seen.add(d.line);
+        }
+      }
+    }
+    // Always include any lines the user already configured but that
+    // happen to not be in the live snapshot (rush-hour-only routes,
+    // etc.) so the dropdown shows them as already-selected.
+    for (const l of this._config.lines ?? []) {
+      if (l) seen.add(l);
+    }
+    return Array.from(seen).sort((a, b) => {
+      const an = parseInt(a, 10);
+      const bn = parseInt(b, 10);
+      if (!Number.isNaN(an) && !Number.isNaN(bn) && an !== bn) {
+        return an - bn;
+      }
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+  }
+
   /** Pin the integration filter on the entity selector so users only see
    *  the next-departure sensors created by this integration — no risk of
    *  picking an unrelated `sensor.*` and getting a confusing card. */
   private _schema(): ReadonlyArray<HaFormSchema> {
+    const lineOptions = this._availableLines().map((l) => ({
+      value: l,
+      label: l,
+    }));
     return [
       {
         name: "entity",
@@ -49,18 +92,36 @@ export class LinzLinienAustriaCardEditor
           },
         ],
       },
+      {
+        name: "lines",
+        // `custom_value: true` lets the user type a line number that's
+        // not in the upstream's current snapshot (rush-only routes,
+        // typo-free additions before service starts).
+        selector: {
+          select: {
+            multiple: true,
+            custom_value: true,
+            mode: "dropdown",
+            options: lineOptions,
+          },
+        },
+      },
     ];
   }
 
   private _computeLabel = (field: { name: string }): string => {
     const key = `editor.${field.name}`;
-    const localised = localize(key);
+    const localised = translate(key, {
+      hassLanguage: this.hass?.language,
+    });
     return localised === key ? field.name : localised;
   };
 
   private _computeHelper = (field: { name: string }): string | undefined => {
     const key = `editor.${field.name}_helper`;
-    const localised = localize(key);
+    const localised = translate(key, {
+      hassLanguage: this.hass?.language,
+    });
     return localised === key ? undefined : localised;
   };
 

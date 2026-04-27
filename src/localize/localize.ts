@@ -1,38 +1,61 @@
-import * as en from './languages/en.json';
-import * as de from './languages/de.json';
+import * as de from "./languages/de.json";
+import * as en from "./languages/en.json";
 
-const languages: Record<string, Record<string, unknown>> = {
-  en: en,
-  de: de,
+type Dict = Record<string, unknown>;
+
+const languages: Record<string, Dict> = {
+  de: de as unknown as Dict,
+  en: en as unknown as Dict,
 };
 
-function resolveTranslation(path: string, dictionary: Record<string, unknown>): string | undefined {
-  const value = path.split('.').reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
-      return (acc as Record<string, unknown>)[key];
+function resolvePath(path: string, dictionary: Dict): unknown {
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object" && key in (acc as Dict)) {
+      return (acc as Dict)[key];
     }
-
     return undefined;
   }, dictionary);
-
-  return typeof value === 'string' ? value : undefined;
 }
 
-export function localize(string: string, search = '', replace = ''): string {
-  const lang = (localStorage.getItem('selectedLanguage') || 'en').replace(/['"]+/g, '').replace('-', '_');
+function resolveString(path: string, dictionary: Dict): string | undefined {
+  const v = resolvePath(path, dictionary);
+  return typeof v === "string" ? v : undefined;
+}
 
-  // noUncheckedIndexedAccess narrows languages[k] to T | undefined; coerce
-  // to the always-present `en` fallback at each lookup so resolveTranslation
-  // sees a real Record, not Record | undefined.
-  const dict = languages[lang] ?? languages.en ?? {};
-  const enDict = languages.en ?? {};
-  let translated = resolveTranslation(string, dict);
+export interface TranslateContext {
+  /** Optional override from card config (`config.language`). */
+  configLanguage?: string;
+  /** The active HA frontend language — pass `this.hass?.language`. */
+  hassLanguage?: string;
+}
 
-  if (translated === undefined) translated = resolveTranslation(string, enDict);
-  if (translated === undefined) translated = string;
+/** Pick the catalogue to use. Same shape as the wiener-linien helper:
+ *  config override beats HA's active language; final fallback is English.
+ *  Strip any region suffix (`de-AT` → `de`) so we don't need a separate
+ *  catalogue per region. */
+export function resolveLang(ctx: TranslateContext): string {
+  const raw = ctx.configLanguage || ctx.hassLanguage || "en";
+  const code = raw.replace("-", "_").split("_")[0];
+  return code === "de" ? "de" : "en";
+}
 
-  if (search !== '' && replace !== '') {
-    translated = translated.replace(search, replace);
+/** Translate `key` against the active language. `replacements` substitutes
+ *  every `{name}` placeholder in the resolved string. Unknown keys fall
+ *  through to the literal key name so missing translations are visible
+ *  in dev. */
+export function translate(
+  key: string,
+  ctx: TranslateContext,
+  replacements?: Record<string, string | number>,
+): string {
+  const lang = resolveLang(ctx);
+  let s = resolveString(key, languages[lang] ?? languages.en);
+  if (s === undefined) s = resolveString(key, languages.en);
+  if (s === undefined) return key;
+  if (replacements) {
+    for (const [k, v] of Object.entries(replacements)) {
+      s = s.replace(`{${k}}`, String(v));
+    }
   }
-  return translated;
+  return s;
 }

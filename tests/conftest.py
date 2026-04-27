@@ -1,6 +1,6 @@
 """Shared pytest fixtures for Linz Linien Austria tests."""
 from collections.abc import Generator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
@@ -25,16 +25,34 @@ def auto_enable_custom_integrations(
 
 @pytest.fixture(autouse=True)
 def mock_aiohttp_session() -> Generator[None, None, None]:
-    """Mock the aiohttp session so pycares' DNS thread never starts.
+    """Mock every clientsession so pycares' DNS thread never starts AND
+    every outbound network attempt during setup is a no-op.
 
-    pytest-homeassistant-custom-component's verify_cleanup fixture asserts
-    no stray threads at teardown — the resolver thread violates that.
-    Patch at the module path the coordinator imports from.
+    pytest-homeassistant-custom-component's verify_cleanup fixture
+    asserts no stray threads at teardown — the resolver thread violates
+    that. Also patch the alerts refresh helpers so config-entry setup
+    doesn't try to fetch the live ADDINFO endpoint.
     """
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.async_get_clientsession",
-    ), patch(
-        "custom_components.linz_linien_austria.config_flow.async_get_clientsession",
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.async_get_clientsession",
+        ),
+        patch(
+            "custom_components.linz_linien_austria.config_flow.async_get_clientsession",
+        ),
+        patch(
+            "custom_components.linz_linien_austria.alerts.async_get_clientsession",
+        ),
+        patch(
+            "custom_components.linz_linien_austria.async_refresh_alerts",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "custom_components.linz_linien_austria.async_start_alerts_refresh",
+        ),
+        patch(
+            "custom_components.linz_linien_austria.async_stop_alerts_refresh",
+        ),
     ):
         yield
 

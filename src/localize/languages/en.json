@@ -9,12 +9,16 @@
   },
   "card": {
     "no_departures": "No upcoming departures.",
+    "no_matches_for_filter": "No upcoming departures match the line filter.",
     "next_departure_label": "Next departure",
     "minutes": "minutes",
     "minutes_short": "min",
     "now": "Now",
     "unknown": "—",
     "realtime": "Live",
+    "cancelled": "Cancelled",
+    "alerts_summary": "{count} service notice(s)",
+    "affected_lines": "Affected lines",
     "attribution": "Source: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0"
   },
   "editor": {
@@ -25,6 +29,8 @@
     "show_hero": "Show hero block",
     "show_hero_helper": "Big countdown for the next departure.",
     "max_departures": "Max departures",
-    "max_departures_helper": "Cap the rendered list. The integration already caps at 30."
+    "max_departures_helper": "Cap the rendered list. The integration already caps at 30.",
+    "lines": "Filter by lines",
+    "lines_helper": "Empty = show every line. Pick one or more line numbers to render only those rows."
   }
 }

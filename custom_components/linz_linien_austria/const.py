@@ -58,6 +58,20 @@ BACKOFF_CAP_SECONDS: Final = 1800
 API_BASE_URL: Final = "https://www.linzag.at/static"
 DM_ENDPOINT: Final = "/XML_DM_REQUEST"  # Departure Monitor
 STOPFINDER_ENDPOINT: Final = "/XML_STOPFINDER_REQUEST"  # Stop search
+# XSLT_ADDINFO_REQUEST returns the active line/stop-info notices that
+# the LinzMobil app surfaces in its alerts banner. Refreshed on a
+# domain-wide 5-min cadence — these don't change any faster than
+# operator-side editorial activity (typically a few times an hour) and
+# hammering the endpoint per-entry would waste fair-use budget.
+ADDINFO_ENDPOINT: Final = "/XML_ADDINFO_REQUEST"
+
+# Alerts (line/stop info) — domain-wide cadence shared across all entries.
+# 5 min is plenty: editorial events arrive a few times per hour at most
+# and per-entry polling would burn fair-use budget for no benefit.
+ALERTS_REFRESH_SECONDS: Final = 300
+ALERTS_KEY: Final = "alerts"
+ALERTS_REFRESH_UNSUB_KEY: Final = "alerts_refresh_unsub"
+ENTRY_COUNT_KEY: Final = "entry_count"
 
 # Cap on how many departures we surface in sensor attributes. The card
 # typically shows 8-12 per stop; 30 gives buffer for templates and
@@ -89,6 +103,6 @@ MOT_OTHER: Final = 11
 # Lovelace card — the JS file at the top declares CARD_VERSION which must
 # match this constant byte-for-byte, else the resource-version mismatch
 # triggers a reload-banner loop. Bump both in the same commit.
-CARD_VERSION: Final = "0.1.0"
+CARD_VERSION: Final = "0.2.0"
 CARD_URL_BASE: Final = "/linz-linien-austria"
 CARD_FILENAME: Final = "linz-linien-austria-card.js"

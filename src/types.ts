@@ -95,6 +95,26 @@ export interface Departure {
   scheduled?: string;
   realtime?: string;
   is_realtime?: boolean;
+  is_cancelled?: boolean;
+  trip_status?: string;
+}
+
+/** One service-disruption / line-info notice as published by LINZ AG
+ *  LINIEN's XML_ADDINFO_REQUEST endpoint, normalised by the integration's
+ *  `alerts.py`. Plain-text `description` is stripped of HTML; the
+ *  `description_html` is kept verbatim if a future card variant wants
+ *  to render it. */
+export interface AlertInfo {
+  info_id: string;
+  title: string;
+  description: string;
+  description_html: string;
+  affected_lines: string[];
+  info_type: string;
+  priority: string;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  created?: string | null;
 }
 
 /** The card config saved into `_config`. `entity` is the only required
@@ -112,4 +132,10 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
   /** Cap the rendered list. Defaults to whatever the integration delivers
    *  (already capped at 30). Useful for narrow column layouts. */
   max_departures?: number;
+  /** Card-side filter: only render departures whose ``line`` is in this
+   *  set. Empty / missing means "show every line". This is independent
+   *  of the integration's options-flow line filter — that one trims the
+   *  upstream payload, this one trims what the card displays from
+   *  whatever the sensor publishes. */
+  lines?: string[];
 }

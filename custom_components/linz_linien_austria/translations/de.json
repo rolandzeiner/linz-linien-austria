@@ -10,7 +10,7 @@
       },
       "pick": {
         "title": "Haltestelle auswählen",
-        "description": "Treffer für „{query}". Bitte die gewünschte Haltestelle wählen.",
+        "description": "Treffer für \"{query}\". Bitte die gewünschte Haltestelle wählen.",
         "data": {
           "stop_id": "Haltestelle"
         }

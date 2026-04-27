@@ -14,6 +14,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .alerts import get_alerts_for_lines
 from .api import (
     EfaApiError,
     EfaHttpError,
@@ -214,12 +215,24 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # single fetch.
         departures = departures[:MAX_DEPARTURES_IN_ATTRS]
 
+        # Slice the domain-wide alerts cache to alerts whose
+        # `affected_lines` overlap any line currently serving this stop
+        # (or system-wide alerts with no affected_lines list).
+        served_lines = {
+            str(d.get("line") or "")
+            for d in departures
+            if d.get("line")
+        }
+        alerts = get_alerts_for_lines(self.hass, served_lines)
+
         return {
             "stop_id": self._stop_id,
             "stop_name": self._stop_name,
             "resolved_stop": payload.get("stop") or {},
             "departures": departures,
             "departures_count": len(departures),
+            "alerts": alerts,
+            "alerts_count": len(alerts),
         }
 
 

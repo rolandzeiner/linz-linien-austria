@@ -105,6 +105,12 @@ class NextDepartureSensor(
             "resolved_stop": data.get("resolved_stop") or {},
             "departures": data.get("departures") or [],
             "departures_count": data.get("departures_count", 0),
+            # Service-disruption notices that affect at least one of the
+            # lines serving this stop (or any system-wide notices). The
+            # card surfaces them as a banner; templates/automations can
+            # filter on `info_id` / `priority` / `affected_lines`.
+            "alerts": data.get("alerts") or [],
+            "alerts_count": data.get("alerts_count", 0),
         }
         if first is not None:
             attrs["next_line"] = first.get("line")

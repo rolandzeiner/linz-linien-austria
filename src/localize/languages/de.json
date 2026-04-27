@@ -9,12 +9,16 @@
   },
   "card": {
     "no_departures": "Keine kommenden Abfahrten.",
+    "no_matches_for_filter": "Keine kommenden Abfahrten passen zum Linienfilter.",
     "next_departure_label": "Nächste Abfahrt",
     "minutes": "Minuten",
     "minutes_short": "Min",
     "now": "Jetzt",
     "unknown": "—",
     "realtime": "Live",
+    "cancelled": "Entfällt",
+    "alerts_summary": "{count} Verkehrshinweis(e)",
+    "affected_lines": "Betroffene Linien",
     "attribution": "Datenquelle: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0"
   },
   "editor": {
@@ -25,6 +29,8 @@
     "show_hero": "Hauptbereich anzeigen",
     "show_hero_helper": "Großer Countdown zur nächsten Abfahrt.",
     "max_departures": "Max. Abfahrten",
-    "max_departures_helper": "Begrenzt die Liste. Die Integration begrenzt bereits auf 30."
+    "max_departures_helper": "Begrenzt die Liste. Die Integration begrenzt bereits auf 30.",
+    "lines": "Linien filtern",
+    "lines_helper": "Leer = alle Linien anzeigen. Eine oder mehrere Liniennummern wählen, um nur diese Zeilen darzustellen."
   }
 }
