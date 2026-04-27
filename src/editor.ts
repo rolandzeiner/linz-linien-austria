@@ -255,6 +255,8 @@ export class LinzLinienAustriaCardEditor
       { name: "show_hero", selector: { boolean: {} } },
       { name: "show_platform", selector: { boolean: {} } },
       { name: "show_alerts", selector: { boolean: {} } },
+      { name: "pulse_live", selector: { boolean: {} } },
+      { name: "enable_animations", selector: { boolean: {} } },
       {
         // max_departures gets its own row so the number-box widget
         // doesn't get squeezed against the toggles. Min 0 = hero-only

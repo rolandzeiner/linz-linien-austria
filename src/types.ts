@@ -160,4 +160,18 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  badge and (for the next departure's line) the header / hero
    *  accent. Missing entries fall back to the MoT default. */
   line_colors?: Record<string, string>;
+  /** Subtle pulse animation on the green "Live" bullet that
+   *  prefixes realtime-corrected times. Defaults true. Set false
+   *  for users who find motion distracting (the prefers-reduced-
+   *  motion catch-all already suppresses it system-side; this is
+   *  the opt-out for users who haven't set the OS preference but
+   *  still want a static dot). */
+  pulse_live?: boolean;
+  /** Master CSS-animation toggle. Defaults OFF. When on, adds a
+   *  one-shot card-mount fade-in plus longer-duration transitions
+   *  on colour / background changes (line-badge recolour as MoT
+   *  rotates, hero accent shift, row-time late/early/now state
+   *  changes). Static feel by default; opt-in for a more lively
+   *  card. ``prefers-reduced-motion`` overrides regardless. */
+  enable_animations?: boolean;
 }

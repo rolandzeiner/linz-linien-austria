@@ -13,6 +13,7 @@ import {
 } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
+import { repeat } from "lit/directives/repeat.js";
 import {
   HomeAssistant,
   LovelaceCardEditor,
@@ -276,15 +277,28 @@ export class LinzLinienAustriaCard extends LitElement {
       typeof this.config.max_departures === "number"
         ? Math.max(0, this.config.max_departures)
         : filtered.length;
-    // Hero picks the FIRST NON-CANCELLED entry so the big countdown
-    // doesn't read as a real ETA when the operator has marked it
-    // dead. Falls back to filtered[0] only when every visible entry
-    // is cancelled — in that case the hero renders a cancellation
-    // marker instead of a minute count (see _renderHero). Same
-    // affordance wiener-linien-austria uses for its hero gating.
-    const next =
-      filtered.find((d) => !d.is_cancelled) ?? filtered[0];
-    const departures = max === 0 ? [] : filtered.slice(0, max);
+    // Hero group — every NON-CANCELLED departure that shares the
+    // soonest effective countdown. At Hauptbahnhof two trams can
+    // leave at the same minute on different platforms; surfacing
+    // both in the hero saves the user reading the row list.
+    // Falls back to a single cancelled entry when every visible
+    // departure is cancelled, so the hero still shows _something_
+    // (rendered as the cancelled treatment).
+    const heroGroup = this._computeHeroGroup(filtered);
+    const next = heroGroup[0];
+
+    // When the hero is on, the entries it shows are dropped from the
+    // row list so they don't appear twice. Object identity works as
+    // the dedupe key because heroGroup members are references into
+    // the same `filtered` array. The post-dedupe list is then capped
+    // at max_departures, so "max 10" continues to mean "10 rendered
+    // rows" rather than "10 rows including any duplicates of the
+    // hero". When show_hero is off the dedupe is skipped.
+    const heroDedupe = this.config.show_hero !== false
+      ? new Set(heroGroup)
+      : new Set<Departure>();
+    const remaining = filtered.filter((d) => !heroDedupe.has(d));
+    const departures = max === 0 ? [] : remaining.slice(0, max);
 
     // Header icon + accent track the next departing line's
     // mode-of-transport. Same mechanic as wiener-linien-austria — the
@@ -329,8 +343,27 @@ export class LinzLinienAustriaCard extends LitElement {
       ? `${directionText} · ${this._t("card.platform_short")} ${platformText}`
       : directionText;
 
+    // Pulse on the green Live bullet defaults on; users who haven't
+    // set the OS prefers-reduced-motion preference but still find the
+    // animation distracting can flip ``pulse_live: false`` in card
+    // config. The class lands on <ha-card> so the descendant selector
+    // in styles.ts can disable the animation everywhere it appears.
+    const pulseLive = this.config.pulse_live !== false;
+    // Master CSS-animation toggle defaults OFF. When ON, the
+    // ``with-animations`` class lights up longer-duration transitions
+    // (mounted-card fade-in, line-badge recolour, hero state
+    // changes, alerts banner). Static look by default keeps the card
+    // calm; users who want a more lively feel opt in. The
+    // prefers-reduced-motion catch-all overrides regardless.
+    const enableAnimations = !!this.config.enable_animations;
+
     return html`
-      <ha-card>
+      <ha-card
+        class=${classMap({
+          "no-pulse": !pulseLive,
+          "with-animations": enableAnimations,
+        })}
+      >
         <header class="head" style=${headerStyle}>
           <span class="icon-tile" aria-hidden="true">
             <ha-icon icon=${headerIcon}></ha-icon>
@@ -363,20 +396,28 @@ export class LinzLinienAustriaCard extends LitElement {
         ${this.config.show_alerts !== false && alerts.length > 0
           ? this._renderAlerts(alerts)
           : nothing}
-        ${this.config.show_hero && next
-          ? this._renderHero(next)
+        ${this.config.show_hero && heroGroup.length > 0
+          ? this._renderHero(heroGroup)
           : nothing}
         ${max === 0
           ? nothing
-          : html`<ul class="departures" role="list">
-              ${departures.length === 0
-                ? html`<li class="empty">
-                    ${lineFilter.size > 0 && allDepartures.length > 0
-                      ? this._t("card.no_matches_for_filter")
-                      : this._t("card.no_departures")}
-                  </li>`
-                : departures.map((d) => this._renderRow(d))}
-            </ul>`}
+          : departures.length === 0 && heroDedupe.size > 0
+            ? // Hero already shows the only departure(s); no need
+              // for an empty placeholder row underneath.
+              nothing
+            : html`<ul class="departures" role="list">
+                ${departures.length === 0
+                  ? html`<li class="empty">
+                      ${lineFilter.size > 0 && allDepartures.length > 0
+                        ? this._t("card.no_matches_for_filter")
+                        : this._t("card.no_departures")}
+                    </li>`
+                  : repeat(
+                      departures,
+                      (d) => this._depKey(d),
+                      (d) => this._renderRow(d),
+                    )}
+              </ul>`}
         <div class="foot">
           <span class="timestamp">${this._t("card.attribution")}</span>
         </div>
@@ -439,71 +480,154 @@ export class LinzLinienAustriaCard extends LitElement {
     `;
   }
 
-  private _renderHero(d: Departure): TemplateResult {
-    const minutes = this._countdownFor(d);
-    const minutesLabel = d.is_cancelled
+  /** Build the set of departures shown in the hero. Returns either:
+   *  - every non-cancelled departure within the hero "imminent
+   *    window" (see below), OR
+   *  - a single cancelled entry when every visible departure is
+   *    cancelled, so the hero still has something to render in
+   *    cancelled-state styling, OR
+   *  - the empty array when there are no departures at all (hero is
+   *    skipped by render).
+   *
+   *  Imminent window: when the soonest non-cancelled departure is at
+   *  "Jetzt" (cd ≤ 0), also include anything else with cd ≤ 1 so a
+   *  bus arriving in 1 minute joins the immediate one rather than
+   *  staying buried in the row list. Catches the natural pattern at
+   *  Hauptbahnhof where two lines often arrive within a minute of
+   *  each other and the user is standing at the stop deciding which
+   *  to take. Outside the Jetzt case, fall back to strict tie-only
+   *  grouping so a 5-min lead doesn't pull a 6-min entry into the
+   *  hero (would overshare for the "next departure" semantic). */
+  private _computeHeroGroup(filtered: Departure[]): Departure[] {
+    if (filtered.length === 0) return [];
+    const live = filtered.filter((d) => !d.is_cancelled);
+    if (live.length === 0) {
+      const first = filtered[0];
+      return first ? [first] : [];
+    }
+    const cdOf = (d: Departure): number => {
+      if (typeof d.countdown_rt === "number") return d.countdown_rt;
+      if (typeof d.countdown === "number") return d.countdown;
+      return Number.POSITIVE_INFINITY;
+    };
+    let minCd = Number.POSITIVE_INFINITY;
+    for (const d of live) {
+      const cd = cdOf(d);
+      if (cd < minCd) minCd = cd;
+    }
+    if (!Number.isFinite(minCd)) {
+      const first = live[0];
+      return first ? [first] : [];
+    }
+    // When the lead is at Jetzt, group every entry that is also at
+    // Jetzt (cd <= 0). A bus can sit at "Jetzt" for longer than the
+    // upstream's tick resolution while it dwells at the platform; in
+    // that window a second arrival can also reach Jetzt and the hero
+    // should contain both. Outside the Jetzt case, fall back to
+    // strict tie-only grouping so a 5-min lead doesn't pull a 6-min
+    // entry into the hero.
+    if (minCd <= 0) {
+      return live.filter((d) => cdOf(d) <= 0);
+    }
+    return live.filter((d) => cdOf(d) === minCd);
+  }
+
+  private _renderHero(group: Departure[]): TemplateResult {
+    // Group is guaranteed non-empty by the caller. Lead member drives
+    // the countdown text + header colour + cancellation styling;
+    // every member contributes its own (badge + direction + flags) row
+    // so a tied-arrival pair (e.g. line 2 and line 4 both at "Jetzt")
+    // both surface in the big block instead of one being relegated to
+    // the row list.
+    const lead = group[0]!;
+    const minutes = this._countdownFor(lead);
+    const minutesLabel = lead.is_cancelled
       ? this._t("card.cancelled")
       : minutes === null
         ? "—"
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes}`;
-    const ariaLabel = `${this._t("card.next_departure_label")}: ${
-      d.mot_name ? `${d.mot_name} ` : ""
-    }${d.line} ${d.direction}, ${
-      d.is_cancelled
-        ? this._t("card.cancelled")
-        : minutes === null
-          ? this._t("card.unknown")
-          : minutes <= 0
-            ? this._t("card.now")
-            : `${minutes} ${this._t("card.minutes")}`
-    }${d.is_realtime && !d.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
 
-    const platform = this.config.show_platform
-      ? this._platformText(d)
-      : "";
-    // Pipe the line's colour into a CSS custom property on the hero
-    // so the countdown text (including the "Jetzt" / "Now" state)
-    // adopts the same hue as the line badge — visually links the two.
-    // User override beats MoT default; both fall back to --linz-accent
-    // when neither is configured (the orange tram default).
-    const heroColor = this._userLineColor(d.line) ?? motColor(d.mot);
+    // aria-label enumerates every grouped departure so AT users hear
+    // "Tram 2 solarCity and Tram 4 Landgutstraße, 0 min, Live"
+    // instead of just the lead's identification.
+    const ariaParts = group.map(
+      (d) =>
+        `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`,
+    );
+    const minutesText = lead.is_cancelled
+      ? this._t("card.cancelled")
+      : minutes === null
+        ? this._t("card.unknown")
+        : minutes <= 0
+          ? this._t("card.now")
+          : `${minutes} ${this._t("card.minutes")}`;
+    const ariaSep = ` ${this._t("card.and_separator")} `;
+    const ariaLabel = `${this._t("card.next_departure_label")}: ${ariaParts.join(
+      ariaSep,
+    )}, ${minutesText}${lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
+
+    // Header colour comes from the lead — user override beats MoT
+    // default; both fall back to --linz-accent (the tram default).
+    const heroColor =
+      this._userLineColor(lead.line) ?? motColor(lead.mot);
     const heroStyle = heroColor
       ? `--hero-color: ${heroColor};`
       : "";
+
     return html`
       <section
         class=${classMap({
           hero: true,
-          "hero-cancelled": !!d.is_cancelled,
+          "hero-cancelled": !!lead.is_cancelled,
+          "hero-multi": group.length > 1,
         })}
         aria-label=${ariaLabel}
         style=${heroStyle}
       >
         <div class="hero-time">
           <span class="hero-min" aria-live="polite">${minutesLabel}</span>
-          ${!d.is_cancelled && minutes !== null && minutes > 0
+          ${!lead.is_cancelled && minutes !== null && minutes > 0
             ? html`<span class="hero-unit"
                 >${this._t("card.minutes_short")}</span
               >`
             : nothing}
         </div>
         <div class="hero-meta">
-          ${this._renderLineBadge(d)}
-          <span class="hero-direction">${d.direction || ""}</span>
-          ${d.is_realtime && !d.is_cancelled
-            ? html`<span class="rt-pill" title=${this._t("card.realtime")}>
-                ${this._t("card.realtime")}
-              </span>`
-            : nothing}
-          ${!d.is_cancelled && platform
-            ? html`<span class="hero-platform"
-                >${this._t("card.platform_short")} ${platform}</span
-              >`
-            : nothing}
+          ${repeat(
+            group,
+            (d) => this._depKey(d),
+            (d) => this._renderHeroEntry(d),
+          )}
         </div>
       </section>
+    `;
+  }
+
+  /** One row inside the hero meta column — line badge, direction, and
+   *  per-departure flags (Live pill, Steig). One row when the group
+   *  has a single entry; stacks cleanly when two or more arrive at
+   *  the same minute. */
+  private _renderHeroEntry(d: Departure): TemplateResult {
+    const platform = this.config.show_platform
+      ? this._platformText(d)
+      : "";
+    return html`
+      <div class="hero-entry">
+        ${this._renderLineBadge(d)}
+        <span class="hero-direction">${d.direction || ""}</span>
+        ${!d.is_cancelled && platform
+          ? html`<span class="hero-platform"
+              >${this._t("card.platform_short")} ${platform}</span
+            >`
+          : nothing}
+        ${d.is_realtime && !d.is_cancelled
+          ? html`<span class="rt-pill" title=${this._t("card.realtime")}>
+              ${this._t("card.realtime")}
+            </span>`
+          : nothing}
+      </div>
     `;
   }
 
@@ -593,6 +717,22 @@ export class LinzLinienAustriaCard extends LitElement {
     if (!line) return null;
     const overrides = this.config.line_colors ?? {};
     return overrides[line] ?? overrides[line.toUpperCase()] ?? null;
+  }
+
+  /** Stable identity for a departure across consecutive refreshes.
+   *  Used by ``repeat()`` so Lit reuses DOM for entries that survive
+   *  a refresh — only genuinely new entries get a fresh element and
+   *  therefore re-trigger the entry animation. The countdown changes
+   *  every tick, so we key off the trip's stable identifiers
+   *  (line + direction + platform + scheduled time) instead. */
+  private _depKey(d: Departure): string {
+    const parts = [
+      d.line ?? "",
+      d.direction ?? "",
+      d.platform ?? "",
+      d.scheduled ?? "",
+    ];
+    return parts.join("|");
   }
 
   /** Return the platform / bay marker if it's actually meaningful.

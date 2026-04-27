@@ -164,11 +164,19 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
   }
-  /* Hero meta — single flex row so line badge, direction, Live pill and
-     Steig tag sit beside each other when there is space. flex-wrap lets
-     them spill to a second line on a narrow column instead of forcing
-     ellipsis. */
+  /* Hero meta — column of (badge + direction + flags) rows. One row
+     per departure in the group; almost always 1 entry, occasionally
+     2+ when several lines share the same arrival minute (e.g. tram 2
+     and tram 4 both at "Jetzt" on Hauptbahnhof). Each row uses the
+     same flex-wrap-row treatment as before so tags spill to a second
+     line on narrow column widths. */
   .hero-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .hero-entry {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -314,6 +322,152 @@ export const cardStyles = css`
     font-size: 1.1em;
     line-height: 1;
     vertical-align: middle;
+    /* Subtle "live" pulse — slow, low-amplitude, eased — to signal
+       that this row's time is currently realtime-corrected.
+       Suppressed by the prefers-reduced-motion catch-all near the
+       end of this stylesheet, so users who opted out get a static
+       bullet. transform-origin centres the scale on the dot itself. */
+    display: inline-block;
+    transform-origin: center;
+    animation: linzLivePulse 2s ease-in-out infinite;
+  }
+
+  @keyframes linzLivePulse {
+    0%, 100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.18);
+    }
+  }
+
+  /* Opt-out: card-config pulse_live=false lands a no-pulse class
+     on the ha-card. Static dot, full opacity, no scale. */
+  ha-card.no-pulse .row-rt .row-time::before {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  /* === Master CSS-animation suite — opt-in via enable_animations.
+     Off by default (most users prefer a calm dashboard). When on,
+     adds a one-shot card-mount fade-in plus longer-duration colour /
+     background transitions on the elements that recolour during a
+     refresh: line badge, hero accent, row-time state classes, alerts
+     banner. The prefers-reduced-motion catch-all later in this
+     stylesheet overrides every rule below regardless of the toggle. */
+
+  /* One-shot card mount — Lit doesn't re-mount <ha-card> on hass
+     updates, so this fires once and stays still. Subtle: 6px upward
+     translate fading from 0 → 1 over 400ms ease-out. */
+  ha-card.with-animations {
+    animation: linzCardEnter 0.4s ease-out;
+  }
+  @keyframes linzCardEnter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Smoothed transitions on the surfaces that recolour during the
+     normal refresh cycle. The 0.4s window is long enough that the
+     change is "noticed" rather than jumping, short enough that the
+     user isn't waiting on it. */
+  ha-card.with-animations .icon-tile,
+  ha-card.with-animations .hero,
+  ha-card.with-animations .hero-min,
+  ha-card.with-animations .hero-unit,
+  ha-card.with-animations .line-badge,
+  ha-card.with-animations .line-icon,
+  ha-card.with-animations .row-time {
+    transition: background-color 0.4s ease, color 0.4s ease,
+      box-shadow 0.4s ease;
+  }
+
+  /* Hero block recolour stays in sync with its background tint by
+     piping the same transition window onto its background. */
+  ha-card.with-animations .hero {
+    transition: background-color 0.4s ease;
+  }
+
+  /* Row hover — soft tint that fades in/out so brushing the cursor
+     across the list doesn't feel snappy. Pairs with the existing
+     focus-visible outline (which is intentionally instant). */
+  ha-card.with-animations .row {
+    transition: background-color 0.18s ease;
+  }
+  ha-card.with-animations .row:hover {
+    background: color-mix(
+      in srgb,
+      var(--primary-text-color) 4%,
+      transparent
+    );
+  }
+
+  /* Alerts banner — soft fade-in on first render of the section.
+     The collapse/expand animation already exists via the
+     grid-template-rows pattern below; the wrapper fade adds polish
+     to the very first time a notice appears. */
+  ha-card.with-animations .alerts {
+    animation: linzAlertsFadeIn 0.5s ease-out;
+  }
+  @keyframes linzAlertsFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Departure-row enter — fires when a NEW row is mounted, not on
+     every refresh. Lit's repeat() with a stable key reuses the DOM
+     for entries that survive a refresh, so this animation only
+     plays for genuinely new arrivals (a previously hidden line
+     coming back into the visible window, or the user expanding
+     max_departures). The slight horizontal slide makes the
+     direction-of-travel "from outside" without overdoing it. */
+  ha-card.with-animations .row {
+    animation: linzRowEnter 0.32s ease-out backwards;
+  }
+  @keyframes linzRowEnter {
+    from {
+      opacity: 0;
+      transform: translateX(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Hero-entry enter — fires when a departure is promoted into the
+     hero (its countdown ticks down enough to make it the soonest, OR
+     a tied second arrival joins the existing Jetzt group). Same
+     repeat()-with-stable-key trick keeps existing hero members from
+     replaying the animation each tick. The slight upward slide +
+     scale-up reads as "entering centre stage" while staying calm. */
+  ha-card.with-animations .hero-entry {
+    animation: linzHeroEntryEnter 0.42s ease-out backwards;
+  }
+  @keyframes linzHeroEntryEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 
   /* Cancelled trip — strike through the line + direction, dim the row. */
