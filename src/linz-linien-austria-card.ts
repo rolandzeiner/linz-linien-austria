@@ -747,11 +747,14 @@ export class LinzLinienAustriaCard extends LitElement {
     return raw;
   }
 
-  /** Pick "Gleis"/"Track" for rail-bound modes (Train, S-Bahn, U-Bahn,
-   *  Stadtbahn, Tram, Funicular) and "Steig"/"Pl." for buses, ferries,
-   *  and unknown modes. Mode codes match Mentz EFA — see api.py. */
+  /** Pick "Gleis"/"Track" for ÖBB-style heavy rail (Train, S-Bahn) and
+   *  "Steig"/"Pl." for everything municipal (U-Bahn, Stadtbahn, Tram,
+   *  Bus, Funicular, Ferry, Other). Austrian municipal operators
+   *  (Wiener Linien, LINZ Linien, etc.) use "Steig" on signage even for
+   *  rail-bound trams; only ÖBB-style modes get "Gleis" by convention.
+   *  Mode codes match Mentz EFA — see api.py. */
   private _isRailMot(mot: number | undefined): boolean {
-    return mot === 0 || mot === 1 || mot === 2 || mot === 3 || mot === 4 || mot === 8;
+    return mot === 0 || mot === 1;
   }
   private _platformLabel(d: Departure | undefined, short: boolean): string {
     const rail = this._isRailMot(d?.mot);
