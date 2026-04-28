@@ -41,6 +41,10 @@ export const cardStyles = css`
     --linz-pad-y:     var(--ha-spacing-3, 14px);
     --linz-row-gap:   var(--ha-spacing-3, 12px);
     --linz-tile-size: 40px;
+    /* Hero countdown size — bumped at wide widths, scaled down at
+       cramped widths via the container queries at the bottom of this
+       stylesheet. Matches the wiener-linien-card responsive pattern. */
+    --linz-metric-size: 2.75rem;
   }
 
   ha-card {
@@ -167,7 +171,7 @@ export const cardStyles = css`
     color: var(--hero-color);
   }
   .hero-min {
-    font-size: 2.75rem;
+    font-size: var(--linz-metric-size);
     font-weight: var(--ha-font-weight-bold, 600);
     font-variant-numeric: tabular-nums;
     line-height: 1;
@@ -967,5 +971,30 @@ export const editorStyles = css`
   .per-line-clear:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
+  }
+
+  /* Responsive density tiers via container queries. The card commonly
+     lives in section-view grid columns of 280-1200 px on the same
+     screen; these breakpoints mirror wiener-linien-austria so a
+     stacked dashboard reads as one visual family. */
+  @container linzcard (inline-size < 360px) {
+    :host {
+      --linz-pad-x: 12px;
+      --linz-pad-y: 12px;
+      --linz-tile-size: 36px;
+      --linz-metric-size: 2.25rem;
+    }
+  }
+
+  @container linzcard (inline-size > 480px) {
+    :host {
+      --linz-pad-x: 20px;
+      --linz-pad-y: 16px;
+      --linz-tile-size: 44px;
+      --linz-metric-size: 3rem;
+    }
+    .icon-tile ha-icon {
+      --mdc-icon-size: 24px;
+    }
   }
 `;
