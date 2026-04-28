@@ -143,7 +143,7 @@ function e(e,t,i,n){var r,a=arguments.length,o=a<3?t:null===n?n=Object.getOwnPro
     gap: var(--ha-spacing-3, 12px);
     align-items: center;
     padding: var(--ha-spacing-3, 12px) var(--linz-pad-x);
-    margin: var(--ha-spacing-2, 8px) var(--linz-pad-x) 0;
+    margin: var(--ha-spacing-3, 12px) var(--linz-pad-x) 0;
     border-radius: var(--ha-radius-lg, 12px);
     --hero-color: var(--linz-accent);
     background: color-mix(in srgb, var(--hero-color) 12%, transparent);
