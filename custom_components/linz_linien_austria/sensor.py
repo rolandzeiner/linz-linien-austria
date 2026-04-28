@@ -14,7 +14,6 @@ from typing import Any
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
-    SensorStateClass,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -47,7 +46,11 @@ class NextDepartureSensor(
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = "min"
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    # Deliberately no state_class: countdown-to-next-departure is a
+    # sawtooth that resets every time a vehicle departs — the hourly
+    # LTS mean/min/max carries no analytical signal. Dropping
+    # state_class stops new long-term statistics; existing orphan
+    # buckets clear via Settings → System → Statistics.
     _attr_attribution = ATTRIBUTION
 
     def __init__(
