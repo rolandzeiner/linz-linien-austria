@@ -340,7 +340,7 @@ export class LinzLinienAustriaCard extends LitElement {
       ? this._platformText(next)
       : "";
     const subtitle = platformText
-      ? `${directionText} · ${this._t("card.platform_short")} ${platformText}`
+      ? `${directionText} · ${this._platformLabel(next, true)} ${platformText}`
       : directionText;
 
     // Pulse on the green Live bullet defaults on; users who haven't
@@ -621,7 +621,7 @@ export class LinzLinienAustriaCard extends LitElement {
         <span class="hero-direction">${d.direction || ""}</span>
         ${!d.is_cancelled && platform
           ? html`<span class="hero-platform"
-              >${this._t("card.platform_short")} ${platform}</span
+              >${this._platformLabel(d, true)} ${platform}</span
             >`
           : nothing}
         ${d.is_realtime && !d.is_cancelled
@@ -667,9 +667,9 @@ export class LinzLinienAustriaCard extends LitElement {
           this._platformText(d)
             ? html`<span
                 class="row-platform"
-                aria-label="${this._t("card.platform")} ${this._platformText(d)}"
-                title="${this._t("card.platform")} ${this._platformText(d)}"
-                >${this._t("card.platform_short")}
+                aria-label="${this._platformLabel(d, false)} ${this._platformText(d)}"
+                title="${this._platformLabel(d, false)} ${this._platformText(d)}"
+                >${this._platformLabel(d, true)}
                 ${this._platformText(d)}</span
               >`
             : nothing}
@@ -745,6 +745,20 @@ export class LinzLinienAustriaCard extends LitElement {
     const raw = (d.platform ?? "").trim();
     if (!raw || raw === "0") return "";
     return raw;
+  }
+
+  /** Pick "Gleis"/"Track" for rail-bound modes (Train, S-Bahn, U-Bahn,
+   *  Stadtbahn, Tram, Funicular) and "Steig"/"Pl." for buses, ferries,
+   *  and unknown modes. Mode codes match Mentz EFA — see api.py. */
+  private _isRailMot(mot: number | undefined): boolean {
+    return mot === 0 || mot === 1 || mot === 2 || mot === 3 || mot === 4 || mot === 8;
+  }
+  private _platformLabel(d: Departure | undefined, short: boolean): string {
+    const rail = this._isRailMot(d?.mot);
+    const key = rail
+      ? short ? "card.platform_rail_short" : "card.platform_rail"
+      : short ? "card.platform_short" : "card.platform";
+    return this._t(key);
   }
 
   private _countdownFor(d: Departure): number | null {

@@ -12,6 +12,8 @@
     "no_matches_for_filter": "Keine kommenden Abfahrten passen zum Linienfilter.",
     "platform": "Steig",
     "platform_short": "Steig",
+    "platform_rail": "Gleis",
+    "platform_rail_short": "Gleis",
     "open_in_maps": "In Google Maps öffnen",
     "next_departure_label": "Nächste Abfahrt",
     "and_separator": "und",

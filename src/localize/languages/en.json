@@ -12,6 +12,8 @@
     "no_matches_for_filter": "No upcoming departures match the line filter.",
     "platform": "Platform",
     "platform_short": "Pl.",
+    "platform_rail": "Track",
+    "platform_rail_short": "Tr.",
     "open_in_maps": "Open in Google Maps",
     "next_departure_label": "Next departure",
     "and_separator": "and",
