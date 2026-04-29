@@ -163,7 +163,8 @@ def _parse_one_stop(raw: Any) -> dict[str, Any] | None:
     # ``ref`` carries the stable stop ID; the top-level ``stateless`` carries
     # an indirection token that's only valid within the same session.
     # We want the persistent ID — so prefer ref.id over stateless.
-    ref = raw.get("ref") if isinstance(raw.get("ref"), dict) else {}
+    ref_raw = raw.get("ref")
+    ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
     stop_id = str(ref.get("id") or raw.get("stateless") or "").strip()
     if not stop_id or not stop_id.isdigit():
         return None
@@ -298,7 +299,8 @@ def _resolve_stop_meta(payload: dict[str, Any]) -> dict[str, Any]:
     name = ""
     place = ""
     if isinstance(point, dict):
-        ref = point.get("ref") if isinstance(point.get("ref"), dict) else {}
+        ref_raw = point.get("ref")
+        ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
         stop_id = str(ref.get("id") or point.get("stateless") or "")
         name = str(point.get("name") or point.get("object") or "")
         place = str(point.get("posttown") or ref.get("place") or "")
@@ -325,7 +327,10 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         return None
 
-    line_info = raw.get("servingLine") if isinstance(raw.get("servingLine"), dict) else {}
+    line_info_raw = raw.get("servingLine")
+    line_info: dict[str, Any] = (
+        line_info_raw if isinstance(line_info_raw, dict) else {}
+    )
     line = str(line_info.get("number") or line_info.get("symbol") or "").strip()
     direction = str(line_info.get("direction") or "").strip()
     origin = str(line_info.get("directionFrom") or "").strip()

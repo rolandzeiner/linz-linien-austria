@@ -162,7 +162,10 @@ def _parse_alert(raw: dict[str, Any]) -> TrafficInfo | None:
     info_id = str(raw.get("infoID") or "").strip()
     if not info_id:
         return None
-    info_link = raw.get("infoLink") if isinstance(raw.get("infoLink"), dict) else {}
+    info_link_raw = raw.get("infoLink")
+    info_link: dict[str, Any] = (
+        info_link_raw if isinstance(info_link_raw, dict) else {}
+    )
     title = str(info_link.get("infoLinkText") or info_link.get("subtitle") or "").strip()
     if not title:
         return None
@@ -304,8 +307,9 @@ def async_start_alerts_refresh(hass: HomeAssistant) -> CALLBACK_TYPE | None:
     accidentally double-cancelling.
     """
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if ALERTS_REFRESH_UNSUB_KEY in domain_data:
-        return domain_data[ALERTS_REFRESH_UNSUB_KEY]
+    existing: CALLBACK_TYPE | None = domain_data.get(ALERTS_REFRESH_UNSUB_KEY)
+    if existing is not None:
+        return existing
 
     async def _tick(_now: Any) -> None:
         await async_refresh_alerts(hass)

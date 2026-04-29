@@ -10,6 +10,7 @@ The flow performs a real STOPFINDER + DM probe before saving so the
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -55,7 +56,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _settings_schema(defaults: dict[str, Any]) -> vol.Schema:
+def _settings_schema(defaults: Mapping[str, Any]) -> vol.Schema:
     """Build the second-step schema (scan interval, departure limit)."""
     return vol.Schema(
         {
