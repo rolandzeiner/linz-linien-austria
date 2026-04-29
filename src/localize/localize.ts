@@ -24,9 +24,9 @@ function resolveString(path: string, dictionary: Dict): string | undefined {
 
 export interface TranslateContext {
   /** Optional override from card config (`config.language`). */
-  configLanguage?: string;
+  configLanguage?: string | undefined;
   /** The active HA frontend language — pass `this.hass?.language`. */
-  hassLanguage?: string;
+  hassLanguage?: string | undefined;
 }
 
 /** Pick the catalogue to use. Same shape as the wiener-linien helper:
@@ -43,14 +43,21 @@ export function resolveLang(ctx: TranslateContext): string {
  *  every `{name}` placeholder in the resolved string. Unknown keys fall
  *  through to the literal key name so missing translations are visible
  *  in dev. */
+// Static guarantee: `en` is declared as a top-level import + populated in
+// the `languages` map at module load. `noUncheckedIndexedAccess` widens
+// every index access to `… | undefined`, so we narrow once here for the
+// lookup chain. Empty-object fallback covers the impossible-but-typed
+// case of the `en` slot being absent.
+const enDict: Dict = languages.en ?? {};
+
 export function translate(
   key: string,
   ctx: TranslateContext,
   replacements?: Record<string, string | number>,
 ): string {
   const lang = resolveLang(ctx);
-  let s = resolveString(key, languages[lang] ?? languages.en);
-  if (s === undefined) s = resolveString(key, languages.en);
+  let s = resolveString(key, languages[lang] ?? enDict);
+  if (s === undefined) s = resolveString(key, enDict);
   if (s === undefined) return key;
   if (replacements) {
     for (const [k, v] of Object.entries(replacements)) {

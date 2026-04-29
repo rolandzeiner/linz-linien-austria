@@ -1,4 +1,5 @@
 """Tests for the Linz Linien Austria coordinator + EFA payload normalisation."""
+from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -9,30 +10,27 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.linz_linien_austria.api import (
+    EfaApiError,
     EfaHttpError,
+    EfaPayloadError,
     EfaTimeoutError,
     _normalise_departure,
     _parse_dm,
     _parse_stopfinder,
 )
 from custom_components.linz_linien_austria.const import (
-    CONF_LIMIT,
+    BACKOFF_CAP_SECONDS,
+    CONF_LINES,
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DOMAIN,
 )
 from custom_components.linz_linien_austria.coordinator import (
     LinzLinienAustriaCoordinator,
+    _line_dir_key,
 )
 
-from .conftest import EXAMPLE_DM_RESPONSE, EXAMPLE_STOPFINDER
-
-BASE_ENTRY_DATA = {
-    CONF_STOP_ID: "60501720",
-    CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
-    CONF_SCAN_INTERVAL: 60,
-    CONF_LIMIT: 12,
-}
+from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE, EXAMPLE_STOPFINDER
 
 
 def _make_entry(data: dict | None = None) -> MockConfigEntry:
@@ -244,3 +242,182 @@ async def test_min_poll_interval_enforced(hass: HomeAssistant) -> None:
     assert coordinator.update_interval is not None
     # Floor is 30 s — see const.py::MIN_POLL_SECONDS.
     assert coordinator.update_interval.total_seconds() == 30
+
+
+# ---------------------------------------------------------------------
+# Exponential-backoff ladder
+# ---------------------------------------------------------------------
+
+
+async def test_first_failure_keeps_normal_cadence(hass: HomeAssistant) -> None:
+    """A single transient failure must NOT widen the poll interval."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    coordinator._note_failure()
+    assert coordinator.update_interval == coordinator._normal_interval
+
+
+async def test_repeated_failures_back_off_then_cap(hass: HomeAssistant) -> None:
+    """Successive failures double the cadence, capped at BACKOFF_CAP_SECONDS."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    # Bury the cadence past the cap; the cap clamps it.
+    for _ in range(20):
+        coordinator._note_failure()
+    assert coordinator.update_interval is not None
+    assert (
+        coordinator.update_interval.total_seconds() == BACKOFF_CAP_SECONDS
+    )
+
+
+async def test_recovery_restores_normal_cadence(hass: HomeAssistant) -> None:
+    """First success after a streak resets the failure counter and cadence."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    coordinator._note_failure()
+    coordinator._note_failure()
+    coordinator._note_failure()
+    assert coordinator.update_interval != coordinator._normal_interval
+
+    coordinator._note_success()
+    assert coordinator.update_interval == coordinator._normal_interval
+    assert coordinator._consecutive_failures == 0
+
+
+# ---------------------------------------------------------------------
+# UpdateFailed translation keys
+# ---------------------------------------------------------------------
+
+
+async def test_http_error_uses_translated_update_failed(
+    hass: HomeAssistant,
+) -> None:
+    """A non-429 HTTP error surfaces translation_key=api_http_error."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=EfaHttpError(503, "Service Unavailable"),
+    ):
+        with pytest.raises(UpdateFailed) as excinfo:
+            await coordinator._async_update_data()
+        assert excinfo.value.translation_key == "api_http_error"
+
+
+async def test_payload_error_uses_translated_update_failed(
+    hass: HomeAssistant,
+) -> None:
+    """Malformed JSON surfaces translation_key=api_invalid_response."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=EfaPayloadError("garbage"),
+    ):
+        with pytest.raises(UpdateFailed) as excinfo:
+            await coordinator._async_update_data()
+        assert excinfo.value.translation_key == "api_invalid_response"
+
+
+async def test_generic_api_error_uses_connection_translation(
+    hass: HomeAssistant,
+) -> None:
+    """A bare EfaApiError surfaces translation_key=api_connection_error."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=EfaApiError("connection refused"),
+    ):
+        with pytest.raises(UpdateFailed) as excinfo:
+            await coordinator._async_update_data()
+        assert excinfo.value.translation_key == "api_connection_error"
+
+
+# ---------------------------------------------------------------------
+# Line filter + helper
+# ---------------------------------------------------------------------
+
+
+async def test_lines_filter_drops_unselected_routes(hass: HomeAssistant) -> None:
+    """When CONF_LINES is set, only matching `<line>:<direction>` rows survive."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=BASE_ENTRY_DATA,
+        options={CONF_LINES: ["2:solarCity"]},
+        title=BASE_ENTRY_DATA[CONF_STOP_NAME],
+        unique_id=f"stop_{BASE_ENTRY_DATA[CONF_STOP_ID]}",
+    )
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+
+    assert coordinator.data is not None
+    departures = coordinator.data["departures"]
+    assert {d["line"] for d in departures} == {"2"}
+
+
+def test_line_dir_key_format() -> None:
+    """Helper returns `<line>:<direction>` with empty fallbacks."""
+    assert _line_dir_key({"line": "2", "direction": "solarCity"}) == "2:solarCity"
+    assert _line_dir_key({}) == ":"
+
+
+# ---------------------------------------------------------------------
+# Teardown — async_teardown is safe when no listeners are registered
+# ---------------------------------------------------------------------
+
+
+async def test_teardown_is_safe_when_empty(hass: HomeAssistant) -> None:
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    coordinator.async_teardown()  # must not raise
+    assert coordinator._unsub == []
+
+
+async def test_teardown_invokes_registered_unsubs(hass: HomeAssistant) -> None:
+    """Each callback in `_unsub` is invoked exactly once and the list cleared."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    calls = {"a": 0, "b": 0}
+
+    def _unsub_a() -> None:
+        calls["a"] += 1
+
+    def _unsub_b() -> None:
+        calls["b"] += 1
+
+    coordinator._unsub.extend([_unsub_a, _unsub_b])
+    coordinator.async_teardown()
+    assert calls == {"a": 1, "b": 1}
+    assert coordinator._unsub == []
+
+
+# Quiet timedelta import — avoids "imported but unused" if the test
+# module is later trimmed.
+assert timedelta is not None

@@ -97,26 +97,18 @@ DEFAULT_LIMIT: Final = 20
 # https://data.linz.gv.at/ — see ATTRIBUTION file.
 ATTRIBUTION: Final = "Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0"
 
-# Mode of transport ID → category for the card / icon dispatch.
-# Per the Mentz EFA spec page 52: 0=Zug, 1=S-Bahn, 2=U-Bahn, 3=Stadtbahn,
-# 4=Straßen-/Trambahn, 5=Stadtbus, 6=Regionalbus, 7=Schnellbus,
-# 8=Seil-/Zahnradbahn, 9=Schiff, 10=AST/Rufbus, 11=Sonstige.
-MOT_TRAIN: Final = 0
-MOT_S_BAHN: Final = 1
-MOT_U_BAHN: Final = 2
-MOT_STADTBAHN: Final = 3
-MOT_TRAM: Final = 4
-MOT_BUS_CITY: Final = 5
-MOT_BUS_REGIONAL: Final = 6
-MOT_BUS_EXPRESS: Final = 7
-MOT_FUNICULAR: Final = 8
-MOT_FERRY: Final = 9
-MOT_AST: Final = 10
-MOT_OTHER: Final = 11
+# Mode-of-transport IDs follow the Mentz EFA spec page 52 (0=Zug,
+# 1=S-Bahn, 2=U-Bahn, 3=Stadtbahn, 4=Straßen-/Trambahn, 5=Stadtbus,
+# 6=Regionalbus, 7=Schnellbus, 8=Seil-/Zahnradbahn, 9=Schiff,
+# 10=AST/Rufbus, 11=Sonstige). The integration consumes these as raw
+# ints (api.py::_MOT_NAMES) and the card maps them via its own table —
+# no Python constant is needed.
 
-# Lovelace card — the JS file at the top declares CARD_VERSION which must
-# match this constant byte-for-byte, else the resource-version mismatch
-# triggers a reload-banner loop. Bump both in the same commit.
-CARD_VERSION: Final = "0.4.0"
+# Lovelace card — pinned to ``INTEGRATION_VERSION`` so the manifest is
+# the single source of truth. ``src/const.ts`` carries the same string
+# as the bundle's compile-time constant; ``tests/test_card_version.py``
+# locks them together byte-for-byte against ``INTEGRATION_VERSION`` so
+# a manifest-only bump still trips CI if the TS side falls behind.
+CARD_VERSION: Final = INTEGRATION_VERSION
 CARD_URL_BASE: Final = "/linz-linien-austria"
 CARD_FILENAME: Final = "linz-linien-austria-card.js"

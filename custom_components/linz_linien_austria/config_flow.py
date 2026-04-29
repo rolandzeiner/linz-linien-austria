@@ -56,35 +56,45 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _settings_schema(defaults: Mapping[str, Any]) -> vol.Schema:
-    """Build the second-step schema (scan interval, departure limit)."""
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_SCAN_INTERVAL,
-                default=defaults.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            ): NumberSelector(
-                NumberSelectorConfig(
-                    min=MIN_POLL_SECONDS,
-                    max=MAX_POLL_SECONDS,
-                    step=5,
-                    unit_of_measurement="s",
-                    mode=NumberSelectorMode.BOX,
-                )
-            ),
-            vol.Required(
-                CONF_LIMIT,
-                default=defaults.get(CONF_LIMIT, DEFAULT_LIMIT),
-            ): NumberSelector(
-                NumberSelectorConfig(
-                    min=1,
-                    max=30,
-                    step=1,
-                    mode=NumberSelectorMode.BOX,
-                )
-            ),
-        }
-    )
+def _settings_schema(
+    defaults: Mapping[str, Any],
+    *,
+    extra: Mapping[Any, Any] | None = None,
+) -> vol.Schema:
+    """Build the shared scan-interval / departure-limit schema.
+
+    The config-flow's ``settings`` and ``reconfigure`` steps consume the
+    base shape; the options flow passes ``extra`` to splice in its
+    line-filter selector without re-declaring the two number selectors.
+    """
+    fields: dict[Any, Any] = {
+        vol.Required(
+            CONF_SCAN_INTERVAL,
+            default=defaults.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+        ): NumberSelector(
+            NumberSelectorConfig(
+                min=MIN_POLL_SECONDS,
+                max=MAX_POLL_SECONDS,
+                step=5,
+                unit_of_measurement="s",
+                mode=NumberSelectorMode.BOX,
+            )
+        ),
+        vol.Required(
+            CONF_LIMIT,
+            default=defaults.get(CONF_LIMIT, DEFAULT_LIMIT),
+        ): NumberSelector(
+            NumberSelectorConfig(
+                min=1,
+                max=30,
+                step=1,
+                mode=NumberSelectorMode.BOX,
+            )
+        ),
+    }
+    if extra:
+        fields.update(extra)
+    return vol.Schema(fields)
 
 
 class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -268,45 +278,26 @@ class LinzLinienAustriaOptionsFlow(OptionsFlow):
                 }
             )
 
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=MIN_POLL_SECONDS,
-                        max=MAX_POLL_SECONDS,
-                        step=5,
-                        unit_of_measurement="s",
-                        mode=NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_LIMIT,
-                    default=config.get(CONF_LIMIT, DEFAULT_LIMIT),
-                ): NumberSelector(
-                    NumberSelectorConfig(
-                        min=1, max=30, step=1, mode=NumberSelectorMode.BOX
-                    )
-                ),
-                vol.Optional(
-                    CONF_LINES,
-                    default=config.get(CONF_LINES) or [],
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            SelectOptionDict(value=line_dir, label=line_dir)
-                            for line_dir in existing_lines
-                        ],
-                        multiple=True,
-                        custom_value=True,
-                        mode=SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
+        lines_field = {
+            vol.Optional(
+                CONF_LINES,
+                default=config.get(CONF_LINES) or [],
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value=line_dir, label=line_dir)
+                        for line_dir in existing_lines
+                    ],
+                    multiple=True,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        }
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_settings_schema(config, extra=lines_field),
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
 
 
 def _known_lines_from_runtime(entry: ConfigEntry) -> set[str]:

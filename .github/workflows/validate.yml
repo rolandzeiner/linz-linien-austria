@@ -12,6 +12,22 @@ permissions:
   packages: read
 
 jobs:
+  no-dev-fixture:
+    # `_dev_fixture.py` is a gitignored, dev-only hook some siblings
+    # ship to inject a recorded payload during local development. It
+    # must never enter the repo — gitignore covers accidental staging,
+    # this guards against `git add -f` or the rule being deleted. Loud,
+    # fast, first job.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify _dev_fixture.py is not committed
+        run: |
+          if [ -f custom_components/linz_linien_austria/_dev_fixture.py ]; then
+            echo "::error::custom_components/linz_linien_austria/_dev_fixture.py must never be committed (dev-only hook)."
+            exit 1
+          fi
+
   validate-hacs:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +54,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.14"
+          # Pinned to 3.13 — HA core's current target. Python 3.14 was
+          # tried but the dependency tree (pydantic-core / orjson /
+          # Pillow) ships pyo3 0.24 which doesn't yet support 3.14, so
+          # `pip install` falls through to a source build that fails on
+          # `the configured Python interpreter version (3.14) is newer
+          # than PyO3's maximum supported version (3.13)`. Bump back to
+          # 3.14 once the ecosystem catches up.
+          python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements_test.txt
       - name: Run Linter (Ruff)
@@ -98,6 +121,11 @@ jobs:
         # advisories (which never ship to users) flood the report and the
         # team learns to ignore failures.
         run: npm audit --omit=dev --audit-level=high
+      - name: Type-check (strict)
+        # Rollup's @rollup/plugin-typescript is more permissive than tsc
+        # in strict mode. Run tsc separately so TS regressions surface in
+        # CI instead of slipping into the bundle.
+        run: npx tsc --noEmit
       - name: Build card bundle
         run: npm run build
       - name: Syntax-check bundle

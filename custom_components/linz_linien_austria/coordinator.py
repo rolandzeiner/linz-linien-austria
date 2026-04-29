@@ -97,10 +97,6 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
         )
 
-    async def _async_setup(self) -> None:
-        """One-shot async setup, invoked by HA inside async_config_entry_first_refresh."""
-        return None
-
     @callback
     def async_teardown(self) -> None:
         """Cancel all listeners on unload."""
@@ -267,7 +263,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             departures = [
                 d for d in departures if _line_dir_key(d) in self._lines_filter
             ]
-        # Cap only at MAX_DEPARTURES_IN_ATTRS (30) — the recorder hard
+        # Cap only at MAX_DEPARTURES_IN_ATTRS (45) — the recorder hard
         # limit. We deliberately do NOT trim to ``self._limit`` here:
         # that's the *upstream fetch* size, not a display cap. Card-side
         # filters (lines, max_departures) need a deeper pool than the

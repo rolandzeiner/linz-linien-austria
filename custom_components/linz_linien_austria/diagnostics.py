@@ -77,6 +77,11 @@ async def async_get_config_entry_diagnostics(
         },
         "coordinator": {
             "last_update_success": coordinator.last_update_success,
+            # `last_exception` is the most useful triage signal when
+            # `last_update_success=False`. `repr()` gives the class +
+            # args without leaking response-body strings the way
+            # `str()` of an aiohttp ClientResponseError does.
+            "last_exception": repr(coordinator.last_exception),
             "update_interval": str(coordinator.update_interval),
             "departures_count": (
                 int(data.get("departures_count", 0))

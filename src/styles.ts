@@ -702,6 +702,41 @@ export const cardStyles = css`
       scroll-behavior: auto !important;
     }
   }
+
+  /* Version-mismatch banner — surfaced when the WS probe reports a
+     different CARD_VERSION than the bundle in the user's tab. Sits at
+     the top of <ha-card>, full-bleed (the card has no horizontal
+     padding on its root). The reload button does a cache-wipe + hard
+     reload via shared-render::reloadAfterCacheWipe. */
+  .version-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--linz-warning, #f59e0b);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+  .version-reload-btn {
+    flex-shrink: 0;
+    background: #fff;
+    color: var(--linz-warning, #f59e0b);
+    border: none;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .version-reload-btn:hover {
+    background: rgba(255, 255, 255, 0.92);
+  }
+  .version-reload-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
 `;
 
 /** Editor styles. HA form components ship their own theming — keep
@@ -971,30 +1006,5 @@ export const editorStyles = css`
   .per-line-clear:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
-  }
-
-  /* Responsive density tiers via container queries. The card commonly
-     lives in section-view grid columns of 280-1200 px on the same
-     screen; these breakpoints mirror wiener-linien-austria so a
-     stacked dashboard reads as one visual family. */
-  @container linzcard (inline-size < 360px) {
-    :host {
-      --linz-pad-x: 12px;
-      --linz-pad-y: 12px;
-      --linz-tile-size: 36px;
-      --linz-metric-size: 2.25rem;
-    }
-  }
-
-  @container linzcard (inline-size > 480px) {
-    :host {
-      --linz-pad-x: 20px;
-      --linz-pad-y: 16px;
-      --linz-tile-size: 44px;
-      --linz-metric-size: 3rem;
-    }
-    .icon-tile ha-icon {
-      --mdc-icon-size: 24px;
-    }
   }
 `;

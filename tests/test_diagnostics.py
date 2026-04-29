@@ -2,28 +2,15 @@
 import json
 from unittest.mock import AsyncMock, patch
 
-from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.linz_linien_austria.const import (
-    CONF_LIMIT,
-    CONF_STOP_ID,
-    CONF_STOP_NAME,
-    DOMAIN,
-)
+from custom_components.linz_linien_austria.const import CONF_STOP_ID, DOMAIN
 from custom_components.linz_linien_austria.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 
-from .conftest import EXAMPLE_DM_RESPONSE
-
-BASE_DATA = {
-    CONF_STOP_ID: "60501720",
-    CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
-    CONF_SCAN_INTERVAL: 60,
-    CONF_LIMIT: 12,
-}
+from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
 # Distinctive sentinel for the full-blob redaction grep — it would leak
 # into diagnostics if a future maintainer forgets to add a new
@@ -37,7 +24,7 @@ async def test_diagnostics_emits_payload(hass: HomeAssistant) -> None:
 
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data={**BASE_DATA, "token": SECRET_TOKEN},
+        data={**BASE_ENTRY_DATA, "token": SECRET_TOKEN},
         options={},
         title="Linz/Donau, Hauptbahnhof",
         unique_id="stop_60501720",
