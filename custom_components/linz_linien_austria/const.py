@@ -104,9 +104,11 @@ ATTRIBUTION: Final = "Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0"
 # ints (api.py::_MOT_NAMES) and the card maps them via its own table —
 # no Python constant is needed.
 
-# Lovelace card — the JS file at the top declares CARD_VERSION which must
-# match this constant byte-for-byte, else the resource-version mismatch
-# triggers a reload-banner loop. Bump both in the same commit.
-CARD_VERSION: Final = "0.5.0"
+# Lovelace card — pinned to ``INTEGRATION_VERSION`` so the manifest is
+# the single source of truth. ``src/const.ts`` carries the same string
+# as the bundle's compile-time constant; ``tests/test_card_version.py``
+# locks them together byte-for-byte against ``INTEGRATION_VERSION`` so
+# a manifest-only bump still trips CI if the TS side falls behind.
+CARD_VERSION: Final = INTEGRATION_VERSION
 CARD_URL_BASE: Final = "/linz-linien-austria"
 CARD_FILENAME: Final = "linz-linien-austria-card.js"

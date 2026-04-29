@@ -393,7 +393,7 @@ async def test_async_refresh_alerts_writes_to_hass_data(
         ),
         patch(
             "custom_components.linz_linien_austria."
-            "rate_limit.async_enforce_domain_cooldown",
+            "alerts.async_enforce_domain_cooldown",
             new_callable=AsyncMock,
         ),
     ):

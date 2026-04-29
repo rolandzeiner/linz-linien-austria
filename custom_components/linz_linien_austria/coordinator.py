@@ -97,10 +97,6 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
         )
 
-    async def _async_setup(self) -> None:
-        """One-shot async setup, invoked by HA inside async_config_entry_first_refresh."""
-        return None
-
     @callback
     def async_teardown(self) -> None:
         """Cancel all listeners on unload."""

@@ -63,11 +63,9 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     # websocket_api has no public deregister hook. Same caveat as the
     # static path registration in card_registration.py: pragmatic given
     # the API surface, harmless in practice (a stray handler that no
-    # caller invokes once the bundle is gone). Re-registering on
-    # subsequent setups is idempotent — `async_register_command` raises
-    # KeyError on collision and the second call would be skipped, but
-    # `async_setup` only runs once per HA startup, so we never reach
-    # that branch in normal operation.
+    # caller invokes once the bundle is gone). Behaviour on duplicate
+    # registration is HA core internal; we never reach that branch
+    # since `async_setup` only runs once per HA startup.
     async_register_command(hass, _websocket_card_version)
 
     registration = JSModuleRegistration(hass)

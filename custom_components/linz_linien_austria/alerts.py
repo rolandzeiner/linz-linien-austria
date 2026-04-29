@@ -40,6 +40,7 @@ from .const import (
     USER_AGENT,
 )
 from .http import base_request_headers
+from .rate_limit import async_enforce_domain_cooldown
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -266,8 +267,6 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     # Alerts share the same 15 s domain-wide floor as the departure
     # polls. Without this, the 5-min alerts tick can collide with a
     # departure refresh and burn two slots in one second.
-    from .rate_limit import async_enforce_domain_cooldown
-
     await async_enforce_domain_cooldown(hass)
     session = async_get_clientsession(hass)
     alerts = await async_fetch_alerts(session)
