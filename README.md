@@ -46,7 +46,7 @@ them.
   sensor exposes alerts via the `alerts` attribute; the card renders
   them as a collapsible banner with high-priority items pinned to the
   top.
-- **Platinum quality-scale.** Typed coordinator + runtime_data,
+- **Robust by design.** Typed coordinator + runtime_data,
   reconfigure flow, repair issues on rate-limit, full translations
   (de + en), diagnostics with defensive redaction.
 - **Conservative polling.** 60 s default, 30 s per-entry floor, lock-
