@@ -55,15 +55,6 @@ class EfaPayloadError(EfaApiError):
     """Malformed/unexpected JSON response."""
 
 
-def _common_headers() -> dict[str, str]:
-    """Headers sent on every DM_REQUEST / STOPFINDER_REQUEST call.
-
-    Thin wrapper around the shared ``base_request_headers`` helper so a
-    future header addition lands in one place.
-    """
-    return base_request_headers(USER_AGENT)
-
-
 async def _get_json(
     session: aiohttp.ClientSession,
     url: str,
@@ -76,9 +67,10 @@ async def _get_json(
     ``UpdateFailed`` raises don't have to know about aiohttp internals.
     """
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
+    headers = base_request_headers(USER_AGENT)
     try:
         resp = await session.get(
-            url, params=params, headers=_common_headers(), timeout=timeout
+            url, params=params, headers=headers, timeout=timeout
         )
         resp.raise_for_status()
         data = await resp.json(content_type=None)
@@ -307,6 +299,21 @@ def _resolve_stop_meta(payload: dict[str, Any]) -> dict[str, Any]:
     return {"stop_id": stop_id, "name": name, "place": place}
 
 
+def _int_or_none(raw: Any) -> int | None:
+    """Lenient int coercion — returns None on TypeError/ValueError/empty.
+
+    EFA emits string-typed ints with the occasional empty string and
+    unknown-sentinel ``-9999``. Centralise the try/except so callers
+    can stay focused on the field-specific semantics.
+    """
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalise_departure(raw: Any) -> dict[str, Any] | None:
     """Reduce one EFA departure entry to a flat dict.
 
@@ -335,32 +342,18 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
     direction = str(line_info.get("direction") or "").strip()
     origin = str(line_info.get("directionFrom") or "").strip()
 
-    mot_raw = line_info.get("motType")
-    try:
-        mot = int(mot_raw) if mot_raw is not None else None
-    except (TypeError, ValueError):
-        mot = None
-
-    countdown_raw = raw.get("countdown")
-    try:
-        countdown = int(countdown_raw) if countdown_raw is not None else None
-    except (TypeError, ValueError):
-        countdown = None
+    mot = _int_or_none(line_info.get("motType"))
+    countdown = _int_or_none(raw.get("countdown"))
 
     scheduled = _iso_from_efa_datetime(raw.get("dateTime"))
     realtime = _iso_from_efa_datetime(raw.get("realDateTime"))
 
-    delay_minutes: int | None = None
-    delay_raw = line_info.get("delay")
-    if delay_raw is not None and delay_raw != "":
-        try:
-            # EFA returns "0", "-1", "5" etc. Negative delays = early.
-            # Skip "-9999" (sentinel = unknown).
-            delay_int = int(delay_raw)
-            if delay_int != -9999:
-                delay_minutes = delay_int
-        except (TypeError, ValueError):
-            delay_minutes = None
+    # EFA returns "0", "-1", "5" etc. Negative delays = early.
+    # ``-9999`` is the sentinel for "unknown"; skip it.
+    delay_int = _int_or_none(line_info.get("delay"))
+    delay_minutes: int | None = (
+        delay_int if delay_int is not None and delay_int != -9999 else None
+    )
 
     countdown_rt: int | None = None
     if countdown is not None and delay_minutes is not None:

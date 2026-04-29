@@ -20,7 +20,6 @@ from custom_components.linz_linien_austria.api import (
 )
 from custom_components.linz_linien_austria.const import (
     BACKOFF_CAP_SECONDS,
-    CONF_LIMIT,
     CONF_LINES,
     CONF_STOP_ID,
     CONF_STOP_NAME,
@@ -31,14 +30,7 @@ from custom_components.linz_linien_austria.coordinator import (
     _line_dir_key,
 )
 
-from .conftest import EXAMPLE_DM_RESPONSE, EXAMPLE_STOPFINDER
-
-BASE_ENTRY_DATA = {
-    CONF_STOP_ID: "60501720",
-    CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
-    CONF_SCAN_INTERVAL: 60,
-    CONF_LIMIT: 12,
-}
+from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE, EXAMPLE_STOPFINDER
 
 
 def _make_entry(data: dict | None = None) -> MockConfigEntry:

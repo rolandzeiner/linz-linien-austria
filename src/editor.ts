@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { editorStyles } from "./styles";
 import { translate } from "./localize/localize";
+import { motColorOrDefault, motIcon } from "./mot";
 
 @customElement("linz-linien-austria-card-editor")
 export class LinzLinienAustriaCardEditor
@@ -27,6 +28,20 @@ export class LinzLinienAustriaCardEditor
 
   public setConfig(config: LinzLinienAustriaCardConfig): void {
     this._config = { ...config };
+  }
+
+  /** Translate `key` against the active HA language. Same shape as
+   *  the card's `_t()`. Centralises the `{ hassLanguage }` ctx so the
+   *  18 call sites below don't repeat it on every render. */
+  private _t(
+    key: string,
+    replacements?: Record<string, string | number>,
+  ): string {
+    return translate(
+      key,
+      { hassLanguage: this.hass?.language },
+      replacements,
+    );
   }
 
   /** Lines available for the picker dropdown — drawn from the picked
@@ -101,32 +116,16 @@ export class LinzLinienAustriaCardEditor
   }
 
   /** Default badge colour for a given line, derived from its
-   *  mode-of-transport. Same table as the card's ``motColor`` —
-   *  duplicated here to keep the editor independent of the card's
-   *  internal helpers (single import surface, ~5 LOC duplication
-   *  not worth a shared utility). Returns a hex string the
-   *  ``<input type="color">`` understands directly. */
+   *  mode-of-transport. Returns a hex string ``<input type="color">``
+   *  understands directly. The lookup table lives in `src/mot.ts` so
+   *  the card and editor can't drift. */
   private _defaultColorForLine(line: string): string {
-    const mot = this._motForLine(line);
-    if (mot === 0 || mot === 1) return "#455a64"; // train / S-Bahn
-    if (mot === 2) return "#1565c0"; // U-Bahn
-    if (mot === 5 || mot === 6 || mot === 7) return "#6a1b9a"; // bus
-    return "#f08000"; // tram default + everything else
+    return motColorOrDefault(this._motForLine(line));
   }
 
-  /** MDI icon for a given line, derived from its mode-of-transport.
-   *  Same table as the card's MOT_ICON, kept in sync by hand. */
+  /** MDI icon for a given line, derived from its mode-of-transport. */
   private _iconForLine(line: string): string {
-    const mot = this._motForLine(line);
-    if (mot === 0 || mot === 1) return "mdi:train";
-    if (mot === 2) return "mdi:subway-variant";
-    if (mot === 3 || mot === 4) return "mdi:tram";
-    if (mot === 5 || mot === 6) return "mdi:bus";
-    if (mot === 7) return "mdi:bus-clock";
-    if (mot === 8) return "mdi:gondola";
-    if (mot === 9) return "mdi:ferry";
-    if (mot === 10) return "mdi:bus-multiple";
-    return "mdi:tram";
+    return motIcon(this._motForLine(line));
   }
 
   /** Toggle a line in the ``lines`` config field. Drops the field
@@ -173,21 +172,11 @@ export class LinzLinienAustriaCardEditor
     const selected = new Set(this._config.lines ?? []);
     return html`
       <div class="editor-section">
-        <div class="section-header">
-          ${translate("editor.lines", {
-            hassLanguage: this.hass?.language,
-          })}
-        </div>
-        <div class="editor-hint">
-          ${translate("editor.lines_helper", {
-            hassLanguage: this.hass?.language,
-          })}
-        </div>
+        <div class="section-header">${this._t("editor.lines")}</div>
+        <div class="editor-hint">${this._t("editor.lines_helper")}</div>
         ${known.length === 0
           ? html`<div class="editor-hint">
-              ${translate("editor.per_line_no_data", {
-                hassLanguage: this.hass?.language,
-              })}
+              ${this._t("editor.per_line_no_data")}
             </div>`
           : html`<div class="line-chip-grid">
               ${known.map((line) => {
@@ -200,9 +189,7 @@ export class LinzLinienAustriaCardEditor
                     class=${`line-chip${isSelected ? " is-selected" : ""}`}
                     style=${`--chip-color: ${colour};`}
                     aria-pressed=${isSelected ? "true" : "false"}
-                    aria-label="${translate("editor.lines", {
-                      hassLanguage: this.hass?.language,
-                    })}: ${line}"
+                    aria-label="${this._t("editor.lines")}: ${line}"
                     @click=${() => this._toggleLine(line)}
                   >
                     <ha-icon icon=${icon} aria-hidden="true"></ha-icon>
@@ -216,12 +203,8 @@ export class LinzLinienAustriaCardEditor
             class="line-chip-input"
             type="text"
             inputmode="text"
-            placeholder=${translate("editor.lines_custom_placeholder", {
-              hassLanguage: this.hass?.language,
-            })}
-            aria-label=${translate("editor.lines_custom_placeholder", {
-              hassLanguage: this.hass?.language,
-            })}
+            placeholder=${this._t("editor.lines_custom_placeholder")}
+            aria-label=${this._t("editor.lines_custom_placeholder")}
             @keydown=${(ev: KeyboardEvent) => {
               if (ev.key === "Enter") {
                 ev.preventDefault();
@@ -366,25 +349,15 @@ export class LinzLinienAustriaCardEditor
     const lines = this._availableLines();
     if (lines.length === 0) {
       return html`<div class="editor-hint">
-        ${translate("editor.per_line_no_data", {
-          hassLanguage: this.hass?.language,
-        })}
+        ${this._t("editor.per_line_no_data")}
       </div>`;
     }
     const walkTimes = this._config.walk_times ?? {};
     const colors = this._config.line_colors ?? {};
     return html`
       <div class="editor-section">
-        <div class="section-header">
-          ${translate("editor.section_per_line", {
-            hassLanguage: this.hass?.language,
-          })}
-        </div>
-        <div class="editor-hint">
-          ${translate("editor.per_line_hint", {
-            hassLanguage: this.hass?.language,
-          })}
-        </div>
+        <div class="section-header">${this._t("editor.section_per_line")}</div>
+        <div class="editor-hint">${this._t("editor.per_line_hint")}</div>
         <div class="per-line-list">
           ${lines.map((line) => {
             const wt = walkTimes[line];
@@ -405,19 +378,12 @@ export class LinzLinienAustriaCardEditor
                     step="1"
                     inputmode="numeric"
                     .value=${wt !== undefined ? String(wt) : ""}
-                    placeholder=${translate(
-                      "editor.walk_time_placeholder",
-                      { hassLanguage: this.hass?.language },
-                    )}
-                    aria-label="${translate("editor.walk_time", {
-                      hassLanguage: this.hass?.language,
-                    })}: ${line}"
+                    placeholder=${this._t("editor.walk_time_placeholder")}
+                    aria-label="${this._t("editor.walk_time")}: ${line}"
                     @change=${(ev: Event) => this._onWalkTimeChange(line, ev)}
                   />
                   <span class="per-line-walk-unit">
-                    ${translate("editor.minutes_short", {
-                      hassLanguage: this.hass?.language,
-                    })}
+                    ${this._t("editor.minutes_short")}
                   </span>
                 </label>
                 <label
@@ -435,12 +401,8 @@ export class LinzLinienAustriaCardEditor
                     class="per-line-color-input"
                     type="color"
                     .value=${effectiveColour}
-                    aria-label="${translate("editor.line_color", {
-                      hassLanguage: this.hass?.language,
-                    })}: ${line}"
-                    title="${translate("editor.line_color", {
-                      hassLanguage: this.hass?.language,
-                    })}: ${line}"
+                    aria-label="${this._t("editor.line_color")}: ${line}"
+                    title="${this._t("editor.line_color")}: ${line}"
                     @input=${(ev: Event) =>
                       this._onLineColorChange(line, ev)}
                     @change=${(ev: Event) =>
@@ -450,12 +412,8 @@ export class LinzLinienAustriaCardEditor
                 <button
                   class=${`per-line-clear${colour ? "" : " is-hidden"}`}
                   type="button"
-                  title=${translate("editor.line_color_clear", {
-                    hassLanguage: this.hass?.language,
-                  })}
-                  aria-label="${translate("editor.line_color_clear", {
-                    hassLanguage: this.hass?.language,
-                  })}: ${line}"
+                  title=${this._t("editor.line_color_clear")}
+                  aria-label="${this._t("editor.line_color_clear")}: ${line}"
                   ?disabled=${!colour}
                   @click=${() => this._onLineColorClear(line)}
                 >

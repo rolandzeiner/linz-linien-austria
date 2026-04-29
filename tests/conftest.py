@@ -3,10 +3,26 @@ from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from homeassistant.const import CONF_SCAN_INTERVAL
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
 from syrupy.assertion import SnapshotAssertion
 
+from custom_components.linz_linien_austria.const import (
+    CONF_LIMIT,
+    CONF_STOP_ID,
+    CONF_STOP_NAME,
+)
+
 pytest_plugins = "pytest_homeassistant_custom_component"
+
+# Canonical entry-data shape used across the test suite. Individual
+# tests can splat overrides via ``{**BASE_ENTRY_DATA, ...}``.
+BASE_ENTRY_DATA: dict[str, object] = {
+    CONF_STOP_ID: "60501720",
+    CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
+    CONF_SCAN_INTERVAL: 60,
+    CONF_LIMIT: 12,
+}
 
 
 @pytest.fixture

@@ -26,6 +26,7 @@ import type {
 } from "./types";
 import { CARD_VERSION } from "./const";
 import { translate } from "./localize/localize";
+import { motColor, motIcon } from "./mot";
 import {
   checkCardVersionWS,
   renderVersionBanner,
@@ -65,34 +66,6 @@ interface WindowWithCustomCards extends Window {
   preview: true,
   documentationURL: "https://github.com/rolandzeiner/linz-linien-austria",
 });
-
-/** Mapping from Mentz EFA mode-of-transport id to a Material icon.
- *  Same numbers as defined in const.py::MOT_*; see EFA spec page 52. */
-const MOT_ICON: Record<number, string> = {
-  0: "mdi:train",
-  1: "mdi:train",
-  2: "mdi:subway-variant",
-  3: "mdi:tram",
-  4: "mdi:tram",
-  5: "mdi:bus",
-  6: "mdi:bus-side",
-  7: "mdi:bus-clock",
-  8: "mdi:gondola",
-  9: "mdi:ferry",
-  10: "mdi:bus-multiple",
-  11: "mdi:dots-horizontal",
-};
-
-/** Mode-of-transport → solid badge background, mirroring the rules in
- *  styles.ts. Returned as a colour string suitable for inline style so
- *  the hero countdown can adopt the same hue as the line badge.
- *  Returning `null` means "use the default --linz-accent". */
-function motColor(mot: number | undefined): string | null {
-  if (mot === 0 || mot === 1) return "#455a64";
-  if (mot === 2) return "#1565c0";
-  if (mot === 5 || mot === 6 || mot === 7) return "#6a1b9a";
-  return null;
-}
 
 @customElement("linz-linien-austria-card")
 export class LinzLinienAustriaCard extends LitElement {
@@ -337,8 +310,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // departure has no MoT or there is no `next` (empty stop). User
     // line-colour override (if set for the next line) wins over the
     // MoT default.
-    const headerIcon =
-      next?.mot !== undefined ? MOT_ICON[next.mot] ?? "mdi:tram" : "mdi:tram";
+    const headerIcon = motIcon(next?.mot);
     const headerColor =
       this._userLineColor(next?.line) ?? motColor(next?.mot);
     const headerStyle = headerColor ? `--header-color: ${headerColor};` : "";
@@ -720,7 +692,10 @@ export class LinzLinienAustriaCard extends LitElement {
   }
 
   private _renderLineBadge(d: Departure): TemplateResult {
-    const icon = MOT_ICON[d.mot ?? -1] ?? "mdi:bus";
+    // Line badges keep the bus glyph as fallback (vs the tram default
+    // used at the top-of-card icon-tile) — bus is the most common
+    // mode at Linz stops without a known MoT id.
+    const icon = motIcon(d.mot, "mdi:bus");
     const userColor = this._userLineColor(d.line);
     // User override beats MoT default. Inline style on the badge keeps
     // the override per-element (no need to spam custom-properties).

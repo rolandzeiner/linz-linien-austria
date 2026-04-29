@@ -1,31 +1,20 @@
 """Tests for the next-departure sensor."""
 from unittest.mock import AsyncMock, patch
 
-from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.linz_linien_austria.api import _parse_dm
-from custom_components.linz_linien_austria.const import (
-    CONF_LIMIT,
-    CONF_STOP_ID,
-    CONF_STOP_NAME,
-    DOMAIN,
-)
+from custom_components.linz_linien_austria.const import DOMAIN
 
-from .conftest import EXAMPLE_DM_RESPONSE
+from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
 
 async def test_sensor_state_and_attributes(hass: HomeAssistant) -> None:
     """The sensor surfaces realtime countdown + the full departure list."""
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data={
-            CONF_STOP_ID: "60501720",
-            CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
-            CONF_SCAN_INTERVAL: 60,
-            CONF_LIMIT: 12,
-        },
+        data=BASE_ENTRY_DATA,
         options={},
         title="Linz/Donau, Hauptbahnhof",
         unique_id="stop_60501720",
@@ -61,12 +50,7 @@ async def test_sensor_returns_none_with_empty_departures(
     """An empty departure list yields a None state, not a crash."""
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data={
-            CONF_STOP_ID: "60501720",
-            CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
-            CONF_SCAN_INTERVAL: 60,
-            CONF_LIMIT: 12,
-        },
+        data=BASE_ENTRY_DATA,
         options={},
         title="Linz/Donau, Hauptbahnhof",
         unique_id="stop_60501720",

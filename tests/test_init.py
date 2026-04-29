@@ -14,27 +14,18 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.linz_linien_austria.api import _parse_dm
 from custom_components.linz_linien_austria.const import (
     CARD_VERSION,
-    CONF_LIMIT,
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DOMAIN,
 )
 
-from .conftest import EXAMPLE_DM_RESPONSE
-
-BASE_DATA = {
-    CONF_STOP_ID: "60501720",
-    CONF_STOP_NAME: "Linz/Donau, Hauptbahnhof",
-    CONF_SCAN_INTERVAL: 60,
-    CONF_LIMIT: 12,
-}
+from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
 
 def _make_entry(
@@ -42,7 +33,7 @@ def _make_entry(
 ) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
-        data={**BASE_DATA, CONF_STOP_ID: stop_id, CONF_STOP_NAME: title},
+        data={**BASE_ENTRY_DATA, CONF_STOP_ID: stop_id, CONF_STOP_NAME: title},
         options={},
         title=title,
         unique_id=f"stop_{stop_id}",
