@@ -5,6 +5,7 @@
 [![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/rolandzeiner/linz-linien-austria/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![vibe-coded](https://img.shields.io/badge/vibe-coded-ff69b4?logo=musicbrainz&logoColor=white)](https://en.wikipedia.org/wiki/Vibe_coding)
+[![Live demo](https://img.shields.io/badge/live-demo-2196F3.svg)](https://demo.rolandzeiner.at/#linz)
 
 Live LINZ AG LINIEN departure monitor for Home Assistant — with a
 matching Lit 3 Lovelace card. Polls the same EFA (Elektronische
