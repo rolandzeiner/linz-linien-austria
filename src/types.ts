@@ -72,6 +72,11 @@ export interface HaFormExpandableSchema {
   type: "expandable";
   name: string;
   title?: string;
+  /** When true, ha-form keeps the inner schema's values flat in
+   *  `data` (i.e. `data.show_hero` rather than `data.display.show_hero`).
+   *  Required for cards whose render() reads flat config keys —
+   *  forgetting it silently leaves every flag at its default. */
+  flatten?: boolean;
   schema: ReadonlyArray<HaFormSchema>;
 }
 export type HaFormSchema =

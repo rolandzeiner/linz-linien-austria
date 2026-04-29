@@ -26,6 +26,10 @@ import type {
 } from "./types";
 import { CARD_VERSION } from "./const";
 import { translate } from "./localize/localize";
+import {
+  checkCardVersionWS,
+  renderVersionBanner,
+} from "./shared-render";
 import { cardStyles } from "./styles";
 
 // Eagerly register the editor so HA can grab it synchronously from
@@ -127,6 +131,14 @@ export class LinzLinienAustriaCard extends LitElement {
 
   @state() private config!: LinzLinienAustriaCardConfig;
 
+  // Reload-banner state — flipped once the WS card-version probe sees
+  // a mismatch between the bundled CARD_VERSION and what HA reports.
+  @state() private _versionMismatch: string | null = null;
+  // Single-fire guard so `render()` doesn't kick a probe on every
+  // hass-tick. Reset on entity change is unnecessary — version drift
+  // is a process-wide property, not per-entity.
+  private _versionCheckDone = false;
+
   public setConfig(config: LinzLinienAustriaCardConfig): void {
     // Only validate the *shape* (must be an object). Missing `entity`
     // is normal when the user just added the card from the picker —
@@ -192,12 +204,29 @@ export class LinzLinienAustriaCard extends LitElement {
   }
 
   protected render(): TemplateResult {
+    // Fire the WS card-version probe once on first render where hass
+    // is available. Mismatch flips _versionMismatch which Lit treats
+    // as a reactive state property → next render shows the banner.
+    if (!this._versionCheckDone && this.hass) {
+      this._versionCheckDone = true;
+      void checkCardVersionWS(this.hass).then((mismatch) => {
+        if (mismatch) this._versionMismatch = mismatch;
+      });
+    }
+
+    const ctx = {
+      configLanguage: (this.config as { language?: string } | undefined)
+        ?.language,
+      hassLanguage: this.hass?.language,
+    };
+
     if (!this.hass) {
       return html`<ha-card><div class="card-content">…</div></ha-card>`;
     }
 
     if (!this.config.entity) {
       return html`<ha-card>
+        ${renderVersionBanner(this._versionMismatch, ctx)}
         <div class="card-content empty-state" role="status">
           ${this._t("common.no_entity_picked")}
         </div>
@@ -207,6 +236,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const stateObj = this.hass.states[this.config.entity];
     if (!stateObj) {
       return html`<ha-card>
+        ${renderVersionBanner(this._versionMismatch, ctx)}
         <div class="card-content empty-state" role="status">
           ${this._t("common.entity_unavailable")}
         </div>
@@ -364,6 +394,7 @@ export class LinzLinienAustriaCard extends LitElement {
           "with-animations": enableAnimations,
         })}
       >
+        ${renderVersionBanner(this._versionMismatch, ctx)}
         ${this.config.hide_header
           ? nothing
           : html`<header class="head" style=${headerStyle}>

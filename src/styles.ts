@@ -702,6 +702,41 @@ export const cardStyles = css`
       scroll-behavior: auto !important;
     }
   }
+
+  /* Version-mismatch banner — surfaced when the WS probe reports a
+     different CARD_VERSION than the bundle in the user's tab. Sits at
+     the top of <ha-card>, full-bleed (the card has no horizontal
+     padding on its root). The reload button does a cache-wipe + hard
+     reload via shared-render::reloadAfterCacheWipe. */
+  .version-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--linz-warning, #f59e0b);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+  .version-reload-btn {
+    flex-shrink: 0;
+    background: #fff;
+    color: var(--linz-warning, #f59e0b);
+    border: none;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .version-reload-btn:hover {
+    background: rgba(255, 255, 255, 0.92);
+  }
+  .version-reload-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
 `;
 
 /** Editor styles. HA form components ship their own theming — keep

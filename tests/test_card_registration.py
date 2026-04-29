@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.core import HomeAssistant
 
+from custom_components.linz_linien_austria import card_registration
 from custom_components.linz_linien_austria.card_registration import (
     JSMODULES,
     URL_BASE,
@@ -185,7 +186,44 @@ async def test_wait_when_resources_not_loaded_schedules_retry(
         await reg._async_wait_for_lovelace_resources()
         scheduler.assert_called_once()
         # delay arg, then the callable
-        assert scheduler.call_args.args[1] == 5
+        assert (
+            scheduler.call_args.args[1]
+            == card_registration._LOVELACE_LOAD_RETRY_INTERVAL_S
+        )
+
+
+async def test_wait_caps_retries_and_warns(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Retry loop must stop after _LOVELACE_LOAD_RETRY_MAX ticks and warn once.
+
+    The scheduler in production hands the callback to HA's event loop; in
+    tests we drive it synchronously by capturing the callable from the
+    `async_call_later` mock and re-invoking it until the cap is hit.
+    """
+    lovelace = _make_lovelace(loaded=False)
+    _install_lovelace(hass, lovelace)
+    reg = JSModuleRegistration(hass)
+
+    with patch(
+        "custom_components.linz_linien_austria.card_registration.async_call_later",
+    ) as scheduler:
+        await reg._async_wait_for_lovelace_resources()
+        # Iterate the captured callback until the cap is hit. The initial
+        # call_later (attempts=1) plus N-1 callback invocations bring the
+        # in-flight `attempts` counter to N. The N-th invocation reaches
+        # the cap and returns WITHOUT scheduling another retry, so the
+        # total scheduler-call count plateaus at MAX-1.
+        for _ in range(card_registration._LOVELACE_LOAD_RETRY_MAX - 1):
+            cb = scheduler.call_args.args[2]
+            await cb(0)
+
+    assert (
+        scheduler.call_count == card_registration._LOVELACE_LOAD_RETRY_MAX - 1
+    )
+    assert any(
+        "never reported `loaded`" in rec.message for rec in caplog.records
+    )
 
 
 # ---------------------------------------------------------------------------

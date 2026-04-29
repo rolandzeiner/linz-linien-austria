@@ -1,11 +1,9 @@
 {
   "common": {
-    "version": "Version",
-    "invalid_configuration": "Ungültige Konfiguration",
     "no_entity_picked": "Keine Entität ausgewählt. Visuellen Editor öffnen und einen Linz Linien Sensor wählen.",
     "entity_unavailable": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
-    "entity_required": "Eine Entität ist erforderlich. Bitte einen sensor.*_next_departure Sensor dieser Integration wählen.",
-    "loading": "Lade…"
+    "version_update": "Eine neuere Kartenversion ({v}) ist verfügbar. Bitte neu laden.",
+    "version_reload": "Jetzt neu laden"
   },
   "card": {
     "no_departures": "Keine kommenden Abfahrten.",

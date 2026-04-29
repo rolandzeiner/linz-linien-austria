@@ -20,9 +20,32 @@ from homeassistant.helpers.event import async_call_later
 
 from .const import CARD_VERSION
 
+# Typed access to LovelaceData via the public HassKey HA exposes since
+# 2024.x. The string fallback covers HA versions that pre-date the key
+# (very old installs that would also be missing other modern API surfaces
+# we depend on, but the lookup itself shouldn't crash on import).
+try:
+    # Compound ignore covers both:
+    #   - attr-defined: HA versions before LOVELACE_DATA shipped
+    #   - unused-ignore: HA versions where the symbol IS exported and
+    #     local mypy would otherwise grumble that the ignore is unused.
+    from homeassistant.components.lovelace.const import (  # type: ignore[attr-defined,unused-ignore]
+        LOVELACE_DATA,
+    )
+except ImportError:  # pragma: no cover — fallback for HA before LOVELACE_DATA shipped
+    LOVELACE_DATA = None  # type: ignore[assignment,unused-ignore]
+
 _LOGGER = logging.getLogger(__name__)
 
 URL_BASE = "/linz-linien-austria"
+
+# Cap on _async_wait_for_lovelace_resources retry ticks. Each tick is 5s,
+# so 60 ticks = 5 min. Reaching the cap means Lovelace's resource loader
+# never flipped `loaded` — broken storage, YAML-mode race during reload,
+# or future Lovelace internals change. Cheaper to surface the bad state
+# with one warning than poll forever.
+_LOVELACE_LOAD_RETRY_MAX = 60
+_LOVELACE_LOAD_RETRY_INTERVAL_S = 5
 
 JSMODULES: list[dict[str, str]] = [
     {
@@ -43,7 +66,14 @@ class JSModuleRegistration:
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the registrar."""
         self.hass = hass
-        self.lovelace = self.hass.data.get("lovelace")
+        # Prefer the typed HassKey introduced in HA 2024.x — the bare
+        # string lookup is what HA core can rename without notice (see
+        # the `mode` → `resource_mode` rename acknowledged in the
+        # module docstring).
+        if LOVELACE_DATA is not None:
+            self.lovelace = self.hass.data.get(LOVELACE_DATA)
+        else:
+            self.lovelace = self.hass.data.get("lovelace")
 
     async def async_register(self) -> None:
         """Register frontend resources."""
@@ -83,14 +113,34 @@ class JSModuleRegistration:
         """Wait for Lovelace resources to load, then register modules."""
         # Guarded by async_register(); narrow the Optional for mypy --strict.
         assert self.lovelace is not None
+        attempts = 0
 
         async def _check_loaded(_now: Any) -> None:
+            nonlocal attempts
             assert self.lovelace is not None
             if self.lovelace.resources.loaded:
                 await self._async_register_modules()
-            else:
-                _LOGGER.debug("Lovelace resources not loaded, retrying in 5s")
-                async_call_later(self.hass, 5, _check_loaded)
+                return
+            attempts += 1
+            if attempts >= _LOVELACE_LOAD_RETRY_MAX:
+                _LOGGER.warning(
+                    "Lovelace resources never reported `loaded` after %d × %ds "
+                    "(broken storage, YAML-mode race, or Lovelace internals "
+                    "change?). Giving up — users on storage mode will need to "
+                    "reload the integration once Lovelace is back online.",
+                    _LOVELACE_LOAD_RETRY_MAX,
+                    _LOVELACE_LOAD_RETRY_INTERVAL_S,
+                )
+                return
+            _LOGGER.debug(
+                "Lovelace resources not loaded, retrying in %ds (%d/%d)",
+                _LOVELACE_LOAD_RETRY_INTERVAL_S,
+                attempts,
+                _LOVELACE_LOAD_RETRY_MAX,
+            )
+            async_call_later(
+                self.hass, _LOVELACE_LOAD_RETRY_INTERVAL_S, _check_loaded
+            )
 
         await _check_loaded(0)
 
