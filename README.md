@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![HA min version](https://img.shields.io/badge/Home%20Assistant-%3E%3D2025.1-blue.svg)](https://www.home-assistant.io/)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/rolandzeiner/linz-linien-austria/releases)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/rolandzeiner/linz-linien-austria/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![vibe-coded](https://img.shields.io/badge/vibe-coded-ff69b4?logo=musicbrainz&logoColor=white)](https://en.wikipedia.org/wiki/Vibe_coding)
 
@@ -52,7 +52,14 @@ them.
   serialised 15 s domain-wide cooldown across every entry + the
   alerts feed. Exponential backoff on consecutive failures (caps at
   30 min) so a sustained outage settles into a slow poll instead of
-  hammering the upstream.
+  hammering the upstream. Request-refresh storms (options-flow save,
+  manual reload, dashboard edit-mode flip) are absorbed by a 15 s
+  debouncer so the EFA endpoint never sees a burst of redundant
+  requests.
+- **No long-term statistics noise.** The countdown sensor now omits
+  `state_class`, so HA stops generating long-term statistics on a
+  value that has no meaningful long-term aggregate (the next-
+  departure ETA isn't a measurement worth charting).
 - **gzip-compressed responses.** Every outbound call sends
   `Accept-Encoding: gzip`; the EFAController honours it (~7× saving
   on departure responses, similar on the alerts feed).
@@ -93,6 +100,16 @@ them.
   reports a non-zero platform.
 - **Hero-only mode** — `max_departures: 0` renders the hero block
   with no row list below.
+- **Header toggle** — `hide_header: true` collapses the icon-tile +
+  stop name + direction subtitle row when you want a denser dashboard
+  tile (the hero countdown still leads).
+- **Responsive density tiers** — container queries scale font sizes,
+  badge widths, and row spacing across three breakpoints (compact /
+  default / wide), so the same card reads cleanly whether it sits in
+  a sidebar column or fills a section view.
+- **Gleis vs Steig per row** — platform label follows the upstream
+  Mode-of-Transport: `Gleis` for ÖBB-style heavy rail, `Steig` for
+  everything else (tram, bus, U-Bahn). No global config needed.
 - **A11y-first** — `prefers-reduced-motion` catch-all, focus rings,
   ≥44 px touch targets, container queries for narrow column layouts,
   `aria-pressed` on chip toggles, MoT name in row aria-labels for

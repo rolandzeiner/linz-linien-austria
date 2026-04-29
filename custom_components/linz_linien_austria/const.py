@@ -117,6 +117,6 @@ MOT_OTHER: Final = 11
 # Lovelace card — the JS file at the top declares CARD_VERSION which must
 # match this constant byte-for-byte, else the resource-version mismatch
 # triggers a reload-banner loop. Bump both in the same commit.
-CARD_VERSION: Final = "0.3.0"
+CARD_VERSION: Final = "0.4.0"
 CARD_URL_BASE: Final = "/linz-linien-austria"
 CARD_FILENAME: Final = "linz-linien-austria-card.js"
