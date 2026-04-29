@@ -3,16 +3,26 @@
 Canonical pattern from the HA developer community guide:
 https://community.home-assistant.io/t/developer-guide-embedded-lovelace-card-in-a-home-assistant-integration/974909
 
-Note for HA 2026+: the guide's code uses ``self.lovelace.mode`` but that
-attribute was renamed. The ``LovelaceData`` dataclass (see
-homeassistant/components/lovelace/__init__.py) exposes the storage/yaml
-distinction via ``resource_mode``. The version here has been adjusted.
+Storage-vs-yaml detection — ground truth verified against HA core:
+
+  * HA ≤ 2026.1: ``LovelaceData.mode: str``
+    https://github.com/home-assistant/core/blob/2026.1.0/homeassistant/components/lovelace/__init__.py
+  * HA ≥ 2026.2: ``LovelaceData.resource_mode: str`` (clean rename)
+    https://github.com/home-assistant/core/blob/2026.2.0/homeassistant/components/lovelace/__init__.py
+
+There is no version that ships both. ``_is_storage_mode`` reads
+whichever attribute is set so the same code works on either side
+of the rename. ``resources`` itself is a
+``ResourceYAMLCollection | ResourceStorageCollection`` union; the
+type-only import + ``cast`` below narrow it for the storage-only
+mutation calls without a runtime dependency on the typed class
+existing on every HA version.
 """
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
@@ -34,6 +44,18 @@ try:
     )
 except ImportError:  # pragma: no cover — fallback for HA before LOVELACE_DATA shipped
     LOVELACE_DATA = None  # type: ignore[assignment,unused-ignore]
+
+# `lovelace.resources` is a union of ResourceYAMLCollection (read-only)
+# and ResourceStorageCollection (exposes async_create_item /
+# async_update_item / async_delete_item). _is_storage_mode gates the
+# branches that need the storage shape; the cast() at each call site
+# narrows the union for mypy. Type-only import — the symbol is only
+# referenced in the cast string literal, never at runtime, so older HA
+# installs without this submodule layout still work.
+if TYPE_CHECKING:
+    from homeassistant.components.lovelace.resources import (
+        ResourceStorageCollection,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,8 +109,24 @@ class JSModuleRegistration:
             )
             return
         await self._async_register_path()
-        if self.lovelace is not None and self.lovelace.resource_mode == "storage":
+        if self.lovelace is not None and self._is_storage_mode():
             await self._async_wait_for_lovelace_resources()
+
+    def _is_storage_mode(self) -> bool:
+        """Read the LovelaceData storage-vs-yaml field.
+
+        The field was renamed across HA versions:
+          - HA ≤ 2026.1: ``mode``
+          - HA ≥ 2026.2: ``resource_mode``
+        Whichever is present, we read it; the other won't exist on
+        that HA version. See the module docstring for source links.
+        """
+        assert self.lovelace is not None
+        for attr in ("resource_mode", "mode"):
+            value = getattr(self.lovelace, attr, None)
+            if value is not None:
+                return bool(value == "storage")
+        return False
 
     async def _async_register_path(self) -> None:
         """Register the static HTTP path that serves the JS bundle.
@@ -147,11 +185,14 @@ class JSModuleRegistration:
     async def _async_register_modules(self) -> None:
         """Register or update JavaScript modules."""
         assert self.lovelace is not None
+        # async_register() gates this method behind _is_storage_mode(),
+        # so the resources collection is always the StorageCollection
+        # variant. cast() tells mypy to treat the union as the narrow
+        # type; runtime safety is the caller's _is_storage_mode() check.
+        resources = cast("ResourceStorageCollection", self.lovelace.resources)
         _LOGGER.debug("Installing JavaScript modules")
         existing_resources = [
-            r
-            for r in self.lovelace.resources.async_items()
-            if r["url"].startswith(URL_BASE)
+            r for r in resources.async_items() if r["url"].startswith(URL_BASE)
         ]
         for module in JSMODULES:
             url = f"{URL_BASE}/{module['filename']}"
@@ -165,7 +206,7 @@ class JSModuleRegistration:
                             module["name"],
                             module["version"],
                         )
-                        await self.lovelace.resources.async_update_item(
+                        await resources.async_update_item(
                             resource["id"],
                             {
                                 "res_type": "module",
@@ -177,7 +218,7 @@ class JSModuleRegistration:
                 _LOGGER.info(
                     "Registering %s version %s", module["name"], module["version"]
                 )
-                await self.lovelace.resources.async_create_item(
+                await resources.async_create_item(
                     {
                         "res_type": "module",
                         "url": f"{url}?v={module['version']}",
@@ -197,14 +238,13 @@ class JSModuleRegistration:
 
     async def async_unregister(self) -> None:
         """Remove Lovelace resources owned by this integration."""
-        if self.lovelace is None or self.lovelace.resource_mode != "storage":
+        if self.lovelace is None or not self._is_storage_mode():
             return
+        resources = cast("ResourceStorageCollection", self.lovelace.resources)
         for module in JSMODULES:
             url = f"{URL_BASE}/{module['filename']}"
-            resources = [
-                r
-                for r in self.lovelace.resources.async_items()
-                if r["url"].startswith(url)
+            existing = [
+                r for r in resources.async_items() if r["url"].startswith(url)
             ]
-            for resource in resources:
-                await self.lovelace.resources.async_delete_item(resource["id"])
+            for resource in existing:
+                await resources.async_delete_item(resource["id"])

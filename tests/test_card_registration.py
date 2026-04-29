@@ -119,6 +119,53 @@ async def test_async_register_yaml_mode_skips_resource_wait(
     lovelace.resources.async_create_item.assert_not_awaited()
 
 
+async def test_is_storage_mode_falls_back_to_legacy_mode_attr(
+    hass: HomeAssistant,
+) -> None:
+    """HA ≤ 2026.1 only ships ``mode`` (not ``resource_mode``).
+
+    Constructing a fake LovelaceData without ``resource_mode`` proves
+    the helper reads ``mode`` when present. SimpleNamespace excludes any
+    attr it isn't given, so the production `getattr(..., None)` chain
+    falls through to ``mode``.
+    """
+    legacy = SimpleNamespace(
+        mode="storage",
+        resources=SimpleNamespace(
+            loaded=True,
+            async_items=MagicMock(return_value=[]),
+            async_create_item=AsyncMock(),
+            async_update_item=AsyncMock(),
+            async_delete_item=AsyncMock(),
+        ),
+    )
+    _install_lovelace(hass, legacy)
+    reg = JSModuleRegistration(hass)
+    assert reg._is_storage_mode() is True
+
+
+async def test_is_storage_mode_returns_false_when_neither_attr_present(
+    hass: HomeAssistant,
+) -> None:
+    """If a future HA version renames the field again, fail closed.
+
+    Returning False keeps the registrar from attempting storage-only
+    mutations on a collection that may not support them.
+    """
+    weird = SimpleNamespace(
+        resources=SimpleNamespace(
+            loaded=True,
+            async_items=MagicMock(return_value=[]),
+            async_create_item=AsyncMock(),
+            async_update_item=AsyncMock(),
+            async_delete_item=AsyncMock(),
+        )
+    )
+    _install_lovelace(hass, weird)
+    reg = JSModuleRegistration(hass)
+    assert reg._is_storage_mode() is False
+
+
 # ---------------------------------------------------------------------------
 # _async_register_path
 # ---------------------------------------------------------------------------
