@@ -54,12 +54,7 @@ jobs:
     # Rebuilds the Lovelace card bundle from src/ and verifies the output
     # is valid JS. Catches TS errors, missing deps, and high-severity npm
     # advisories before they reach the served www/linz-linien-austria-card.js.
-    #
-    # Skipped for Python-only integrations: the job-level `if` checks for
-    # a top-level package.json so scaffolders that didn't apply the
-    # ha-lovelace-card skill don't see a spurious failure on every push.
     runs-on: ubuntu-latest
-    if: hashFiles('package.json') != ''
     steps:
       - uses: actions/checkout@v6
       - name: Guard against backticks inside Lit css/html templates
