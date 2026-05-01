@@ -58,7 +58,14 @@ class NextDepartureSensor(
     # them and emitting a WARNING every poll cycle. Frontend (card,
     # templates, /api/states) still receives them in real time — only
     # history is skipped, mirroring weather.forecast.
-    _unrecorded_attributes = frozenset({"departures", "alerts"})
+    # next_scheduled / next_realtime are ISO timestamps that change on
+    # every poll cycle — recording them generates a fresh state_attributes
+    # row per tick (~6 KB/hour per sensor) for negligible analytical value.
+    # next_delay_minutes + next_is_realtime stay recorded — those carry the
+    # actual punctuality trend.
+    _unrecorded_attributes = frozenset(
+        {"departures", "alerts", "next_scheduled", "next_realtime"}
+    )
 
     def __init__(
         self,
