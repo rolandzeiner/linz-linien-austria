@@ -53,6 +53,13 @@ class NextDepartureSensor(
     # buckets clear via Settings → System → Statistics.
     _attr_attribution = ATTRIBUTION
 
+    # Excluded from the recorder: combined size at busy stops trips the
+    # 16 KB attribute cap, so the recorder was already refusing to store
+    # them and emitting a WARNING every poll cycle. Frontend (card,
+    # templates, /api/states) still receives them in real time — only
+    # history is skipped, mirroring weather.forecast.
+    _unrecorded_attributes = frozenset({"departures", "alerts"})
+
     def __init__(
         self,
         coordinator: LinzLinienAustriaCoordinator,
