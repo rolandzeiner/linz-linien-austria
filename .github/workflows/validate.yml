@@ -54,13 +54,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          # Pinned to 3.13 — HA core's current target. Python 3.14 was
-          # tried but the dependency tree (pydantic-core / orjson /
-          # Pillow) ships pyo3 0.24 which doesn't yet support 3.14, so
-          # `pip install` falls through to a source build that fails on
-          # `the configured Python interpreter version (3.14) is newer
-          # than PyO3's maximum supported version (3.13)`. Bump back to
-          # 3.14 once the ecosystem catches up.
+          # Pinned to 3.13 — HA core's transitive deps (pydantic-core /
+          # orjson / Pillow) still ship pyo3 0.24 which refuses to build
+          # against Python ≥3.14, and these deps don't enable pyo3's
+          # `abi3` feature so PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 is
+          # a no-op for them. Tried 3.14 (CI failure verified
+          # 2026-05-01) and rolled back; bump again once
+          # `pip show pydantic_core orjson Pillow` shows pyo3 0.25+ on
+          # a fresh HA release.
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements_test.txt

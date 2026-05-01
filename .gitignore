@@ -115,3 +115,13 @@ pip-delete-this-directory.txt
 # Each contributor sets these up from the skill template; not shared.
 # ---------------------------------------------------------------------------
 scripts/
+
+# ---------------------------------------------------------------------------
+# Fallow code-quality tool — config + caches. Personal tooling; ship the
+# repo without forcing fallow on contributors. Drop the rule if you decide
+# fallow should be a project-wide standard.
+# ---------------------------------------------------------------------------
+.fallowrc.json
+.fallowrc.jsonc
+fallow.toml
+.fallow/
