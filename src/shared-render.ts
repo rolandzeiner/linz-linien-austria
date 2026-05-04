@@ -1,16 +1,6 @@
-// Shared render helpers + small utilities used by the Linz Linien
-// Austria card. Extracted so the version-banner + the WS card-version
-// probe live in one place — the card stays focused on stop/departure
-// rendering rather than carrying its own copy of the integration-
-// upgrade plumbing.
-//
-// Conventions:
-// - Pure functions: no `this`, take what they need as arguments,
-//   return a TemplateResult or a Promise. The card keeps its own
-//   reactive state (@state _versionMismatch) and calls these helpers
-//   from render() / firstUpdated().
-// - Localisation goes through the card's `translate(ctx)` shape so
-//   the helper does not own a hidden module-level language state.
+// Pure helpers for the version-mismatch banner + WS card-version probe.
+// Localisation goes through `translate(ctx)` so the module owns no
+// hidden language state.
 
 import { html, nothing, type TemplateResult } from "lit";
 

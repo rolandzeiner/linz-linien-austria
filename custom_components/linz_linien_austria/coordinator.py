@@ -84,11 +84,9 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             config_entry=entry,
             name=DOMAIN,
             update_interval=self._normal_interval,
-            # Absorb request storms (options-flow save, manual reload,
-            # dashboard edit-mode flip) so the EFA endpoint isn't hit
-            # 3-4× in quick succession. Cooldown matches the existing
-            # DOMAIN_COOLDOWN_SECONDS fair-use floor — first call goes
-            # through, subsequent calls within the window piggy-back.
+            # Absorb request-refresh storms (options-flow save, manual
+            # reload, dashboard edit-mode flip). 15 s matches the
+            # domain-wide cooldown floor.
             request_refresh_debouncer=Debouncer(
                 hass,
                 _LOGGER,

@@ -28,9 +28,8 @@ export class LinzLinienAustriaCardEditor
     this._config = { ...config };
   }
 
-  /** Translate `key` against the active HA language. Same shape as
-   *  the card's `_t()`. Centralises the `{ hassLanguage }` ctx so the
-   *  18 call sites below don't repeat it on every render. */
+  /** Translate `key` against the active HA language. Centralises the
+   *  `{ hassLanguage }` ctx so call sites don't repeat it. */
   private _t(
     key: string,
     replacements?: Record<string, string | number>,
@@ -228,11 +227,8 @@ export class LinzLinienAustriaCardEditor
         },
       },
       { name: "name", selector: { text: {} } },
-      // Toggles stacked vertically — ha-form's default layout. Putting
-      // each on its own row leaves room for the helper text under each
-      // label without crowding. Order is by salience: hero first
-      // (biggest visual element), then platform (per-row decoration),
-      // then alerts (the optional disruption banner).
+      // Order by salience: header first, then hero, then per-row
+      // decorations, then alerts banner, then animation toggles.
       { name: "hide_header", selector: { boolean: {} } },
       { name: "show_hero", selector: { boolean: {} } },
       { name: "show_platform", selector: { boolean: {} } },
@@ -240,11 +236,8 @@ export class LinzLinienAustriaCardEditor
       { name: "pulse_live", selector: { boolean: {} } },
       { name: "enable_animations", selector: { boolean: {} } },
       {
-        // max_departures gets its own row so the number-box widget
-        // doesn't get squeezed against the toggles. Min 0 = hero-only
-        // mode (just the next-departure block, no row list below it).
-        // The integration still fetches the full pool so `next` has
-        // something to point at.
+        // Min 0 = hero-only mode. The integration still fetches the
+        // full pool so `next` has something to point at.
         name: "max_departures",
         selector: { number: { min: 0, max: 30, step: 1, mode: "box" } },
       },
@@ -252,23 +245,20 @@ export class LinzLinienAustriaCardEditor
   }
 
   private _computeLabel = (field: { name: string }): string => {
-    // 1. Try HA's own translations first — common field names ("name",
-    //    "entity", "icon") are localised by HA core in every supported
-    //    language. Reusing those means the card only needs to translate
-    //    its bespoke fields. `hass.localize` returns "" for misses, not
-    //    the lookup key, so a falsy check is the right miss signal.
+    // Try HA's generic-card translations first so the card doesn't ship
+    // duplicates of "name", "entity", etc. `hass.localize` returns ""
+    // (not the key) on misses, so a falsy check is the miss signal.
     const haKey = `ui.panel.lovelace.editor.card.generic.${field.name}`;
     const ha = this.hass?.localize?.(haKey);
     if (ha) return ha;
 
-    // 2. Fall back to the card's own translation bundle.
     const key = `editor.${field.name}`;
     const localised = translate(key, {
       hassLanguage: this.hass?.language,
     });
     if (localised !== key) return localised;
 
-    // 3. Last resort: raw field name (editor still works, dev sees the gap).
+    // Last resort: raw field name keeps the editor usable + visible gap.
     return field.name;
   };
 

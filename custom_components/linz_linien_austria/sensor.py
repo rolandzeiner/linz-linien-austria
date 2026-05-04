@@ -54,15 +54,11 @@ class NextDepartureSensor(
     _attr_attribution = ATTRIBUTION
 
     # Excluded from the recorder: combined size at busy stops trips the
-    # 16 KB attribute cap, so the recorder was already refusing to store
-    # them and emitting a WARNING every poll cycle. Frontend (card,
-    # templates, /api/states) still receives them in real time — only
-    # history is skipped, mirroring weather.forecast.
-    # next_scheduled / next_realtime are ISO timestamps that change on
-    # every poll cycle — recording them generates a fresh state_attributes
-    # row per tick (~6 KB/hour per sensor) for negligible analytical value.
-    # next_delay_minutes + next_is_realtime stay recorded — those carry the
-    # actual punctuality trend.
+    # 16 KB attribute cap. Frontend still receives them in real time —
+    # only history is skipped, mirroring weather.forecast. The two ISO
+    # timestamps change every poll, so recording them adds a fresh row
+    # per tick for no analytical value; next_delay_minutes +
+    # next_is_realtime stay recorded so the punctuality trend survives.
     _unrecorded_attributes = frozenset(
         {"departures", "alerts", "next_scheduled", "next_realtime"}
     )

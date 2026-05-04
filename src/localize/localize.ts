@@ -43,11 +43,9 @@ export function resolveLang(ctx: TranslateContext): string {
  *  every `{name}` placeholder in the resolved string. Unknown keys fall
  *  through to the literal key name so missing translations are visible
  *  in dev. */
-// Static guarantee: `en` is declared as a top-level import + populated in
-// the `languages` map at module load. `noUncheckedIndexedAccess` widens
-// every index access to `… | undefined`, so we narrow once here for the
-// lookup chain. Empty-object fallback covers the impossible-but-typed
-// case of the `en` slot being absent.
+// `noUncheckedIndexedAccess` widens index access to `… | undefined`,
+// so narrow the English fallback once here. The `?? {}` covers the
+// impossible-but-typed case of the slot being absent.
 const enDict: Dict = languages.en ?? {};
 
 export function translate(

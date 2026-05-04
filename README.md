@@ -205,6 +205,9 @@ them.
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
+| `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
+| `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |
+| `enable_animations` | `false` | One-shot card-mount fade plus longer transitions on recolouring elements. |
 | `max_departures` | (none) | Cap rendered rows. `0` = hero-only mode. Card-side filters trim BEFORE this cap. |
 
 ## Use cases

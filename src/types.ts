@@ -1,8 +1,7 @@
 // Local mirror of the HA / Lovelace types this card actually uses.
-// Replaces the `custom-card-helpers` dependency — the package is
-// effectively unmaintained and bundled HA-internal types drift faster
-// than its release cadence. We only depend on a handful of fields, so
-// pinning a local shape is cheaper than a transitive npm dep.
+// We only depend on a handful of fields, so pinning a local shape is
+// cheaper than carrying a transitive npm dep that drifts behind
+// HA-internal types.
 
 /** Single entity in `hass.states`. The attributes bag is open-ended —
  *  the integration's coordinator emits the keys this card reads
@@ -55,10 +54,9 @@ export interface LovelaceCardEditor extends HTMLElement {
  *  entry below, so an HTMLElement alias suffices. */
 export type LovelaceCard = HTMLElement;
 
-/** Local `fireEvent` shim — same shape as the helper from
- *  custom-card-helpers. `bubbles: true` + `composed: true` are required
- *  so the event crosses the editor's shadow boundary and reaches the
- *  dashboard's card-editor listener. */
+/** `bubbles: true` + `composed: true` are required so the event crosses
+ *  the editor's shadow boundary and reaches the dashboard's
+ *  card-editor listener. */
 export function fireEvent<T>(
   node: HTMLElement,
   type: string,

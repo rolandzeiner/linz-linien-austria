@@ -7,9 +7,6 @@ the live coordinator payload by default. Live data is reproducible
 from a one-shot debug log enable; over-publishing it via diagnostics
 just leaks "user X catches their bus at stop Y at HH:MM" patterns into
 search-indexed issue bodies.
-
-Same shape as wiener-linien-austria's diagnostics for portfolio
-consistency.
 """
 from __future__ import annotations
 

@@ -5,8 +5,6 @@ relocations, schedule changes) via a separate ``XML_ADDINFO_REQUEST``
 endpoint. The DM_REQUEST does NOT carry them inline — fetching them is
 its own request, with a different cache lifetime than departures.
 
-Pattern mirrors wiener-linien-austria's ``alerts.py``:
-
 * One domain-wide refresh task, 5-min cadence, shared across all
   entries. Cache lives in ``hass.data[DOMAIN][ALERTS_KEY]`` and each
   entry's coordinator copies the slice it cares about into its own
@@ -49,12 +47,7 @@ REQUEST_TIMEOUT_SEC = 30
 
 @dataclass(slots=True)
 class TrafficInfo:
-    """One LINZ AG LINIEN service-disruption notice.
-
-    Schema deliberately matches the same-named dataclass in
-    wiener-linien-austria so a future shared card library would only need
-    to bridge the field names — same attributes, same downstream UI.
-    """
+    """One LINZ AG LINIEN service-disruption notice."""
 
     info_id: str  # stable upstream id
     title: str
@@ -299,12 +292,7 @@ def get_alerts_for_lines(
 
 @callback
 def async_start_alerts_refresh(hass: HomeAssistant) -> CALLBACK_TYPE | None:
-    """Schedule the domain-wide alerts refresh, idempotent.
-
-    Returns the existing unsub when the refresh is already running, so
-    the caller can register it as the entry's teardown without
-    accidentally double-cancelling.
-    """
+    """Schedule the domain-wide alerts refresh, idempotent."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     existing: CALLBACK_TYPE | None = domain_data.get(ALERTS_REFRESH_UNSUB_KEY)
     if existing is not None:
