@@ -14,17 +14,14 @@ import {
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { repeat } from "lit/directives/repeat.js";
-import {
-  HomeAssistant,
-  LovelaceCardEditor,
-} from "custom-card-helpers";
 
 import type {
   AlertInfo,
   Departure,
+  HomeAssistant,
   LinzLinienAustriaCardConfig,
+  LovelaceCardEditor,
 } from "./types";
-import { CARD_VERSION } from "./const";
 import { translate } from "./localize/localize";
 import { motColor, motIcon } from "./mot";
 import {
@@ -37,15 +34,6 @@ import { cardStyles } from "./styles";
 // `getConfigElement`. With `inlineDynamicImports: true` the editor is
 // already in this bundle.
 import "./editor";
-
-// Console banner — fixed-language because we don't have a hass instance
-// at module-load time. The user-visible card strings flow through
-// `translate()` with the active HA language.
-console.info(
-  `%c  Linz Linien Austria Card  %c  v${CARD_VERSION}  `,
-  "color: white; font-weight: bold; background: #F08000",
-  "color: white; font-weight: bold; background: dimgray",
-);
 
 interface WindowWithCustomCards extends Window {
   customCards: Array<{
@@ -127,11 +115,9 @@ export class LinzLinienAustriaCard extends LitElement {
     };
   }
 
-  /** Pull the active HA language from the live `hass` instance — same
-   *  pattern wiener-linien-austria uses. `this.hass.language` is
-   *  authoritative even when the user is on the default "Auto" profile,
-   *  unlike `localStorage.selectedLanguage` (which HA only writes when
-   *  the user picks a language *explicitly*). */
+  /** `this.hass.language` is authoritative even when the user is on
+   *  the default "Auto" profile, unlike `localStorage.selectedLanguage`
+   *  (which HA only writes when the user picks a language explicitly). */
   private _t(
     key: string,
     replacements?: Record<string, string | number>,
@@ -147,10 +133,10 @@ export class LinzLinienAustriaCard extends LitElement {
     );
   }
 
-  /** Custom shouldUpdate — `hasConfigOrEntityChanged` only watches the
-   *  singular `config.entity`, but our card *only* uses that one entity.
-   *  Use identity comparison: HA state objects are immutable, so a
-   *  different reference means a real update. */
+  /** Identity comparison on the watched entity is enough: HA state
+   *  objects are immutable, so a different reference means a real
+   *  update. The card only reads one entity, so checking that one
+   *  reference is the cheapest dirty check. */
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this.config) return false;
     if (changedProps.has("config")) return true;
@@ -257,11 +243,8 @@ export class LinzLinienAustriaCard extends LitElement {
     );
     // Walk-time (Fußweg) filter — drop any departure whose effective
     // countdown is less than the configured walk time for that line.
-    // Mirrors wiener-linien-austria's `walk_times` behaviour. Keyed
-    // by the bare line number; a missing or non-positive entry means
-    // "no walk-time filter for this line". The user can raise the
-    // integration's `limit` setting if a long Fußweg is leaving them
-    // with too few visible rows.
+    // Keyed by the bare line number; a missing or non-positive entry
+    // means "no walk-time filter for this line".
     const walkTimes = this.config.walk_times ?? {};
     const filtered = allDepartures.filter((d) => {
       if (lineFilter.size > 0 && !lineFilter.has(d.line)) return false;
@@ -280,36 +263,23 @@ export class LinzLinienAustriaCard extends LitElement {
       typeof this.config.max_departures === "number"
         ? Math.max(0, this.config.max_departures)
         : filtered.length;
-    // Hero group — every NON-CANCELLED departure that shares the
-    // soonest effective countdown. At Hauptbahnhof two trams can
-    // leave at the same minute on different platforms; surfacing
-    // both in the hero saves the user reading the row list.
-    // Falls back to a single cancelled entry when every visible
-    // departure is cancelled, so the hero still shows _something_
-    // (rendered as the cancelled treatment).
     const heroGroup = this._computeHeroGroup(filtered);
     const next = heroGroup[0];
 
-    // When the hero is on, the entries it shows are dropped from the
-    // row list so they don't appear twice. Object identity works as
-    // the dedupe key because heroGroup members are references into
-    // the same `filtered` array. The post-dedupe list is then capped
-    // at max_departures, so "max 10" continues to mean "10 rendered
-    // rows" rather than "10 rows including any duplicates of the
-    // hero". When show_hero is off the dedupe is skipped.
+    // Dedupe by object identity: heroGroup members are references into
+    // `filtered`, so the post-dedupe slice keeps "max 10" meaning
+    // "10 rendered rows" rather than "10 rows including duplicates of
+    // the hero". Skipped entirely when show_hero is off.
     const heroDedupe = this.config.show_hero !== false
       ? new Set(heroGroup)
       : new Set<Departure>();
     const remaining = filtered.filter((d) => !heroDedupe.has(d));
     const departures = max === 0 ? [] : remaining.slice(0, max);
 
-    // Header icon + accent track the next departing line's
-    // mode-of-transport. Same mechanic as wiener-linien-austria — the
-    // header reads as one with the hero block (which already adopts
-    // the line colour). Falls back to the tram default when the next
-    // departure has no MoT or there is no `next` (empty stop). User
-    // line-colour override (if set for the next line) wins over the
-    // MoT default.
+    // Header icon + accent track the next departing line so the header
+    // reads as one with the hero. User line-colour override wins over
+    // the MoT default; both fall back to the tram tint when `next` is
+    // missing.
     const headerIcon = motIcon(next?.mot);
     const headerColor =
       this._userLineColor(next?.line) ?? motColor(next?.mot);
@@ -332,11 +302,9 @@ export class LinzLinienAustriaCard extends LitElement {
       return affected.some((line) => visibleLines.has(line));
     });
 
-    // Subtitle: "<direction>" by default. With show_platform on, append
-    // a platform marker so multi-platform stops get the next-departure
-    // bay/Steig at a glance. Falls back to direction-only when the
-    // upstream didn't return a platform for that row (some stops emit
-    // platform "0" / "" for non-platformed terminals).
+    // With show_platform on, append a Steig marker. Falls back to
+    // direction-only when `_platformText()` reduces the upstream value
+    // to empty (some terminals emit "0" / "" for non-numbered bays).
     const directionText = next?.direction || "";
     const platformText = this.config.show_platform
       ? this._platformText(next)
@@ -345,18 +313,10 @@ export class LinzLinienAustriaCard extends LitElement {
       ? `${directionText} · ${this._platformLabel(next, true)} ${platformText}`
       : directionText;
 
-    // Pulse on the green Live bullet defaults on; users who haven't
-    // set the OS prefers-reduced-motion preference but still find the
-    // animation distracting can flip ``pulse_live: false`` in card
-    // config. The class lands on <ha-card> so the descendant selector
-    // in styles.ts can disable the animation everywhere it appears.
+    // Classes land on <ha-card> so descendant selectors in styles.ts
+    // can scope the animation rules. `prefers-reduced-motion` overrides
+    // both regardless of the toggles.
     const pulseLive = this.config.pulse_live !== false;
-    // Master CSS-animation toggle defaults OFF. When ON, the
-    // ``with-animations`` class lights up longer-duration transitions
-    // (mounted-card fade-in, line-badge recolour, hero state
-    // changes, alerts banner). Static look by default keeps the card
-    // calm; users who want a more lively feel opt in. The
-    // prefers-reduced-motion catch-all overrides regardless.
     const enableAnimations = !!this.config.enable_animations;
 
     return html`
@@ -538,12 +498,9 @@ export class LinzLinienAustriaCard extends LitElement {
   }
 
   private _renderHero(group: Departure[]): TemplateResult {
-    // Group is guaranteed non-empty by the caller. Lead member drives
-    // the countdown text + header colour + cancellation styling;
-    // every member contributes its own (badge + direction + flags) row
-    // so a tied-arrival pair (e.g. line 2 and line 4 both at "Jetzt")
-    // both surface in the big block instead of one being relegated to
-    // the row list.
+    // Lead drives the countdown text + accent + cancellation styling;
+    // remaining members each render their own (badge + direction +
+    // flags) row inside `.hero-meta` so tied arrivals share the block.
     const lead = group[0]!;
     const minutes = this._countdownFor(lead);
     const minutesLabel = lead.is_cancelled
@@ -697,9 +654,8 @@ export class LinzLinienAustriaCard extends LitElement {
     // mode at Linz stops without a known MoT id.
     const icon = motIcon(d.mot, "mdi:bus");
     const userColor = this._userLineColor(d.line);
-    // User override beats MoT default. Inline style on the badge keeps
-    // the override per-element (no need to spam custom-properties).
-    // Empty string when no override = no inline style added.
+    // Empty string = no inline style; the data-mot attribute selectors
+    // in styles.ts then provide the MoT default.
     const style = userColor ? `background: ${userColor};` : "";
     return html`
       <span

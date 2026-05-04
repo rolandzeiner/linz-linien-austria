@@ -4,13 +4,7 @@ Both the per-entry departure polls (coordinator.py) and the domain-wide
 alerts refresh (alerts.py) must stay above the 15 s fair-use floor *in
 aggregate*. An ``asyncio.Lock`` serialises the check-then-update so two
 concurrent callers can't both observe the same ``last_call_ts`` and
-skip the wait — same pattern wiener-linien-austria uses.
-
-The previous timestamp-only check (kept in this codebase until the lock
-landed) was vulnerable to that exact race: two entries firing at the
-same tick would both read ``last_call=0`` before either had a chance to
-write, so both would skip the cooldown and fire simultaneously. The
-lock removes that footgun.
+skip the wait.
 """
 from __future__ import annotations
 

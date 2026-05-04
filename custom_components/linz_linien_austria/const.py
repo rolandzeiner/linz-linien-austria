@@ -20,9 +20,16 @@ INTEGRATION_VERSION: Final = json.loads(
 # User-Agent sent on every outbound HTTP request. HA convention is
 # "HomeAssistant/{ha_ver} {domain}/{int_ver}" so log parsers on the
 # upstream side can identify this integration specifically (rather
-# than seeing the generic clientsession UA). Same scheme used across
-# the author's other integrations for consistent audit trails.
-USER_AGENT: Final = f"HomeAssistant/{_HA_VERSION} {DOMAIN}/{INTEGRATION_VERSION}"
+# than seeing the generic clientsession UA). The trailing
+# "(+<repo-url>)" comment follows RFC-9110 product-token-comment
+# convention so the upstream operator (LINZ AG) has a direct contact
+# point for abuse / coordination without having to find the repo by
+# guessing. Same scheme used across the author's other integrations
+# for consistent audit trails.
+USER_AGENT: Final = (
+    f"HomeAssistant/{_HA_VERSION} {DOMAIN}/{INTEGRATION_VERSION} "
+    f"(+https://github.com/rolandzeiner/linz-linien-austria)"
+)
 
 # Config entry / options keys
 CONF_STOP_ID: Final = "stop_id"

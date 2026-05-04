@@ -2,14 +2,9 @@ import { css } from "lit";
 
 /** Card styles — live in the shadow root. CSS custom properties pierce
  *  the boundary so `var(--primary-color)` etc. resolve to the user's
- *  active HA theme.
- *
- *  Container queries gate density tiers because the card commonly lives
- *  in section-view grid columns of 280–1200 px on the same screen.
- *  WCAG 1.4.10 reflow + 1.4.12 text spacing tolerated by intrinsic
- *  sizing — no fixed heights on text containers, no white-space:nowrap
- *  on user-visible strings. Touch targets ≥44 px (WCAG 2.5.8 AA via
- *  the AAA-grade 44 default).
+ *  active HA theme. Container queries gate density tiers because the
+ *  card commonly lives in section-view grid columns of 280–1200 px on
+ *  the same screen.
  */
 export const cardStyles = css`
   :host {
@@ -53,13 +48,9 @@ export const cardStyles = css`
     container-name: linzcard;
   }
 
-  /* Header row — icon tile + title block.
-     Matches the wiener-linien card layout (40 px tinted icon tile,
-     12 px gap, two-line title-block) so a stacked dashboard reads as
-     one visual family. The card sets a --header-color CSS variable on
-     .head from the next departure's MoT (tram = orange default,
-     U-Bahn = blue, bus = plum, train = grey) — icon-tile's tint and
-     icon colour both inherit, so the header recolours every refresh. */
+  /* Header row — icon tile + title block. The card sets --header-color
+     from the next departure's MoT; icon-tile's tint and icon colour
+     both inherit, so the header recolours every refresh. */
   .head {
     display: flex;
     align-items: center;
@@ -109,9 +100,8 @@ export const cardStyles = css`
     white-space: nowrap;
   }
 
-  /* Header right-side actions (maps link). Same affordance + sizing as
-     wiener-linien-austria's .icon-action so a stacked dashboard reads
-     as one visual family. min-width/min-height meet WCAG 2.5.8 AA. */
+  /* Header right-side actions (maps link). 40 px touch target meets
+     WCAG 2.5.8 AA. */
   .head-actions {
     display: inline-flex;
     align-items: center;
@@ -182,10 +172,7 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
   }
   /* Hero meta — column of (badge + direction + flags) rows. One row
-     per departure in the group; almost always 1 entry, occasionally
-     2+ when several lines share the same arrival minute (e.g. tram 2
-     and tram 4 both at "Jetzt" on Hauptbahnhof). Each row uses the
-     same flex-wrap-row treatment as before so tags spill to a second
+     per departure in the group; rows wrap so tags spill to a second
      line on narrow column widths. */
   .hero-meta {
     display: flex;
@@ -252,10 +239,9 @@ export const cardStyles = css`
     flex-shrink: 0;
   }
 
-  /* Departures list — tightened to match the wiener-linien tile-card
-     row density. 6 px vertical padding, hairline divider, no border on
-     last child. The list itself sits inside the same horizontal padding
-     as the header so badges align with the icon-tile. */
+  /* Departures list — 6 px vertical padding, hairline divider, no
+     border on last child. Inside the same horizontal padding as the
+     header so badges align with the icon-tile. */
   .departures {
     list-style: none;
     margin: var(--ha-spacing-2, 8px) 0 0;
@@ -369,16 +355,11 @@ export const cardStyles = css`
   }
 
   /* === Master CSS-animation suite — opt-in via enable_animations.
-     Off by default (most users prefer a calm dashboard). When on,
-     adds a one-shot card-mount fade-in plus longer-duration colour /
-     background transitions on the elements that recolour during a
-     refresh: line badge, hero accent, row-time state classes, alerts
-     banner. The prefers-reduced-motion catch-all later in this
-     stylesheet overrides every rule below regardless of the toggle. */
+     The prefers-reduced-motion catch-all later in this stylesheet
+     overrides every rule below regardless of the toggle. */
 
   /* One-shot card mount — Lit doesn't re-mount <ha-card> on hass
-     updates, so this fires once and stays still. Subtle: 6px upward
-     translate fading from 0 → 1 over 400ms ease-out. */
+     updates, so this fires once and stays still. */
   ha-card.with-animations {
     animation: linzCardEnter 0.4s ease-out;
   }
@@ -393,10 +374,7 @@ export const cardStyles = css`
     }
   }
 
-  /* Smoothed transitions on the surfaces that recolour during the
-     normal refresh cycle. The 0.4s window is long enough that the
-     change is "noticed" rather than jumping, short enough that the
-     user isn't waiting on it. */
+  /* Smoothed transitions on surfaces that recolour during refresh. */
   ha-card.with-animations .icon-tile,
   ha-card.with-animations .hero,
   ha-card.with-animations .hero-min,
@@ -408,15 +386,12 @@ export const cardStyles = css`
       box-shadow var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
   }
 
-  /* Hero block recolour stays in sync with its background tint by
-     piping the same transition window onto its background. */
+  /* Hero block recolour transition runs on background-color too. */
   ha-card.with-animations .hero {
     transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
   }
 
-  /* Row hover — soft tint that fades in/out so brushing the cursor
-     across the list doesn't feel snappy. Pairs with the existing
-     focus-visible outline (which is intentionally instant). */
+  /* Row hover tint — focus-visible outline stays instant. */
   ha-card.with-animations .row {
     transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
   }
@@ -428,10 +403,7 @@ export const cardStyles = css`
     );
   }
 
-  /* Alerts banner — soft fade-in on first render of the section.
-     The collapse/expand animation already exists via the
-     grid-template-rows pattern below; the wrapper fade adds polish
-     to the very first time a notice appears. */
+  /* Alerts banner — fade-in on first render of the section. */
   ha-card.with-animations .alerts {
     animation: linzAlertsFadeIn 0.5s ease-out;
   }
@@ -447,12 +419,9 @@ export const cardStyles = css`
   }
 
   /* Departure-row enter — fires when a NEW row is mounted, not on
-     every refresh. Lit's repeat() with a stable key reuses the DOM
-     for entries that survive a refresh, so this animation only
-     plays for genuinely new arrivals (a previously hidden line
-     coming back into the visible window, or the user expanding
-     max_departures). The slight horizontal slide makes the
-     direction-of-travel "from outside" without overdoing it. */
+     every refresh. Lit's repeat() with a stable key (see _depKey)
+     reuses DOM for entries that survive a refresh, so this animation
+     only plays for genuinely new arrivals. */
   ha-card.with-animations .row {
     animation: linzRowEnter 0.32s ease-out backwards;
   }
@@ -468,11 +437,9 @@ export const cardStyles = css`
   }
 
   /* Hero-entry enter — fires when a departure is promoted into the
-     hero (its countdown ticks down enough to make it the soonest, OR
-     a tied second arrival joins the existing Jetzt group). Same
-     repeat()-with-stable-key trick keeps existing hero members from
-     replaying the animation each tick. The slight upward slide +
-     scale-up reads as "entering centre stage" while staying calm. */
+     hero (countdown ticks down to soonest, or a tied arrival joins
+     the Jetzt group). Same repeat()-with-stable-key trick keeps
+     existing hero members from replaying every tick. */
   ha-card.with-animations .hero-entry {
     animation: linzHeroEntryEnter 0.42s ease-out backwards;
   }
@@ -547,9 +514,7 @@ export const cardStyles = css`
     color: var(--warning-color, #ff9800);
     flex-shrink: 0;
   }
-  /* Chevron — rotates 180° when the <details> element is open. Same
-     pattern wiener-linien-austria uses, but driven by native
-     details[open] instead of a hand-managed _expanded set. */
+  /* Chevron — rotates 180° when the <details> element is open. */
   .alerts-chevron {
     margin-left: auto;
     --mdc-icon-size: 20px;
@@ -655,12 +620,10 @@ export const cardStyles = css`
     font-style: italic;
   }
 
-  /* Footer — same shape as wiener-linien-austria's .foot. Hairline
-     divider, small text, right-pinned timestamp/attribution. Sits
-     inside the card's horizontal padding so it lines up with the
-     departure rows above. NOTE: never use backticks inside this CSS
-     template — the whole string is wrapped in css''...'' (tagged
-     template), so any inner backtick terminates the literal early. */
+  /* Footer — hairline divider, small text, right-pinned attribution.
+     NOTE: never use backticks inside this CSS template — the whole
+     string is wrapped in a css'...' tagged template, so any inner
+     backtick terminates the literal early. */
   .foot {
     display: flex;
     align-items: center;
@@ -740,8 +703,7 @@ export const cardStyles = css`
 `;
 
 /** Editor styles. HA form components ship their own theming — keep
- *  editor CSS to layout + spacing only. The per-line widgets at the
- *  bottom mirror wiener-linien-austria's editor section pattern. */
+ *  editor CSS to layout + spacing only. */
 export const editorStyles = css`
   :host {
     display: block;
@@ -919,9 +881,9 @@ export const editorStyles = css`
     border-left: 1px solid var(--divider-color);
   }
 
-  /* Colour pill — the wiener-linien chip pattern: tinted pill with
-     icon + hex text, the actual <input type=color> sits invisibly on
-     top so the OS picker opens on click anywhere on the chip. */
+  /* Colour pill — tinted pill with icon + hex text. The actual
+     <input type="color"> sits invisibly on top so the OS picker opens
+     on click anywhere on the chip. */
   .per-line-color-chip {
     --swatch-color: var(--linz-accent, #f08000);
     position: relative;

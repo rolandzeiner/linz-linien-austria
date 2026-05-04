@@ -40,7 +40,8 @@ from custom_components.linz_linien_austria.http import base_request_headers
 
 _UA_PATTERN = re.compile(
     r"^HomeAssistant/[0-9.]+(?:[a-zA-Z0-9.\-+]+)?\s"
-    rf"{re.escape(DOMAIN)}/{re.escape(INTEGRATION_VERSION)}$"
+    rf"{re.escape(DOMAIN)}/{re.escape(INTEGRATION_VERSION)}\s"
+    r"\(\+https://github\.com/rolandzeiner/linz-linien-austria\)$"
 )
 
 
