@@ -198,6 +198,7 @@ class JSModuleRegistration:
         ]
         for module in JSMODULES:
             url = f"{URL_BASE}/{module['filename']}"
+            versioned_url = f"{url}?v={module['version']}"
             registered = False
             for resource in existing_resources:
                 if self._get_path(resource["url"]) == url:
@@ -208,23 +209,36 @@ class JSModuleRegistration:
                             module["name"],
                             module["version"],
                         )
-                        await resources.async_update_item(
-                            resource["id"],
-                            {
-                                "res_type": "module",
-                                "url": f"{url}?v={module['version']}",
-                            },
-                        )
+                        try:
+                            await resources.async_update_item(
+                                resource["id"],
+                                {"res_type": "module", "url": versioned_url},
+                            )
+                        except Exception as update_err:  # noqa: BLE001
+                            # Broad catch is deliberate. async_update_item
+                            # can fail with HomeAssistantError, KeyError
+                            # (row evicted between async_items() and the
+                            # update call), or another concrete class that
+                            # has shifted across HA core versions. The
+                            # recovery is the same regardless: drop and
+                            # recreate. Same observable state for the
+                            # dashboard, fresh resource id (which the
+                            # dashboard never holds externally).
+                            _LOGGER.debug(
+                                "async_update_item failed (%s), trying delete+recreate",
+                                update_err,
+                            )
+                            await resources.async_delete_item(resource["id"])
+                            await resources.async_create_item(
+                                {"res_type": "module", "url": versioned_url}
+                            )
                     break
             if not registered:
                 _LOGGER.info(
                     "Registering %s version %s", module["name"], module["version"]
                 )
                 await resources.async_create_item(
-                    {
-                        "res_type": "module",
-                        "url": f"{url}?v={module['version']}",
-                    }
+                    {"res_type": "module", "url": versioned_url}
                 )
 
     def _get_path(self, url: str) -> str:
