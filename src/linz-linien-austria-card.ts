@@ -14,17 +14,14 @@ import {
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { repeat } from "lit/directives/repeat.js";
-import {
-  HomeAssistant,
-  LovelaceCardEditor,
-} from "custom-card-helpers";
 
 import type {
   AlertInfo,
   Departure,
+  HomeAssistant,
   LinzLinienAustriaCardConfig,
+  LovelaceCardEditor,
 } from "./types";
-import { CARD_VERSION } from "./const";
 import { translate } from "./localize/localize";
 import { motColor, motIcon } from "./mot";
 import {
@@ -37,15 +34,6 @@ import { cardStyles } from "./styles";
 // `getConfigElement`. With `inlineDynamicImports: true` the editor is
 // already in this bundle.
 import "./editor";
-
-// Console banner — fixed-language because we don't have a hass instance
-// at module-load time. The user-visible card strings flow through
-// `translate()` with the active HA language.
-console.info(
-  `%c  Linz Linien Austria Card  %c  v${CARD_VERSION}  `,
-  "color: white; font-weight: bold; background: #F08000",
-  "color: white; font-weight: bold; background: dimgray",
-);
 
 interface WindowWithCustomCards extends Window {
   customCards: Array<{

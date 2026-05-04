@@ -1,15 +1,13 @@
 import { LitElement, html, TemplateResult, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import {
-  HomeAssistant,
-  fireEvent,
-  LovelaceCardEditor,
-} from "custom-card-helpers";
 
-import type {
-  Departure,
-  HaFormSchema,
-  LinzLinienAustriaCardConfig,
+import {
+  fireEvent,
+  type Departure,
+  type HaFormSchema,
+  type HomeAssistant,
+  type LinzLinienAustriaCardConfig,
+  type LovelaceCardEditor,
 } from "./types";
 import { editorStyles } from "./styles";
 import { translate } from "./localize/localize";
