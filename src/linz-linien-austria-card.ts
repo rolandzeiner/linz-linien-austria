@@ -162,17 +162,37 @@ export class LinzLinienAustriaCard extends LitElement {
     return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
   }
 
-  protected render(): TemplateResult {
-    // Fire the WS card-version probe once on first render where hass
-    // is available. Mismatch flips _versionMismatch which Lit treats
-    // as a reactive state property → next render shows the banner.
-    if (!this._versionCheckDone && this.hass) {
-      this._versionCheckDone = true;
-      void checkCardVersionWS(this.hass).then((mismatch) => {
-        if (mismatch) this._versionMismatch = mismatch;
-      });
-    }
+  /** Lit's textbook one-shot init hook — fires after the first render
+   *  has committed and the shadow DOM is mounted. Doing the WS probe
+   *  here (instead of inline in `render()`) keeps `render()` free of
+   *  side effects and avoids tripping any "render must be pure" guard
+   *  Lit may add in future versions. */
+  protected firstUpdated(): void {
+    this._maybeRunVersionCheck();
+  }
 
+  /** Subsequent reactive updates may bring `hass` in for the first
+   *  time (HA sometimes mounts the card before assigning hass). Re-try
+   *  the probe on every update until it has fired exactly once. */
+  protected updated(_changedProps: PropertyValues): void {
+    this._maybeRunVersionCheck();
+  }
+
+  private _maybeRunVersionCheck(): void {
+    if (this._versionCheckDone || !this.hass) return;
+    this._versionCheckDone = true;
+    void checkCardVersionWS(this.hass).then((mismatch) => {
+      // The probe round-trip can outlive the element if the user
+      // navigates away while the WS reply is in flight. Writing to a
+      // disconnected element doesn't crash Lit but does waste a render
+      // pass and tickles the "set-after-disconnect" smell that's hard
+      // to debug if it ever does become a real issue.
+      if (!mismatch || !this.isConnected) return;
+      this._versionMismatch = mismatch;
+    });
+  }
+
+  protected render(): TemplateResult {
     const ctx = {
       configLanguage: (this.config as { language?: string } | undefined)
         ?.language,

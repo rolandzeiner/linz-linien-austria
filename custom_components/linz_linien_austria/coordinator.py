@@ -14,7 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .alerts import get_alerts_for_lines
+from .alerts import get_alerts_for_lines, served_lines_from_data
 from .api import (
     EfaApiError,
     EfaHttpError,
@@ -107,7 +107,15 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # ------------------------------------------------------------------
 
     def _note_success(self) -> None:
-        """Reset the failure counter and restore the normal cadence."""
+        """Reset the failure counter and restore the normal cadence.
+
+        This is an outage detector, not a flap detector — a single
+        successful refresh fully clears the state. A flapping endpoint
+        that alternates success/failure intentionally never accumulates
+        backoff: we only want to slow down on sustained outages, not
+        on transient hiccups that the user-configured cadence can
+        already absorb.
+        """
         if self._consecutive_failures == 0:
             return
         self._consecutive_failures = 0
@@ -273,11 +281,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Slice the domain-wide alerts cache to alerts whose
         # `affected_lines` overlap any line currently serving this stop
         # (or system-wide alerts with no affected_lines list).
-        served_lines = {
-            str(d.get("line") or "")
-            for d in departures
-            if d.get("line")
-        }
+        served_lines = served_lines_from_data({"departures": departures})
         alerts = get_alerts_for_lines(self.hass, served_lines)
 
         return {

@@ -15,7 +15,6 @@ Reference: https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/fahrplan/EFA_X
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -69,12 +68,18 @@ async def _get_json(
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
     headers = base_request_headers(USER_AGENT)
     try:
-        resp = await session.get(
+        # `async with session.get(...)` releases the connection slot to
+        # aiohttp's pool deterministically on every exit branch (success,
+        # raise_for_status raise, json() decode error, timeout). A bare
+        # `await session.get(...)` leaves it pinned until garbage
+        # collection picks the response up — which under load means the
+        # connection limiter throttles needlessly.
+        async with session.get(
             url, params=params, headers=headers, timeout=timeout
-        )
-        resp.raise_for_status()
-        data = await resp.json(content_type=None)
-    except asyncio.TimeoutError as err:
+        ) as resp:
+            resp.raise_for_status()
+            data = await resp.json(content_type=None)
+    except TimeoutError as err:
         raise EfaTimeoutError(f"timeout after {REQUEST_TIMEOUT_SEC}s") from err
     except aiohttp.ClientResponseError as err:
         raise EfaHttpError(err.status, err.message or "") from err

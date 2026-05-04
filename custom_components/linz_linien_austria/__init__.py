@@ -1,7 +1,6 @@
 """Linz Linien Austria integration."""
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import voluptuous as vol
@@ -27,7 +26,6 @@ from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordina
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-_LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
@@ -87,18 +85,26 @@ async def async_setup_entry(
     """Set up Linz Linien Austria from a config entry."""
     domain_data = hass.data.setdefault(DOMAIN, {})
 
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    # HA auto-invokes coordinator._async_setup() inside this call before the
+    # first fetch; raises ConfigEntryNotReady on fetch failure.
+    #
+    # Bootstrap the entry-count + alerts task ONLY after first_refresh
+    # succeeds. If the very first refresh raises ConfigEntryNotReady, HA
+    # never calls async_unload_entry, so any work we did here would never
+    # be undone — the counter would drift up on every retry and the alerts
+    # task would never stop on the last entry's failure cascade.
+    await coordinator.async_config_entry_first_refresh()
+
     # Domain-wide alerts refresh — start lazily when the first entry
-    # comes up, run a one-shot refresh now so the coordinator's first
-    # fetch can already slice alerts into its payload.
+    # comes up. Order matters: refresh+start must run before the count
+    # increments so the "first entry" branch fires exactly once per
+    # zero→non-zero transition, regardless of how many flapping retries
+    # the coordinator went through to reach this point.
     if not domain_data.get(ENTRY_COUNT_KEY):
         await async_refresh_alerts(hass)
         async_start_alerts_refresh(hass)
     domain_data[ENTRY_COUNT_KEY] = (domain_data.get(ENTRY_COUNT_KEY) or 0) + 1
-
-    coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    # HA auto-invokes coordinator._async_setup() inside this call before the
-    # first fetch; raises ConfigEntryNotReady on fetch failure.
-    await coordinator.async_config_entry_first_refresh()
 
     # Register teardown only after first_refresh succeeded — running it on a
     # half-initialised coordinator that raised ConfigEntryNotReady leaks

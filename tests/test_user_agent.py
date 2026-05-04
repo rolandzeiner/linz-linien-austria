@@ -36,6 +36,7 @@ from custom_components.linz_linien_austria.const import (
     USER_AGENT,
 )
 from custom_components.linz_linien_austria.http import base_request_headers
+from .conftest import make_response_cm
 
 
 _UA_PATTERN = re.compile(
@@ -108,7 +109,10 @@ async def test_outbound_call_sends_required_headers(
     code path bypasses ``base_request_headers``.
     """
     session = MagicMock()
-    session.get = AsyncMock(return_value=_ok_resp(_BODIES[body_key]))
+    # Production sites use `async with session.get(...)`. `session.get`
+    # itself is the SYNC factory that returns the context manager;
+    # MagicMock(return_value=...) gives us that sync-call shape.
+    session.get = MagicMock(return_value=make_response_cm(_ok_resp(_BODIES[body_key])))
     await caller(session)
     sent = session.get.call_args.kwargs["headers"]
     assert sent["User-Agent"] == USER_AGENT, (

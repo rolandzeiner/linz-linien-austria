@@ -15,7 +15,7 @@ from typing import Any
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
-from .alerts import get_alerts_for_lines
+from .alerts import get_alerts_for_lines, served_lines_from_data
 from .const import ATTRIBUTION
 from .coordinator import LinzLinienAustriaConfigEntry
 
@@ -57,11 +57,7 @@ async def async_get_config_entry_diagnostics(
     """
     coordinator = entry.runtime_data
     data = coordinator.data or {}
-    served_lines = {
-        str(d.get("line") or "")
-        for d in (data.get("departures") or [])
-        if d.get("line")
-    }
+    served_lines = served_lines_from_data(data)
     alerts = get_alerts_for_lines(hass, served_lines)
 
     return {
