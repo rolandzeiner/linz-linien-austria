@@ -3,9 +3,9 @@
 # redundant with this file but harmless. Trim them as confidence grows.
 
 [tool.ruff]
-# Track the CI Python pin (see .github/workflows/validate.yml). Bump
-# both in lockstep when the upstream pyo3 stack catches up to 3.14.
-target-version = "py313"
+# Track the CI Python pin (see .github/workflows/validate.yml). Keep
+# both in lockstep.
+target-version = "py314"
 line-length = 88
 
 [tool.mypy]
