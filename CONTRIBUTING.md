@@ -15,7 +15,7 @@
 
 ## Card-version sync
 
-`src/const.ts CARD_VERSION` and `custom_components/linz_linien_austria/const.py CARD_VERSION` must stay byte-identical — `tests/test_card_version.py` enforces it.
+`manifest.json` `version` is the single source of truth. `INTEGRATION_VERSION` reads it at import time and `const.py` aliases `CARD_VERSION = INTEGRATION_VERSION`, so the Python side propagates automatically. The TS bundle does not — bump `src/const.ts CARD_VERSION` to match in the same commit and run `npm run build`. `tests/test_card_version.py` locks all three together.
 
 ## Tooling & config
 
@@ -46,14 +46,15 @@ pytest tests/ --cov-report=term-missing
 
 ## Local iteration against a live HA box
 
-`./scripts/dev-push.sh` rsyncs to your dev container. See script header for prerequisites (SSH access to the box, sudo NOPASSWD for rsync). The script runs `npm run build` automatically before pushing so direct invocation is always safe; pass `--no-build` for Python-only iteration.
+`./scripts/dev-push.sh` rsyncs to your dev container. See script header for prerequisites (SSH access to the box, sudo NOPASSWD for rsync). The script runs `npm run build` automatically before pushing so direct invocation is always safe; pass `--no-build` for Python-only iteration. `npm run build:push` chains build + dev-push (quiet) for tight card-iteration loops.
 
 ## Verification gate (must pass before pushing)
 
 - `pytest tests/ -v`
 - `mypy --strict --ignore-missing-imports custom_components/linz_linien_austria`
 - `ruff check .`
-- `npm run build` (rebuilds the card bundle from `src/`)
+- `npx tsc --noEmit` (Rollup's TS plugin is more permissive than tsc strict; this surfaces TS regressions before the bundle hides them)
+- `npm run build` (rebuilds the card bundle from `src/`; `npm run dev` for watch mode)
 - `node -c custom_components/linz_linien_austria/www/linz-linien-austria-card.js`
 
 ## Fair-use note
