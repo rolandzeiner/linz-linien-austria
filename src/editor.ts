@@ -1,4 +1,5 @@
-import { LitElement, html, TemplateResult, CSSResultGroup } from "lit";
+import { LitElement, html } from "lit";
+import type { TemplateResult, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
 import {
@@ -415,7 +416,7 @@ export class LinzLinienAustriaCardEditor
     `;
   }
 
-  protected render(): TemplateResult {
+  protected override render(): TemplateResult {
     return html`
       <div class="editor">
         <ha-form
@@ -432,5 +433,5 @@ export class LinzLinienAustriaCardEditor
     `;
   }
 
-  static styles: CSSResultGroup = editorStyles;
+  static override styles: CSSResultGroup = editorStyles;
 }

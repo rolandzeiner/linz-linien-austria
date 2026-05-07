@@ -1,6 +1,7 @@
 """Shared pytest fixtures for Linz Linien Austria tests."""
 from collections.abc import Generator
-from unittest.mock import AsyncMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.const import CONF_SCAN_INTERVAL
@@ -14,6 +15,22 @@ from custom_components.linz_linien_austria.const import (
 )
 
 pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+def make_response_cm(resp: Any) -> MagicMock:
+    """Build an async-context-manager wrapper around a fake response.
+
+    Production sites switched from `await session.get(...)` to
+    `async with session.get(...) as resp:` for deterministic
+    connection-pool release. Tests that mocked `session.get =
+    AsyncMock(return_value=resp)` need to switch to a sync-call
+    factory whose return value is itself an async CM:
+    `session.get = MagicMock(return_value=make_response_cm(resp))`.
+    """
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=resp)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    return cm
 
 # Canonical entry-data shape used across the test suite. Individual
 # tests can splat overrides via ``{**BASE_ENTRY_DATA, ...}``.

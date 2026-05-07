@@ -328,14 +328,15 @@ class _FakeResp:
     async def json(self, **_kw: Any) -> Any:
         return self._body
 
-    def __await__(self) -> Any:
-        # `session.get(...)` returns a coroutine in aiohttp; here our
-        # synchronous `get()` returns this object directly. The fetch
-        # helper does `await session.get(...)`, so make us awaitable.
-        async def _self() -> "_FakeResp":
-            return self
+    # `async with session.get(...) as resp:` requires the object the
+    # synchronous `get()` returns to be an async context manager. The
+    # production code wraps every fetch in this CM since the audit fix
+    # for deterministic connection-pool release.
+    async def __aenter__(self) -> "_FakeResp":
+        return self
 
-        return _self().__await__()
+    async def __aexit__(self, *_exc: Any) -> None:
+        return None
 
 
 async def test_async_fetch_alerts_swallows_client_error() -> None:

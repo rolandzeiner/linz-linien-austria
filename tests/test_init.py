@@ -23,7 +23,9 @@ from custom_components.linz_linien_austria.const import (
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DOMAIN,
+    ENTRY_COUNT_KEY,
 )
+from custom_components.linz_linien_austria.api import EfaTimeoutError
 
 from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
@@ -149,3 +151,39 @@ async def test_ws_card_version_returns_bundled_version(
     connection.send_result.assert_called_once_with(
         7, {"version": CARD_VERSION}
     )
+
+
+async def test_failed_first_refresh_does_not_drift_entry_count(
+    hass: HomeAssistant,
+) -> None:
+    """A first-refresh failure must not bump ENTRY_COUNT_KEY.
+
+    Regression guard for the audit fix: previously the counter was
+    bumped (and the alerts task started) BEFORE
+    ``async_config_entry_first_refresh()``. A
+    ``ConfigEntryNotReady`` raise from the first refresh skips
+    ``async_unload_entry`` entirely, so on every flapping retry the
+    counter would drift up and the alerts task would never stop on
+    the last entry's failure cascade. Both stay quiet now.
+    """
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+
+    # Drive setup through hass.config_entries — calling
+    # `async_setup_entry` directly here would put the coordinator's
+    # `async_config_entry_first_refresh` into a state HA 2026.x
+    # rejects (it must run from SETUP_IN_PROGRESS, which only the
+    # config-entries machinery transitions through).
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=EfaTimeoutError("boom"),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    domain_data = hass.data.get(DOMAIN, {})
+    # Counter must be 0 (or absent) — the bump is gated on a
+    # successful first refresh now.
+    assert (domain_data.get(ENTRY_COUNT_KEY) or 0) == 0

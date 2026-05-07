@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers.event import async_call_later
 
 from .const import CARD_VERSION
@@ -98,6 +98,13 @@ class JSModuleRegistration:
             self.lovelace = self.hass.data.get(LOVELACE_DATA)
         else:
             self.lovelace = self.hass.data.get("lovelace")
+        # Cancel handle for the in-flight `_check_loaded` retry tick. We
+        # capture it so `async_unregister` can cancel a pending retry
+        # (otherwise the tick fires post-removal against a now-stale
+        # lovelace handle). Cancelled at the top of every fresh schedule
+        # too — `_check_loaded` is the only scheduler, so a previous
+        # handle could only persist if a second scheduler raced ahead.
+        self._retry_unsub: CALLBACK_TYPE | None = None
 
     async def async_register(self) -> None:
         """Register frontend resources."""
@@ -157,6 +164,11 @@ class JSModuleRegistration:
 
         async def _check_loaded(_now: Any) -> None:
             nonlocal attempts
+            # The previous schedule has fired; clear the cancel slot so
+            # async_unregister doesn't try to cancel an already-fired
+            # handle (HA's CALLBACK_TYPE is idempotent enough but the
+            # bookkeeping stays accurate).
+            self._retry_unsub = None
             assert self.lovelace is not None
             if self.lovelace.resources.loaded:
                 await self._async_register_modules()
@@ -178,7 +190,12 @@ class JSModuleRegistration:
                 attempts,
                 _LOVELACE_LOAD_RETRY_MAX,
             )
-            async_call_later(
+            # Defensive: if a previous handle somehow still exists
+            # (shouldn't — _check_loaded just cleared its own), drop it
+            # before scheduling the next so we don't leak the prior tick.
+            if self._retry_unsub is not None:
+                self._retry_unsub()
+            self._retry_unsub = async_call_later(
                 self.hass, _LOVELACE_LOAD_RETRY_INTERVAL_S, _check_loaded
             )
 
@@ -254,6 +271,13 @@ class JSModuleRegistration:
 
     async def async_unregister(self) -> None:
         """Remove Lovelace resources owned by this integration."""
+        # Cancel any in-flight retry tick first — it's safe to call this
+        # before the storage-mode gate because the unsub closure doesn't
+        # depend on lovelace state. A pending tick that fires post-
+        # unregister would touch a stale lovelace reference.
+        if self._retry_unsub is not None:
+            self._retry_unsub()
+            self._retry_unsub = None
         if self.lovelace is None or not self._is_storage_mode():
             return
         resources = cast("ResourceStorageCollection", self.lovelace.resources)

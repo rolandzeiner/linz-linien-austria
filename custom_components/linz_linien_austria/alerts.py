@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 
 import aiohttp
@@ -239,9 +240,14 @@ async def async_fetch_alerts(
     headers = base_request_headers(USER_AGENT)
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
     try:
-        resp = await session.get(url, params=params, headers=headers, timeout=timeout)
-        resp.raise_for_status()
-        data = await resp.json(content_type=None)
+        # `async with` pairs the response with deterministic release of
+        # the underlying connection slot. See api.py::_get_json for the
+        # detailed rationale; same pool-management concern applies here.
+        async with session.get(
+            url, params=params, headers=headers, timeout=timeout
+        ) as resp:
+            resp.raise_for_status()
+            data = await resp.json(content_type=None)
     except aiohttp.ClientError as err:
         _LOGGER.debug("alerts fetch failed (network): %s", err)
         return []
@@ -266,6 +272,24 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
     domain_data[ALERTS_KEY] = [a.to_dict() for a in alerts]
     _LOGGER.debug("alerts cache refreshed: %d entries", len(alerts))
+
+
+def served_lines_from_data(data: dict[str, Any] | None) -> set[str]:
+    """Extract the set of line numbers currently serving a stop.
+
+    Shared between the coordinator (which slices the alerts cache at
+    refresh time) and diagnostics (which reproduces the same slice at
+    dump time). Identical comprehension on both sides was a tiny
+    duplication waiting to drift; centralise the field name + truthy-
+    string filter here.
+    """
+    if not isinstance(data, dict):
+        return set()
+    return {
+        str(d.get("line") or "")
+        for d in (data.get("departures") or [])
+        if d.get("line")
+    }
 
 
 def get_alerts_for_lines(
@@ -300,8 +324,6 @@ def async_start_alerts_refresh(hass: HomeAssistant) -> CALLBACK_TYPE | None:
 
     async def _tick(_now: Any) -> None:
         await async_refresh_alerts(hass)
-
-    from datetime import timedelta
 
     unsub = async_track_time_interval(
         hass, _tick, timedelta(seconds=ALERTS_REFRESH_SECONDS)

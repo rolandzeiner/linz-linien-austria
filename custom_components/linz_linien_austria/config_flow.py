@@ -100,8 +100,12 @@ def _settings_schema(
 class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Linz Linien Austria."""
 
-    # bump + add async_migrate_entry when entry.data shape changes
+    # Bump VERSION + add async_migrate_entry when entry.data shape changes
+    # in a non-additive way (renames, removals, type changes). MINOR_VERSION
+    # bumps for additive changes that older HA versions can still load.
+    # Tracks the config-entry schema, NOT the integration release version.
     VERSION = 1
+    MINOR_VERSION = 1
 
     def __init__(self) -> None:
         """Initialise transient state held across the multi-step flow."""
