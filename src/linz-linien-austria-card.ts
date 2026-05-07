@@ -3,14 +3,8 @@
 //
 // Lit 3 + Shadow DOM + Rollup, single-file HACS bundle.
 
-import {
-  LitElement,
-  html,
-  TemplateResult,
-  PropertyValues,
-  CSSResultGroup,
-  nothing,
-} from "lit";
+import { LitElement, html, nothing } from "lit";
+import type { TemplateResult, PropertyValues, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { repeat } from "lit/directives/repeat.js";
@@ -137,7 +131,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  objects are immutable, so a different reference means a real
    *  update. The card only reads one entity, so checking that one
    *  reference is the cheapest dirty check. */
-  protected shouldUpdate(changedProps: PropertyValues): boolean {
+  protected override shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this.config) return false;
     if (changedProps.has("config")) return true;
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
@@ -167,14 +161,14 @@ export class LinzLinienAustriaCard extends LitElement {
    *  here (instead of inline in `render()`) keeps `render()` free of
    *  side effects and avoids tripping any "render must be pure" guard
    *  Lit may add in future versions. */
-  protected firstUpdated(): void {
+  protected override firstUpdated(): void {
     this._maybeRunVersionCheck();
   }
 
   /** Subsequent reactive updates may bring `hass` in for the first
    *  time (HA sometimes mounts the card before assigning hass). Re-try
    *  the probe on every update until it has fired exactly once. */
-  protected updated(_changedProps: PropertyValues): void {
+  protected override updated(_changedProps: PropertyValues): void {
     this._maybeRunVersionCheck();
   }
 
@@ -192,7 +186,7 @@ export class LinzLinienAustriaCard extends LitElement {
     });
   }
 
-  protected render(): TemplateResult {
+  protected override render(): TemplateResult {
     const ctx = {
       configLanguage: (this.config as { language?: string } | undefined)
         ?.language,
@@ -752,5 +746,5 @@ export class LinzLinienAustriaCard extends LitElement {
     return null;
   }
 
-  static styles: CSSResultGroup = cardStyles;
+  static override styles: CSSResultGroup = cardStyles;
 }
