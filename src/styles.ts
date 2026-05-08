@@ -19,13 +19,15 @@ export const cardStyles = css`
     /* Brand accent — domain-specific, no HA equivalent. */
     --linz-accent: #f08000;
 
-    /* Semantic state tokens layered over HA's official semantic
-       palette (--ha-color-success / -error / -info). HA themes can
-       recolour the whole portfolio in one place; the hard-coded
-       values are the fallback for older HA versions. */
-    --linz-rt:    var(--ha-color-success, #2e7d32);
-    --linz-late:  var(--ha-color-error,   #c62828);
-    --linz-early: var(--ha-color-info,    #1565c0);
+    /* Semantic state tokens layered over HA's official flat
+       palette (--success-color / --error-color / --info-color,
+       defined in HA frontend's color.globals.ts and used by
+       HA's own components). HA themes can recolour the whole
+       portfolio in one place; the hard-coded values are the
+       fallback for older HA versions or missing themes. */
+    --linz-rt:    var(--success-color, #2e7d32);
+    --linz-late:  var(--error-color,   #c62828);
+    --linz-early: var(--info-color,    #1565c0);
 
     /* Spacing / radius / sizing — layered over the HA Design System
        so the card moves with HA when tokens evolve. Values match

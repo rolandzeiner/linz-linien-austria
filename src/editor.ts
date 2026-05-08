@@ -1,4 +1,4 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, nothing } from "lit";
 import type { TemplateResult, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
@@ -417,6 +417,15 @@ export class LinzLinienAustriaCardEditor
   }
 
   protected override render(): TemplateResult {
+    // Saved entity_id that no longer resolves in hass.states (integration
+    // removed, sensor disabled, typo in saved YAML). ha-form's entity
+    // selector only flags this with a red outline — silent for screen
+    // readers and easy to miss visually. WCAG 3.3.1 (Error
+    // Identification): surface the missing entity as a user-readable
+    // alert under the entity selector.
+    const cfgEntity = this._config.entity;
+    const entityMissing =
+      typeof cfgEntity === "string" && cfgEntity.length > 0 && !this.hass?.states?.[cfgEntity];
     return html`
       <div class="editor">
         <ha-form
@@ -427,6 +436,11 @@ export class LinzLinienAustriaCardEditor
           .computeHelper=${this._computeHelper}
           @value-changed=${this._onFormChanged}
         ></ha-form>
+        ${entityMissing
+          ? html`<ha-alert alert-type="warning">
+              ${this._t("editor.entity_missing", { entity: cfgEntity! })}
+            </ha-alert>`
+          : nothing}
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>
