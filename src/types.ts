@@ -14,6 +14,12 @@ export interface HassEntity {
     departures?: unknown;
     stop_id?: string | number;
     alerts?: unknown;
+    /** Persistent union of every line label the integration has
+     *  observed at this stop. Surfaced so the card editor's line-filter
+     *  picker can offer rush-hour / seasonal lines that aren't in the
+     *  current departure window. Empty list while the integration has
+     *  never seen a departure (fresh install before first refresh). */
+    lines_at_stop?: unknown;
     latitude?: number;
     longitude?: number;
   };

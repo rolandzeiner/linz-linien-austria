@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .alerts import get_alerts_for_lines, served_lines_from_data
@@ -32,6 +33,8 @@ from .const import (
     DEFAULT_LIMIT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    LINES_AT_STOP_STORAGE_KEY_PREFIX,
+    LINES_AT_STOP_STORAGE_VERSION,
     MAX_DEPARTURES_IN_ATTRS,
     MIN_POLL_SECONDS,
 )
@@ -62,6 +65,20 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         lines_raw = config.get(CONF_LINES) or []
         self._lines_filter: set[str] = {str(x) for x in lines_raw if x}
         self._session = async_get_clientsession(hass)
+
+        # Persistent union of every line label ever observed at this
+        # stop, surfaced via `lines_at_stop` so the card editor's
+        # line-filter picker can offer rush-hour / seasonal / nightline
+        # lines that don't have a departure inside the live window
+        # right now. The Store file is tagged with `stop_id` so a
+        # reconfigure that changes stops invalidates the cached set
+        # rather than carrying lines across to a different stop.
+        self._lines_store: Store[dict[str, Any]] = Store(
+            hass,
+            LINES_AT_STOP_STORAGE_VERSION,
+            f"{LINES_AT_STOP_STORAGE_KEY_PREFIX}.{entry.entry_id}",
+        )
+        self._lines_at_stop: set[str] = set()
 
         self._rate_limited: bool = False
         self._unsub: list[Callable[[], None]] = []
@@ -101,6 +118,56 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         for unsub in self._unsub:
             unsub()
         self._unsub.clear()
+
+    async def _async_setup(self) -> None:
+        """Load persisted state before the first refresh.
+
+        HA invokes this once inside ``async_config_entry_first_refresh``
+        before the initial fetch, so by the time `_fetch_departures`
+        unions in newly observed lines the persisted set is already
+        populated. Mismatched ``stop_id`` (a reconfigure switched the
+        entry to a different stop) is treated as "start fresh" — the
+        cached labels belong to a different physical location and would
+        mislead the card editor.
+        """
+        raw = await self._lines_store.async_load()
+        if not isinstance(raw, dict):
+            return
+        if raw.get("stop_id") != self._stop_id:
+            return
+        labels = raw.get("lines")
+        if not isinstance(labels, list):
+            return
+        self._lines_at_stop = {
+            str(label) for label in labels if isinstance(label, str) and label
+        }
+
+    async def _persist_lines_at_stop_if_changed(
+        self, observed: set[str]
+    ) -> None:
+        """Union freshly observed line labels into the persistent set.
+
+        Skips the disk write when nothing changed — most fetches at a
+        mature stop add nothing. Tagged with the current ``stop_id`` so
+        a future reconfigure to a different stop is detectable on load.
+        """
+        if not observed:
+            return
+        before = self._lines_at_stop
+        merged = before | observed
+        if merged == before:
+            return
+        self._lines_at_stop = merged
+        await self._lines_store.async_save(
+            {
+                "stop_id": self._stop_id,
+                "lines": sorted(self._lines_at_stop),
+            }
+        )
+
+    async def async_remove_storage(self) -> None:
+        """Drop the persisted lines-at-stop file (called on entry removal)."""
+        await self._lines_store.async_remove()
 
     # ------------------------------------------------------------------
     # Backoff bookkeeping
@@ -262,6 +329,18 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Successful refresh — clear any rate-limit banner.
         self._clear_rate_limit_issue()
 
+        # Harvest line labels from the FULL upstream payload before any
+        # user-side line filter is applied — the card editor's picker
+        # needs the unfiltered universe (otherwise filtering down to one
+        # line would freeze `lines_at_stop` at that single line forever).
+        observed_lines = {
+            str(d.get("line", "")).strip()
+            for d in (payload.get("departures") or [])
+            if isinstance(d, dict) and d.get("line")
+        }
+        observed_lines.discard("")
+        await self._persist_lines_at_stop_if_changed(observed_lines)
+
         # Apply the optional line filter (if the user picked specific
         # line+direction tuples, drop everything else).
         departures = payload.get("departures") or []
@@ -292,6 +371,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "departures_count": len(departures),
             "alerts": alerts,
             "alerts_count": len(alerts),
+            "lines_at_stop": sorted(self._lines_at_stop),
         }
 
 

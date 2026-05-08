@@ -57,7 +57,17 @@ class NextDepartureSensor(
     # per tick for no analytical value; next_delay_minutes +
     # next_is_realtime stay recorded so the punctuality trend survives.
     _unrecorded_attributes = frozenset(
-        {"departures", "alerts", "next_scheduled", "next_realtime"}
+        {
+            "departures",
+            "alerts",
+            "next_scheduled",
+            "next_realtime",
+            # Static-ish: only mutates when a previously-unseen line shows
+            # up at this stop (typically once on first install, rarely
+            # again). Keeping it out of the recorder avoids logging the
+            # same list every poll.
+            "lines_at_stop",
+        }
     )
 
     def __init__(
@@ -121,6 +131,11 @@ class NextDepartureSensor(
             # filter on `info_id` / `priority` / `affected_lines`.
             "alerts": data.get("alerts") or [],
             "alerts_count": data.get("alerts_count", 0),
+            # Persistent union of every line label ever observed here.
+            # The card editor's line-filter picker reads this so users
+            # can opt into rush-hour / seasonal lines that don't have a
+            # departure inside the current live window.
+            "lines_at_stop": data.get("lines_at_stop") or [],
         }
         if first is not None:
             attrs["next_line"] = first.get("line")
