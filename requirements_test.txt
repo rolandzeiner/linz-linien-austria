@@ -9,7 +9,7 @@ pytest-asyncio>=1.3.0,<2
 pytest-cov>=7.1.0,<8
 syrupy>=5.1.0,<6
 mypy>=2.1.0,<3
-ruff>=0.15.12,<1
+ruff>=0.15.13,<1
 # pycares cap not needed: HA 2026.5+ pins aiodns 4.x which speaks the
 # pycares 5 API natively, so the resolver picks pycares 5 transitively
 # without us having to cap it.
