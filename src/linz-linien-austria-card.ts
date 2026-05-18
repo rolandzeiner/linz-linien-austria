@@ -21,6 +21,7 @@ import { motColor, motIcon } from "./mot";
 import {
   checkCardVersionWS,
   renderVersionBanner,
+  safeHttpsUri,
 } from "./shared-render";
 import { cardStyles } from "./styles";
 
@@ -238,8 +239,11 @@ export class LinzLinienAustriaCard extends LitElement {
             : `${resolvedStopName}, Linz`,
         )
       : "";
+    // Self-built URL — passed through `safeHttpsUri` defensively so a
+    // future contributor can't wire an upstream attribute through this
+    // binding and silently bypass the allowlist (item 42).
     const mapsUrl = mapsQuery
-      ? `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`
+      ? safeHttpsUri(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
       : null;
     const openInMapsLabel = this._t("card.open_in_maps");
     // NOTE: header icon + accent are derived from `next` further down,

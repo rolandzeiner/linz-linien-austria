@@ -418,6 +418,180 @@ async def test_teardown_invokes_registered_unsubs(hass: HomeAssistant) -> None:
     assert coordinator._unsub == []
 
 
+# ---------------------------------------------------------------------
+# Persistent lines_at_stop accumulation — feeds the card editor's picker
+# ---------------------------------------------------------------------
+
+
+async def test_lines_at_stop_accumulates_across_refreshes(
+    hass: HomeAssistant,
+) -> None:
+    """Successive fetches union new line labels into the persisted set.
+
+    The card editor's line-filter picker reads `lines_at_stop`; if the
+    set were re-derived per fetch the picker would forget rush-hour /
+    seasonal lines as soon as they exited the live window. Accumulation
+    is what fixes that.
+    """
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    await coordinator._async_setup()
+
+    # First refresh exposes lines 2 and 3.
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+    assert coordinator.data is not None
+    assert coordinator.data["lines_at_stop"] == ["2", "3"]
+
+    # Second refresh: only line 17 visible right now. The persisted set
+    # must still include 2 and 3 — that's the whole point.
+    only_line_17 = {
+        "stop": parsed["stop"],
+        "departures": [
+            {"line": "17", "direction": "Auwiesen", "countdown": 5},
+        ],
+    }
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=only_line_17,
+    ):
+        await coordinator.async_refresh()
+    assert coordinator.data is not None
+    assert coordinator.data["lines_at_stop"] == ["17", "2", "3"]
+
+
+async def test_lines_at_stop_harvested_before_user_filter(
+    hass: HomeAssistant,
+) -> None:
+    """The harvest must use the unfiltered upstream payload.
+
+    If the user filters to one line+direction, the picker still has to
+    show every line that serves the stop — otherwise narrowing the
+    filter would freeze the picker at that one line forever.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=BASE_ENTRY_DATA,
+        options={CONF_LINES: ["2:solarCity"]},
+        title=BASE_ENTRY_DATA[CONF_STOP_NAME],
+        unique_id=f"stop_{BASE_ENTRY_DATA[CONF_STOP_ID]}",
+    )
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    await coordinator._async_setup()
+
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+
+    assert coordinator.data is not None
+    # Filtered departures show only line 2…
+    assert {d["line"] for d in coordinator.data["departures"]} == {"2"}
+    # …but lines_at_stop still has every line in the raw payload.
+    assert coordinator.data["lines_at_stop"] == ["2", "3"]
+
+
+async def test_lines_at_stop_persists_across_coordinator_instances(
+    hass: HomeAssistant,
+) -> None:
+    """A second coordinator for the same entry rehydrates the set on setup."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    await coordinator._async_setup()
+
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+    assert coordinator.data["lines_at_stop"] == ["2", "3"]
+
+    # Simulate HA restart: brand-new coordinator, same entry. After
+    # `_async_setup` it must restore the persisted set without needing
+    # a fresh fetch.
+    rehydrated = LinzLinienAustriaCoordinator(hass, entry)
+    await rehydrated._async_setup()
+    assert rehydrated._lines_at_stop == {"2", "3"}
+
+
+async def test_lines_at_stop_drops_when_stop_id_changes(
+    hass: HomeAssistant,
+) -> None:
+    """A reconfigure to a different stop must invalidate the cached labels.
+
+    Cached lines belong to the old physical stop and would mislead the
+    card editor at the new stop. Mismatched `stop_id` on load → start
+    fresh.
+    """
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    await coordinator._async_setup()
+
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+    assert coordinator._lines_at_stop == {"2", "3"}
+
+    # Same entry_id, different stop_id (post-reconfigure). The stored
+    # file still has the old stop_id tag, so the new instance's
+    # `_async_setup` must NOT load from it.
+    moved_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**BASE_ENTRY_DATA, CONF_STOP_ID: "99999999"},
+        options={},
+        title="Some other stop",
+        unique_id="stop_99999999",
+        entry_id=entry.entry_id,
+    )
+    moved_entry.add_to_hass(hass)
+    moved_coordinator = LinzLinienAustriaCoordinator(hass, moved_entry)
+    await moved_coordinator._async_setup()
+    assert moved_coordinator._lines_at_stop == set()
+
+
+async def test_async_remove_storage_clears_persisted_state(
+    hass: HomeAssistant,
+) -> None:
+    """`async_remove_storage` removes the file so a re-add starts fresh."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+    await coordinator._async_setup()
+
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+
+    await coordinator.async_remove_storage()
+
+    rehydrated = LinzLinienAustriaCoordinator(hass, entry)
+    await rehydrated._async_setup()
+    assert rehydrated._lines_at_stop == set()
+
+
 # Quiet timedelta import — avoids "imported but unused" if the test
 # module is later trimmed.
 assert timedelta is not None

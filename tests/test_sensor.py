@@ -42,6 +42,10 @@ async def test_sensor_state_and_attributes(hass: HomeAssistant) -> None:
     assert state.attributes["next_delay_minutes"] == 1
     assert len(state.attributes["departures"]) == 2
     assert state.attributes["unit_of_measurement"] == "min"
+    # The first refresh seeds `lines_at_stop` from the live snapshot.
+    # The card editor reads this so its line picker can show every
+    # line the integration has ever seen — not just the live window.
+    assert state.attributes["lines_at_stop"] == ["2", "3"]
 
 
 async def test_sensor_returns_none_with_empty_departures(

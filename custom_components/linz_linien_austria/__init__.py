@@ -14,6 +14,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import CoreState, Event, HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.storage import Store
 
 from .alerts import (
     async_refresh_alerts,
@@ -21,7 +22,13 @@ from .alerts import (
     async_stop_alerts_refresh,
 )
 from .card_registration import JSModuleRegistration
-from .const import CARD_VERSION, DOMAIN, ENTRY_COUNT_KEY
+from .const import (
+    CARD_VERSION,
+    DOMAIN,
+    ENTRY_COUNT_KEY,
+    LINES_AT_STOP_STORAGE_KEY_PREFIX,
+    LINES_AT_STOP_STORAGE_VERSION,
+)
 from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordinator
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -155,12 +162,21 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: HomeAssistant, entry: LinzLinienAustriaConfigEntry
 ) -> None:
-    """Drop the Lovelace resource when the LAST config entry is removed.
+    """Drop persisted state for this entry, plus the Lovelace resource on the last entry.
 
-    The card resource is registered once globally per integration, so
-    reloading or removing a single entry must not remove it. Only when no
-    other entries of this domain remain do we unregister.
+    The per-entry ``lines_at_stop`` Store file is owned by this entry — remove it
+    unconditionally so a future re-add starts fresh and stale paths don't accumulate.
+    The card resource is registered once globally per integration, so reloading or
+    removing a single entry must not remove it; only when no other entries of this
+    domain remain do we unregister.
     """
+    lines_store: Store[dict[str, Any]] = Store(
+        hass,
+        LINES_AT_STOP_STORAGE_VERSION,
+        f"{LINES_AT_STOP_STORAGE_KEY_PREFIX}.{entry.entry_id}",
+    )
+    await lines_store.async_remove()
+
     remaining = [
         e
         for e in hass.config_entries.async_entries(DOMAIN)

@@ -1,4 +1,4 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, nothing } from "lit";
 import type { TemplateResult, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
@@ -42,15 +42,32 @@ export class LinzLinienAustriaCardEditor
     );
   }
 
-  /** Lines available for the picker dropdown — drawn from the picked
-   *  entity's live ``departures`` attribute, plus any line the user
-   *  already configured. Sorted natural-numerically with case-
-   *  insensitive tiebreaker. */
+  /** Lines available for the picker dropdown — union of:
+   *
+   *  1. ``lines_at_stop`` (persistent set on the sensor): every line
+   *     label the integration has ever observed at the configured stop.
+   *     This is the authoritative source — covers rush-hour-only,
+   *     seasonal, and nightline routes that aren't in the current live
+   *     departure window.
+   *  2. ``departures`` (the live snapshot): catches lines that just
+   *     started serving the stop in the moments before the persistent
+   *     set has caught up (also covers a fresh install with no history).
+   *  3. Any line already in the saved ``lines`` config — so a custom
+   *     line typed by the user stays visible as a chip even when it
+   *     hasn't appeared in either source above.
+   *
+   *  Sorted natural-numerically with a case-insensitive tiebreaker. */
   private _allKnownLines(): string[] {
     const seen = new Set<string>();
     const entityId = this._config.entity;
     if (entityId && this.hass) {
       const stateObj = this.hass.states[entityId];
+      const persistent = stateObj?.attributes?.lines_at_stop;
+      if (Array.isArray(persistent)) {
+        for (const l of persistent) {
+          if (typeof l === "string" && l) seen.add(l);
+        }
+      }
       const deps = stateObj?.attributes?.departures as
         | Departure[]
         | undefined;
@@ -417,6 +434,15 @@ export class LinzLinienAustriaCardEditor
   }
 
   protected override render(): TemplateResult {
+    // Saved entity_id that no longer resolves in hass.states (integration
+    // removed, sensor disabled, typo in saved YAML). ha-form's entity
+    // selector only flags this with a red outline — silent for screen
+    // readers and easy to miss visually. WCAG 3.3.1 (Error
+    // Identification): surface the missing entity as a user-readable
+    // alert under the entity selector.
+    const cfgEntity = this._config.entity;
+    const entityMissing =
+      typeof cfgEntity === "string" && cfgEntity.length > 0 && !this.hass?.states?.[cfgEntity];
     return html`
       <div class="editor">
         <ha-form
@@ -427,6 +453,11 @@ export class LinzLinienAustriaCardEditor
           .computeHelper=${this._computeHelper}
           @value-changed=${this._onFormChanged}
         ></ha-form>
+        ${entityMissing
+          ? html`<ha-alert alert-type="warning">
+              ${this._t("editor.entity_missing", { entity: cfgEntity! })}
+            </ha-alert>`
+          : nothing}
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>

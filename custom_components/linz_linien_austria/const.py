@@ -119,3 +119,11 @@ ATTRIBUTION: Final = "Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0"
 CARD_VERSION: Final = INTEGRATION_VERSION
 CARD_URL_BASE: Final = "/linz-linien-austria"
 CARD_FILENAME: Final = "linz-linien-austria-card.js"
+
+# Per-entry persistent record of every line ever seen at the configured
+# stop. The card editor's line-filter picker reads this so the user can
+# select rush-hour-only or seasonal lines that aren't in the current
+# departure window. Tagged with `stop_id` so a reconfigure that changes
+# stops invalidates stale cached lines instead of carrying them across.
+LINES_AT_STOP_STORAGE_VERSION: Final = 1
+LINES_AT_STOP_STORAGE_KEY_PREFIX: Final = f"{DOMAIN}.lines_at_stop"
