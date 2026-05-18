@@ -64,6 +64,11 @@ them.
 - **gzip-compressed responses.** Every outbound call sends
   `Accept-Encoding: gzip`; the EFAController honours it (~7× saving
   on departure responses, similar on the alerts feed).
+- **`lines_at_stop` attribute.** The sensor accumulates the union of
+  every line label observed at the configured stop and exposes it
+  for templates and the bundled card. Persists across HA restarts
+  via a per-entry Store; reconfiguring to a different stop
+  invalidates the cache. *(0.6.0)*
 
 ### Bundled Lovelace card (`linz-linien-austria-card`)
 
@@ -88,7 +93,11 @@ them.
   via *Show traffic info* in the editor.
 - **Card-side line filter** — chip widget with MDI-iconed chips
   (mode-of-transport icon + line number, MoT-coloured). Click to
-  toggle. Custom-value text input for rush-hour-only routes.
+  toggle. The picker shows every line ever seen at this stop (not
+  just currently-departing), so nightline / rush-hour / seasonal
+  routes stay visible even outside their live service window
+  *(0.6.0)*. Custom-value text input is still available for lines
+  the picker hasn't observed yet.
 - **Per-line walk time (Fußweg)** — drop departures that you couldn't
   catch given your walk to the stop. Per-line minutes input in the
   editor; each line's walk time is independent.
