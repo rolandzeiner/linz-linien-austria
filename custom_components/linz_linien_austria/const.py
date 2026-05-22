@@ -65,7 +65,7 @@ BACKOFF_CAP_SECONDS: Final = 1800
 API_BASE_URL: Final = "https://www.linzag.at/static"
 DM_ENDPOINT: Final = "/XML_DM_REQUEST"  # Departure Monitor
 STOPFINDER_ENDPOINT: Final = "/XML_STOPFINDER_REQUEST"  # Stop search
-# XSLT_ADDINFO_REQUEST returns the active line/stop-info notices that
+# XML_ADDINFO_REQUEST returns the active line/stop-info notices that
 # the LinzMobil app surfaces in its alerts banner. Refreshed on a
 # domain-wide 5-min cadence — these don't change any faster than
 # operator-side editorial activity (typically a few times an hour) and

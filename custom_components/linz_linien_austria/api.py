@@ -85,7 +85,11 @@ async def _get_json(
         raise EfaHttpError(err.status, err.message or "") from err
     except aiohttp.ClientError as err:
         raise EfaApiError(f"connection error: {err}") from err
-    except (aiohttp.ContentTypeError, ValueError) as err:
+    except ValueError as err:
+        # ValueError only — a genuine JSON-decode failure. An
+        # aiohttp.ContentTypeError is a ClientResponseError subclass,
+        # already caught above; json(content_type=None) suppresses it
+        # anyway.
         raise EfaPayloadError(f"invalid json: {err}") from err
 
     if not isinstance(data, dict):

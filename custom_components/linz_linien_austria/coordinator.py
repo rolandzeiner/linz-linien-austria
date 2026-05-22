@@ -23,7 +23,6 @@ from .api import (
     EfaTimeoutError,
     fetch_departures,
 )
-from .rate_limit import async_enforce_domain_cooldown
 from .const import (
     BACKOFF_CAP_SECONDS,
     CONF_LIMIT,
@@ -38,6 +37,7 @@ from .const import (
     MAX_DEPARTURES_IN_ATTRS,
     MIN_POLL_SECONDS,
 )
+from .rate_limit import async_enforce_domain_cooldown
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -164,10 +164,6 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "lines": sorted(self._lines_at_stop),
             }
         )
-
-    async def async_remove_storage(self) -> None:
-        """Drop the persisted lines-at-stop file (called on entry removal)."""
-        await self._lines_store.async_remove()
 
     # ------------------------------------------------------------------
     # Backoff bookkeeping

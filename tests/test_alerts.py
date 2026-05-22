@@ -146,6 +146,13 @@ def test_decode_html_leaves_overflow_numeric_entity_intact() -> None:
     assert "&#9999999999999;" in out
 
 
+def test_decode_html_drops_control_character_numeric_entity() -> None:
+    """A C0 control char (`&#0;` NUL) is dropped, not injected into prose."""
+    out = _decode_html("a&#0;b")
+    assert "\x00" not in out
+    assert out == "ab"
+
+
 # ---------------------------------------------------------------------
 # _iso_from_efa_dt — invalid-input branches
 # ---------------------------------------------------------------------

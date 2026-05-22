@@ -13,6 +13,9 @@ export interface HassEntity {
     attribution?: string;
     departures?: unknown;
     stop_id?: string | number;
+    /** Canonical stop label from the EFA upstream — used for the card
+     *  title and the Google Maps query. */
+    stop_name?: string;
     alerts?: unknown;
     /** Persistent union of every line label the integration has
      *  observed at this stop. Surfaced so the card editor's line-filter
@@ -20,8 +23,6 @@ export interface HassEntity {
      *  current departure window. Empty list while the integration has
      *  never seen a departure (fresh install before first refresh). */
     lines_at_stop?: unknown;
-    latitude?: number;
-    longitude?: number;
   };
   last_changed?: string;
   last_updated?: string;
@@ -203,7 +204,8 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
   /** Whether to render the big "next departure" hero block. Defaults true. */
   show_hero?: boolean;
   /** Cap the rendered list. Defaults to whatever the integration delivers
-   *  (already capped at 30). Useful for narrow column layouts. */
+   *  (the `departures` attribute, capped at 45 — MAX_DEPARTURES_IN_ATTRS
+   *  in const.py). Useful for narrow column layouts. */
   max_departures?: number;
   /** Card-side filter: only render departures whose ``line`` is in this
    *  set. Empty / missing means "show every line". This is independent

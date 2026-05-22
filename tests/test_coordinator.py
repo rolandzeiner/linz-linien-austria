@@ -568,30 +568,6 @@ async def test_lines_at_stop_drops_when_stop_id_changes(
     assert moved_coordinator._lines_at_stop == set()
 
 
-async def test_async_remove_storage_clears_persisted_state(
-    hass: HomeAssistant,
-) -> None:
-    """`async_remove_storage` removes the file so a re-add starts fresh."""
-    entry = _make_entry()
-    entry.add_to_hass(hass)
-    coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    await coordinator._async_setup()
-
-    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
-    ):
-        await coordinator.async_refresh()
-
-    await coordinator.async_remove_storage()
-
-    rehydrated = LinzLinienAustriaCoordinator(hass, entry)
-    await rehydrated._async_setup()
-    assert rehydrated._lines_at_stop == set()
-
-
 # Quiet timedelta import — avoids "imported but unused" if the test
 # module is later trimmed.
 assert timedelta is not None

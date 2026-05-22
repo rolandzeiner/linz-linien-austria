@@ -219,7 +219,7 @@ export class LinzLinienAustriaCard extends LitElement {
 
     const stopName =
       this.config.name ||
-      (stateObj.attributes.stop_name as string | undefined) ||
+      stateObj.attributes.stop_name ||
       stateObj.attributes.friendly_name ||
       "";
 
@@ -229,9 +229,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // named stops elsewhere. EFA NAV5 coords ARE in
     // `resolved_stop.coords_x/y` but they are projected (not WGS84)
     // and would need a transform to be useful for Google Maps.
-    const resolvedStopName =
-      (stateObj.attributes.stop_name as string | undefined) ||
-      stopName;
+    const resolvedStopName = stateObj.attributes.stop_name || stopName;
     const mapsQuery = resolvedStopName
       ? encodeURIComponent(
           /Linz/i.test(resolvedStopName)
@@ -241,7 +239,7 @@ export class LinzLinienAustriaCard extends LitElement {
       : "";
     // Self-built URL — passed through `safeHttpsUri` defensively so a
     // future contributor can't wire an upstream attribute through this
-    // binding and silently bypass the allowlist (item 42).
+    // binding and silently bypass the allowlist.
     const mapsUrl = mapsQuery
       ? safeHttpsUri(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
       : null;

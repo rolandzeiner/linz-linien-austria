@@ -114,8 +114,9 @@ class NextDepartureSensor(
         - ``resolved_stop``: the stop metadata as returned by EFA on the
           last successful refresh (may differ in casing/place suffix).
         - Convenience top-level fields for template ergonomics:
-          ``next_line``, ``next_direction``, ``next_delay_minutes``,
-          ``next_is_realtime``, ``next_scheduled``, ``next_realtime``.
+          ``next_line``, ``next_direction``, ``next_mot``,
+          ``next_delay_minutes``, ``next_is_realtime``,
+          ``next_is_cancelled``, ``next_scheduled``, ``next_realtime``.
         """
         data = self.coordinator.data or {}
         first = self._first_departure()
@@ -141,6 +142,12 @@ class NextDepartureSensor(
             attrs["next_line"] = first.get("line")
             attrs["next_direction"] = first.get("direction")
             attrs["next_mot"] = first.get("mot_name")
+            # Departures are sorted active-first, cancelled last
+            # (api.py::_departure_sort_key), so the first row is only
+            # cancelled when *every* upcoming departure is. Surface a
+            # plain bool so templates/automations don't treat the
+            # countdown as a catchable trip.
+            attrs["next_is_cancelled"] = bool(first.get("is_cancelled"))
             if "delay_minutes" in first:
                 attrs["next_delay_minutes"] = first["delay_minutes"]
             if "is_realtime" in first:

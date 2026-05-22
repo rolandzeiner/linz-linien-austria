@@ -110,9 +110,16 @@ def _decode_html(html: str) -> str:
         token = match.group(1)
         if token.startswith("#"):
             try:
-                return chr(int(token[1:]))
+                decoded = chr(int(token[1:]))
             except (ValueError, OverflowError):
                 return match.group(0)
+            # Drop C0 control characters (a malformed `&#0;` etc.) —
+            # they corrupt the recorder row and the card's text
+            # rendering. Tab and newline are the only control chars
+            # worth keeping in alert prose.
+            if decoded < " " and decoded not in "\t\n":
+                return ""
+            return decoded
         return _HTML_ENTITIES.get(token, match.group(0))
 
     text = _HTML_ENTITY_RE.sub(_replace, text)
@@ -277,11 +284,10 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
 def served_lines_from_data(data: dict[str, Any] | None) -> set[str]:
     """Extract the set of line numbers currently serving a stop.
 
-    Shared between the coordinator (which slices the alerts cache at
-    refresh time) and diagnostics (which reproduces the same slice at
-    dump time). Identical comprehension on both sides was a tiny
-    duplication waiting to drift; centralise the field name + truthy-
-    string filter here.
+    Called by the coordinator and by diagnostics — both then feed the
+    result into ``get_alerts_for_lines`` to slice the alerts cache.
+    Centralising the field name + truthy-string filter here keeps the
+    two call sites from drifting apart.
     """
     if not isinstance(data, dict):
         return set()
