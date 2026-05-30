@@ -157,22 +157,44 @@ def _parse_stopfinder(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _parse_one_stop(raw: Any) -> dict[str, Any] | None:
-    """Normalise an EFA stop candidate to {stop_id, name, place, coords?}."""
+def _unwrap_efa_point(raw: Any) -> dict[str, Any] | None:
+    """Pull {stop_id, name, place} out of an EFA point shape.
+
+    Both stop-shaped payloads — the STOPFINDER candidate and the
+    DM_REQUEST resolved stop — wrap the same fields: ``ref`` holds the
+    stable stop ID (the top-level ``stateless`` is only a per-session
+    indirection token, so prefer ``ref.id``), ``name``/``object`` the
+    label, ``posttown``/``ref.place`` the locality. Returns ``None`` for
+    a non-dict input so callers can short-circuit. Values are returned
+    *un*-stripped; the stopfinder path tightens (strip + digit-check)
+    on top, the DM path takes them as-is.
+    """
     if not isinstance(raw, dict):
         return None
-    # ``ref`` carries the stable stop ID; the top-level ``stateless`` carries
-    # an indirection token that's only valid within the same session.
-    # We want the persistent ID — so prefer ref.id over stateless.
     ref_raw = raw.get("ref")
     ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
-    stop_id = str(ref.get("id") or raw.get("stateless") or "").strip()
+    return {
+        "stop_id": str(ref.get("id") or raw.get("stateless") or ""),
+        "name": str(raw.get("name") or raw.get("object") or ""),
+        "place": str(raw.get("posttown") or ref.get("place") or ""),
+    }
+
+
+def _parse_one_stop(raw: Any) -> dict[str, Any] | None:
+    """Normalise an EFA stop candidate to {stop_id, name, place, coords?}."""
+    point = _unwrap_efa_point(raw)
+    if point is None:
+        return None
+    stop_id = point["stop_id"].strip()
     if not stop_id or not stop_id.isdigit():
         return None
-    name = str(raw.get("name") or raw.get("object") or "").strip()
+    name = point["name"].strip()
     if not name:
         return None
-    place = str(raw.get("posttown") or ref.get("place") or "").strip()
+    place = point["place"].strip()
+    # ``raw`` is a dict here — ``_unwrap_efa_point`` returned non-None.
+    ref_raw = raw.get("ref")
+    ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
     coords_raw = ref.get("coords") if ref else None
     coords: tuple[float, float] | None = None
     if isinstance(coords_raw, str) and "," in coords_raw:
@@ -296,16 +318,9 @@ def _resolve_stop_meta(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         point = None
 
-    stop_id = ""
-    name = ""
-    place = ""
-    if isinstance(point, dict):
-        ref_raw = point.get("ref")
-        ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
-        stop_id = str(ref.get("id") or point.get("stateless") or "")
-        name = str(point.get("name") or point.get("object") or "")
-        place = str(point.get("posttown") or ref.get("place") or "")
-    return {"stop_id": stop_id, "name": name, "place": place}
+    # DM resolved-stop fields go through untouched (no strip / digit-check
+    # the stopfinder path applies) — the EFA already vetted this id.
+    return _unwrap_efa_point(point) or {"stop_id": "", "name": "", "place": ""}
 
 
 def _int_or_none(raw: Any) -> int | None:

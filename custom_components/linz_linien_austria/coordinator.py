@@ -329,12 +329,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # user-side line filter is applied — the card editor's picker
         # needs the unfiltered universe (otherwise filtering down to one
         # line would freeze `lines_at_stop` at that single line forever).
-        observed_lines = {
-            str(d.get("line", "")).strip()
-            for d in (payload.get("departures") or [])
-            if isinstance(d, dict) and d.get("line")
-        }
-        observed_lines.discard("")
+        observed_lines = served_lines_from_data(payload, strip=True)
         await self._persist_lines_at_stop_if_changed(observed_lines)
 
         # Apply the optional line filter (if the user picked specific

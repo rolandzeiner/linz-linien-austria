@@ -281,21 +281,33 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     _LOGGER.debug("alerts cache refreshed: %d entries", len(alerts))
 
 
-def served_lines_from_data(data: dict[str, Any] | None) -> set[str]:
-    """Extract the set of line numbers currently serving a stop.
+def served_lines_from_data(
+    data: dict[str, Any] | None, *, strip: bool = False
+) -> set[str]:
+    """Extract the set of line numbers from a departures payload.
 
-    Called by the coordinator and by diagnostics — both then feed the
-    result into ``get_alerts_for_lines`` to slice the alerts cache.
-    Centralising the field name + truthy-string filter here keeps the
-    two call sites from drifting apart.
+    Three call sites share this: the coordinator harvests the unfiltered
+    ``lines_at_stop`` universe (``strip=True``, since those labels feed
+    the card editor's picker and a stray space would split a line in
+    two), then the coordinator and diagnostics both slice the alerts
+    cache via ``get_alerts_for_lines``. Centralising the field name +
+    truthy filter here keeps the call sites from drifting apart.
+
+    ``strip`` trims surrounding whitespace off each label; the empty
+    string the trim can leave behind is dropped by the truthy filter.
     """
     if not isinstance(data, dict):
         return set()
-    return {
-        str(d.get("line") or "")
-        for d in (data.get("departures") or [])
-        if d.get("line")
-    }
+    out: set[str] = set()
+    for d in data.get("departures") or []:
+        if not isinstance(d, dict) or not d.get("line"):
+            continue
+        line = str(d.get("line") or "")
+        if strip:
+            line = line.strip()
+        if line:
+            out.add(line)
+    return out
 
 
 def get_alerts_for_lines(
