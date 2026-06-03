@@ -183,7 +183,7 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
                     await self.async_set_unique_id(
                         f"stop_{self._selected_stop['stop_id']}"
                     )
-                    self._abort_if_unique_id_configured()
+                    self._abort_if_unique_id_configured(reload_on_update=False)
                     return await self.async_step_settings()
 
         options = [
@@ -246,7 +246,7 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
                 CONF_LIMIT: int(user_input[CONF_LIMIT]),
             }
-            return self.async_update_reload_and_abort(entry, data=new_data)
+            return self.async_update_and_abort(entry, data=new_data)
 
         return self.async_show_form(
             step_id="reconfigure",
