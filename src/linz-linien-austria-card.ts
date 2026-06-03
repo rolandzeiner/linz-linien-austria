@@ -37,6 +37,12 @@ interface WindowWithCustomCards extends Window {
     description: string;
     preview?: boolean;
     documentationURL?: string;
+    /** 2026.6 entity-first card picker. Additive — older HA ignores it.
+     *  Returns a card stub for an entity this integration owns, or null. */
+    getEntitySuggestion?: (
+      hass: HomeAssistant,
+      entityId: string,
+    ) => { config: Record<string, unknown> } | null;
   }>;
 }
 
@@ -48,6 +54,25 @@ interface WindowWithCustomCards extends Window {
   description: "Live LINZ AG LINIEN departure monitor.",
   preview: true,
   documentationURL: "https://github.com/rolandzeiner/linz-linien-austria",
+  // 2026.6 entity-first card picker: suggest this card only for sensors
+  // this integration owns (registry platform === domain). Additive key —
+  // older HA simply ignores it, so no version gating is needed.
+  getEntitySuggestion: (
+    hass: HomeAssistant,
+    entityId: string,
+  ): { config: Record<string, unknown> } | null => {
+    if (!entityId.startsWith("sensor.")) return null;
+    if (hass?.entities?.[entityId]?.platform !== "linz_linien_austria") {
+      return null;
+    }
+    return {
+      config: {
+        type: "custom:linz-linien-austria-card",
+        entity: entityId,
+        show_hero: true,
+      },
+    };
+  },
 });
 
 @customElement("linz-linien-austria-card")

@@ -37,6 +37,10 @@ export interface HassEntity {
  *  untyped and is read with a cast at the call site. */
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
+  /** Entity registry, keyed by entity_id. The card-picker's
+   *  `getEntitySuggestion` reads `platform` to suggest only entities
+   *  owned by this integration. */
+  entities?: Record<string, { platform?: string } & Record<string, unknown>>;
   language?: string;
   themes?: { darkMode?: boolean } & Record<string, unknown>;
   config?: { time_zone?: string } & Record<string, unknown>;
