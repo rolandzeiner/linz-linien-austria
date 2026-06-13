@@ -4,7 +4,7 @@
 # Local dev tracks the floor or higher; CI installs the floor's minor
 # resolved by pip. PHACC's `==` pins on HA core govern the rest of the
 # transitive graph.
-pytest-homeassistant-custom-component>=0.13.333,<0.14
+pytest-homeassistant-custom-component>=0.13.337,<0.14
 pytest-asyncio>=1.3.0,<2
 pytest-cov>=7.1.0,<8
 # syrupy floor intentionally omitted: PHACC pins syrupy with `==`, so any
