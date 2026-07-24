@@ -1,7 +1,7 @@
 """Tests for the alerts parser + per-line filter."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
@@ -319,7 +319,7 @@ class _FakeSession:
         self._exc = exc
         self._body = body
 
-    def get(self, *_a: Any, **_kw: Any) -> "_FakeResp":
+    def get(self, *_a: Any, **_kw: Any) -> _FakeResp:
         if self._exc is not None:
             raise self._exc
         return _FakeResp(self._body)
@@ -339,10 +339,10 @@ class _FakeResp:
     # synchronous `get()` returns to be an async context manager. The
     # production code wraps every fetch in this CM since the audit fix
     # for deterministic connection-pool release.
-    async def __aenter__(self) -> "_FakeResp":
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *_exc: Any) -> None:
+    async def __aexit__(self, *_exc: object) -> None:
         return None
 
 

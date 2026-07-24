@@ -53,11 +53,11 @@ def auto_enable_custom_integrations(
     enable_custom_integrations: None,
 ) -> None:
     """Enable custom integrations for all tests in this package."""
-    return None
+    return
 
 
 @pytest.fixture(autouse=True)
-def mock_aiohttp_session() -> Generator[None, None, None]:
+def mock_aiohttp_session() -> Generator[None]:
     """Mock every clientsession so pycares' DNS thread never starts AND
     every outbound network attempt during setup is a no-op.
 

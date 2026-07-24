@@ -36,8 +36,8 @@ from custom_components.linz_linien_austria.const import (
     USER_AGENT,
 )
 from custom_components.linz_linien_austria.http import base_request_headers
-from .conftest import make_response_cm
 
+from .conftest import make_response_cm
 
 _UA_PATTERN = re.compile(
     r"^HomeAssistant/[0-9.]+(?:[a-zA-Z0-9.\-+]+)?\s"

@@ -275,9 +275,8 @@ async def test_rate_limit_raises_repair_issue(hass: HomeAssistant) -> None:
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
         new_callable=AsyncMock,
         side_effect=EfaHttpError(429, "Too Many Requests"),
-    ):
-        with pytest.raises(UpdateFailed):
-            await coordinator._async_update_data()
+    ), pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
 
     registry = ir.async_get(hass)
     issue = registry.async_get_issue(DOMAIN, f"rate_limited_{entry.entry_id}")

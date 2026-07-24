@@ -17,7 +17,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.linz_linien_austria.api import _parse_dm
+from custom_components.linz_linien_austria.api import EfaTimeoutError, _parse_dm
 from custom_components.linz_linien_austria.const import (
     CARD_VERSION,
     CONF_STOP_ID,
@@ -25,7 +25,6 @@ from custom_components.linz_linien_austria.const import (
     DOMAIN,
     ENTRY_COUNT_KEY,
 )
-from custom_components.linz_linien_austria.api import EfaTimeoutError
 
 from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
