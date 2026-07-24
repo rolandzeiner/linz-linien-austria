@@ -682,19 +682,44 @@ export class LinzLinienAustriaCard extends LitElement {
     const expanded = this._expandedStops.has(key);
     const panelId = `stops-${this._slugify(key)}`;
 
+    const expandable = stopsAhead.length > 0;
+    const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
+      d.is_realtime ? ` ${this._t("card.realtime")}` : ""
+    }${hint ? `. ${hint}` : ""}`;
+    // With role=button the accessible name has to say what activating
+    // the row does, not just describe the departure.
+    const rowLabel = expandable
+      ? `${baseLabel}. ${this._t(
+          expanded ? "card.hide_stops" : "card.show_stops",
+          { line: d.line, direction: d.direction },
+        )}`
+      : baseLabel;
+
+    // The <li> stays a plain listitem and the interactive role lives on
+    // an inner wrapper. Putting role=button on the <li> itself — as the
+    // sibling wiener-linien card does — replaces its listitem role and
+    // breaks the semantics of the role=list container around it.
     const rowTpl = html`
-      <li
+      <li class="row-wrap">
+      <div
         class=${classMap({
           row: true,
           "row-rt": !!d.is_realtime,
           "row-cancelled": !!d.is_cancelled,
-          "row-expandable": stopsAhead.length > 0,
+          "row-expandable": expandable,
         })}
-        aria-label="${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
-          d.direction
-        } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
-          d.is_realtime ? ` ${this._t("card.realtime")}` : ""
-        }${hint ? `. ${hint}` : ""}"
+        role=${expandable ? "button" : nothing}
+        tabindex=${expandable ? "0" : nothing}
+        aria-expanded=${expandable ? (expanded ? "true" : "false") : nothing}
+        aria-controls=${expandable ? panelId : nothing}
+        aria-label=${rowLabel}
+        @click=${() => expandable && this._toggleStops(key)}
+        @keydown=${(ev: KeyboardEvent) =>
+          this._onExpanderKeydown(ev, expandable, () =>
+            this._toggleStops(key),
+          )}
       >
         ${this._renderLineBadge(d)}
         <span class="row-main">
@@ -725,28 +750,19 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
-          ${stopsAhead.length > 0
-            ? html`<button
-                class="row-expand"
-                type="button"
-                aria-expanded=${expanded ? "true" : "false"}
-                aria-controls=${panelId}
-                aria-label=${this._t(
-                  expanded ? "card.hide_stops" : "card.show_stops",
-                  { line: d.line, direction: d.direction },
-                )}
-                title=${this._t(
-                  expanded ? "card.hide_stops" : "card.show_stops",
-                  { line: d.line, direction: d.direction },
-                )}
-                @click=${() => this._toggleStops(key)}
-              >
-                <ha-icon
-                  icon=${expanded ? "mdi:chevron-up" : "mdi:chevron-down"}
-                ></ha-icon>
-              </button>`
+          ${expandable
+            ? // Decorative only: the whole row carries role=button, and a
+              // real <button> nested inside it would be a second control
+              // in the same activation target. One chevron that rotates
+              // rather than two icons, so the transform can animate.
+              html`<ha-icon
+                class="row-chevron"
+                icon="mdi:chevron-down"
+                aria-hidden="true"
+              ></ha-icon>`
             : nothing}
         </span>
+      </div>
       </li>
     `;
 
@@ -759,6 +775,24 @@ export class LinzLinienAustriaCard extends LitElement {
       rowTpl,
       this._renderStopsAheadPanel(stopsAhead, panelId, expanded, d),
     ];
+  }
+
+  /** Keyboard activation for the row's button role.
+   *
+   *  A native <button> would give this for free, but the row is a grid
+   *  container with its own children, so it carries role=button instead
+   *  and has to reimplement Enter/Space. `preventDefault` on Space stops
+   *  the page scrolling out from under the user.
+   */
+  private _onExpanderKeydown(
+    ev: KeyboardEvent,
+    expandable: boolean,
+    activate: () => void,
+  ): void {
+    if (!expandable) return;
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    ev.preventDefault();
+    activate();
   }
 
   /** Flip one row's onward-stop panel open or closed. */

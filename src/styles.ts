@@ -275,6 +275,27 @@ export const cardStyles = css`
     gap: 8px;
     padding: 6px 2px;
     border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
+    border-radius: 6px;
+  }
+  /* Plain listitem wrapper. The interactive role and the grid both live
+     on the inner .row, so this element only exists to keep the <li>
+     semantics intact inside the role=list container. */
+  .row-wrap {
+    list-style: none;
+  }
+  /* The whole row is the toggle when there are onward stops. user-select
+     stops a click that lands on the destination text from painting a
+     selection instead of reading as a press. */
+  .row.row-expandable {
+    cursor: pointer;
+    user-select: none;
+  }
+  .row.row-expandable:hover {
+    background: color-mix(in srgb, var(--primary-text-color) 4%, transparent);
+  }
+  .row.row-expandable:focus-visible {
+    outline: 2px solid var(--primary-color, #03a9f4);
+    outline-offset: -2px;
   }
   .row-tail {
     display: inline-flex;
@@ -286,7 +307,12 @@ export const cardStyles = css`
     min-width: 3.6em;
     justify-content: flex-end;
   }
-  .row:last-child {
+  /* Drop the divider under the final row. .row is no longer a direct
+     child of the list — it sits inside a .row-wrap, so a plain
+     :last-child would match every row. Selecting the row-wrap that has
+     no row-wrap after it also survives the collapsed detail panels
+     interleaved between rows, which :last-child would trip over. */
+  .row-wrap:not(:has(~ .row-wrap)) > .row {
     border-bottom: none;
   }
   /* Middle column wrapper. Stacks the destination over an optional
@@ -343,27 +369,17 @@ export const cardStyles = css`
   /* Chevron toggle for the onward-stop panel. 40px square meets the
      WCAG 2.5.8 target minimum even though the glyph is 20px, and the
      negative margin keeps it from pushing the time column around. */
-  .row-expand {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    margin: -10px -8px -10px 0;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: none;
-    cursor: pointer;
-    color: var(--secondary-text-color);
+  /* Decorative chevron. One icon that rotates on expand rather than
+     swapping mdi:chevron-down for mdi:chevron-up — a swap can't be
+     transitioned, and the rotation reads as the row opening. */
+  .row-chevron {
     --mdc-icon-size: 20px;
+    flex-shrink: 0;
+    color: var(--secondary-text-color);
+    transition: transform 0.24s ease;
   }
-  .row-expand:hover {
-    background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
-  }
-  .row-expand:focus-visible {
-    outline: 2px solid var(--primary-color, #03a9f4);
-    outline-offset: -2px;
+  .row.row-expandable[aria-expanded="true"] .row-chevron {
+    transform: rotate(180deg);
   }
   /* Collapsible wrapper for the trail. The 0fr→1fr grid-row trick
      animates to the panel's intrinsic height without hard-coding one —
@@ -392,11 +408,20 @@ export const cardStyles = css`
     --stops-ahead-line: var(--linz-accent);
     --stops-ahead-dot-size: 9px;
     --stops-ahead-line-width: 2px;
-    grid-column: 1 / -1;
+    /* Indent so the dot column lands under the centre of the row's line
+       badge, making the trail read as descending out of the badge
+       rather than floating at the card's left edge.
+         2px row padding + half the badge width - half a dot.
+       The badge is 3.6em at its own font-size of 0.85rem, so half of it
+       is 1.53rem. Spelled in rem deliberately: an em here would resolve
+       against this list's 0.78rem, not the badge's. */
+    --stops-ahead-indent: calc(
+      2px + 1.53rem - var(--stops-ahead-dot-size) / 2
+    );
     position: relative;
     list-style: none;
     margin: 2px 0 6px 0;
-    padding: 6px 0 6px 0;
+    padding: 6px 0 6px var(--stops-ahead-indent);
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -407,7 +432,8 @@ export const cardStyles = css`
     content: "";
     position: absolute;
     left: calc(
-      var(--stops-ahead-dot-size) / 2 - var(--stops-ahead-line-width) / 2
+      var(--stops-ahead-indent) + var(--stops-ahead-dot-size) / 2 -
+        var(--stops-ahead-line-width) / 2
     );
     top: calc(6px + var(--stops-ahead-dot-size) / 2);
     bottom: calc(6px + var(--stops-ahead-dot-size) / 2);
