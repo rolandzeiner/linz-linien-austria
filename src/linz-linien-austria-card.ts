@@ -8,6 +8,7 @@ import type { TemplateResult, PropertyValues, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { repeat } from "lit/directives/repeat.js";
+import { styleMap } from "lit/directives/style-map.js";
 
 import type {
   AlertInfo,
@@ -658,7 +659,7 @@ export class LinzLinienAustriaCard extends LitElement {
     `;
   }
 
-  private _renderRow(d: Departure): TemplateResult {
+  private _renderRow(d: Departure): TemplateResult | TemplateResult[] {
     const minutes = this._countdownFor(d);
     const isLate =
       typeof d.delay_minutes === "number" && d.delay_minutes > 0;
@@ -681,7 +682,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const expanded = this._expandedStops.has(key);
     const panelId = `stops-${this._slugify(key)}`;
 
-    return html`
+    const rowTpl = html`
       <li
         class=${classMap({
           row: true,
@@ -746,11 +747,18 @@ export class LinzLinienAustriaCard extends LitElement {
               </button>`
             : nothing}
         </span>
-        ${expanded && stopsAhead.length > 0
-          ? this._renderStopsAhead(stopsAhead, panelId)
-          : nothing}
       </li>
     `;
+
+    if (stopsAhead.length === 0) return rowTpl;
+    // The trail is a sibling <li>, not a child of the row. Nesting it
+    // would make it a fourth item in the row's three-column grid, and
+    // the open/close animation needs its own grid context — this keeps
+    // the row's own layout untouched whether the panel is open or not.
+    return [
+      rowTpl,
+      this._renderStopsAheadPanel(stopsAhead, panelId, expanded, d),
+    ];
   }
 
   /** Flip one row's onward-stop panel open or closed. */
@@ -769,34 +777,74 @@ export class LinzLinienAustriaCard extends LitElement {
     return value.replace(/[^a-zA-Z0-9_-]+/g, "-");
   }
 
-  /** The expanded panel: remaining stops with predicted arrival times.
+  /** The collapsible panel wrapping the onward-stop trail.
    *
-   *  Rendered as a `<ul>` inside the row's `<li>`, which is valid — a
-   *  list item may contain flow content including nested lists.
+   *  Always rendered, open or shut, so the 0fr→1fr grid transition has
+   *  something to animate — swapping the panel in and out on toggle
+   *  would snap instead. `aria-hidden` keeps the collapsed content out
+   *  of the accessibility tree, which `overflow: hidden` alone does not.
    */
-  private _renderStopsAhead(
+  private _renderStopsAheadPanel(
     stops: StopAhead[],
     panelId: string,
+    expanded: boolean,
+    d: Departure,
   ): TemplateResult {
     return html`
-      <ul class="stops-ahead" id=${panelId}>
-        ${stops.map((s) => {
+      <li class=${classMap({ "row-detail": true, expanded })}>
+        <div
+          class="row-detail-inner"
+          id=${panelId}
+          role="region"
+          aria-hidden=${expanded ? "false" : "true"}
+        >
+          ${this._renderStopsAheadTrail(stops, d)}
+        </div>
+      </li>
+    `;
+  }
+
+  /** Remaining stops as a route-line diagram: a vertical line in the
+   *  line's colour with one dot per stop, terminus ringed and bold.
+   *
+   *  The colour resolves the same way the row badge does — user
+   *  override first, then the mode-of-transport default — so the trail
+   *  reads as belonging to the row it hangs off.
+   */
+  private _renderStopsAheadTrail(
+    stops: StopAhead[],
+    d: Departure,
+  ): TemplateResult {
+    const lineColor =
+      this._userLineColor(d.line) ?? motColor(d.mot) ?? "var(--linz-accent)";
+    return html`
+      <ol
+        class="stops-ahead"
+        style=${styleMap({ "--stops-ahead-line": lineColor })}
+      >
+        ${stops.map((s, idx) => {
           const delay = s.delay_minutes;
-          const late = typeof delay === "number" && delay > 0;
-          const early = typeof delay === "number" && delay < 0;
-          return html`<li class="stop-ahead">
-            <span class="stop-name">${s.name}</span>
+          // The upstream's onward list always ends at the trip's
+          // terminus (verified against every line at Hauptbahnhof), so
+          // the last entry is the destination — no server-side flag
+          // needed to mark it.
+          const isTerminus = idx === stops.length - 1;
+          return html`<li
+            class=${classMap({ "stops-ahead-stop": true, terminus: isTerminus })}
+          >
+            <span class="stops-ahead-dot" aria-hidden="true"></span>
+            <span class="stops-ahead-name">${s.name}</span>
             <span
               class=${classMap({
-                "stop-time": true,
-                late,
-                early,
+                "stops-ahead-time": true,
+                late: typeof delay === "number" && delay > 0,
+                early: typeof delay === "number" && delay < 0,
               })}
               >${this._clockTime(s.arrival)}</span
             >
           </li>`;
         })}
-      </ul>
+      </ol>
     `;
   }
 

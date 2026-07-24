@@ -365,41 +365,106 @@ export const cardStyles = css`
     outline: 2px solid var(--primary-color, #03a9f4);
     outline-offset: -2px;
   }
-  /* The panel spans all three grid columns so the stop list starts at
-     the row's left edge rather than inside the direction column. */
-  .stops-ahead {
-    grid-column: 1 / -1;
-    margin: 4px 0 2px 0;
-    padding: 6px 0 6px 10px;
+  /* Collapsible wrapper for the trail. The 0fr→1fr grid-row trick
+     animates to the panel's intrinsic height without hard-coding one —
+     max-height transitions would need a guess big enough for the
+     longest route and would ease wrongly for every shorter one. */
+  .row-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.24s ease;
     list-style: none;
-    border-left: 2px solid
-      color-mix(in srgb, var(--linz-accent) 45%, transparent);
   }
-  .stop-ahead {
+  .row-detail-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .row-detail.expanded {
+    grid-template-rows: 1fr;
+  }
+
+  /* Route-line trail: a vertical line in the line's own colour with one
+     dot per remaining stop, the terminus ringed and bold to anchor
+     where the trip ends. The line is a pseudo-element behind the dot
+     column, inset top and bottom by half a dot so it starts and ends at
+     the first and last dot centres rather than overshooting. */
+  .stops-ahead {
+    --stops-ahead-line: var(--linz-accent);
+    --stops-ahead-dot-size: 9px;
+    --stops-ahead-line-width: 2px;
+    grid-column: 1 / -1;
+    position: relative;
+    list-style: none;
+    margin: 2px 0 6px 0;
+    padding: 6px 0 6px 0;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 2px 0;
+    flex-direction: column;
+    gap: 7px;
     font-size: 0.78rem;
+    line-height: 1.3;
   }
-  .stop-name {
+  .stops-ahead::before {
+    content: "";
+    position: absolute;
+    left: calc(
+      var(--stops-ahead-dot-size) / 2 - var(--stops-ahead-line-width) / 2
+    );
+    top: calc(6px + var(--stops-ahead-dot-size) / 2);
+    bottom: calc(6px + var(--stops-ahead-dot-size) / 2);
+    width: var(--stops-ahead-line-width);
+    background: var(--stops-ahead-line);
+    border-radius: 2px;
+  }
+  .stops-ahead-stop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: calc(var(--stops-ahead-dot-size) + 12px);
+    min-height: var(--stops-ahead-dot-size);
+  }
+  .stops-ahead-dot {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--stops-ahead-dot-size);
+    height: var(--stops-ahead-dot-size);
+    border-radius: 50%;
+    background: var(--stops-ahead-line);
+    z-index: 1;
+    /* The dot is the only carrier of "this is a stop on the line", so
+       it must survive forced-colors mode rather than being flattened. */
+    forced-color-adjust: none;
+  }
+  .stops-ahead-name {
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--secondary-text-color);
   }
-  .stop-time {
+  .stops-ahead-time {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     color: var(--secondary-text-color);
   }
-  .stop-time.late {
+  .stops-ahead-time.late {
     color: var(--linz-late);
   }
-  .stop-time.early {
+  .stops-ahead-time.early {
     color: var(--linz-early);
+  }
+  .stops-ahead-stop.terminus .stops-ahead-name {
+    font-weight: 600;
+    color: var(--primary-text-color);
+  }
+  .stops-ahead-stop.terminus .stops-ahead-dot {
+    /* Hollow ring at the terminus — reads as "the line stops here". */
+    background: var(--card-background-color, var(--ha-card-background, #fff));
+    box-shadow: inset 0 0 0 var(--stops-ahead-line-width)
+      var(--stops-ahead-line);
   }
   .row-time.now {
     color: var(--linz-accent);

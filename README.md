@@ -105,10 +105,12 @@ them.
 - **Realtime cue** — small green bullet leading the time on rows
   where realtime data was available (WCAG 1.4.1: redundant cue for
   colour-blind / sunlight-glare users).
-- **Onward-stop expander** — when *Show onward stops* is on, each row
-  gets a chevron that reveals the rest of the trip: every remaining stop
-  with its predicted arrival, late stops tinted so a delay that recovers
-  down the line is visible at a glance. *(0.7.0)*
+- **Onward-stop trail** — when *Show onward stops* is on, each row gets a
+  chevron that unfolds the rest of the trip as a route-line diagram: a
+  vertical line in the line's own colour, a dot per remaining stop, and
+  a hollow ring on the terminus. Each stop carries its predicted
+  arrival, tinted when late, so a delay that recovers further down the
+  route is visible at a glance. *(0.7.0)*
 - **Delay reason caption** — when the operator says why a trip is late,
   the reason appears under the destination on the row and under the
   hero's line badge, in the same warning colour as a late time. Hidden
