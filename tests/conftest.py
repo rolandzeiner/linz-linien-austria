@@ -95,6 +95,54 @@ def mock_aiohttp_session() -> Generator[None]:
 # WGS84 in EFA's lon,lat order, matching what the server returns for the
 # `coordOutputFormat=WGS84[dd.ddddd]` every request sends.
 
+# The shape the LINZ AG deployment actually returns: `stopFinder` is a
+# dict, `points` wraps a `point`, and `point` collapses to a bare dict
+# whenever the query resolved to a single best match — which is every
+# query on this deployment. Parsing this as a list yielded zero
+# candidates and made the config flow unable to add any stop.
+EXAMPLE_STOPFINDER_SINGLE = {
+    "stopFinder": {
+        "input": {"input": "Hauptbahnhof"},
+        "points": {
+            "point": {
+                "usage": "sf",
+                "type": "any",
+                "name": "Linz/Donau, Hauptbahnhof",
+                "object": "Hauptbahnhof",
+                "anyType": "stop",
+                "stateless": "60501720",
+                "ref": {
+                    "id": "60501720",
+                    "place": "Linz/Donau",
+                    "coords": "14.291325,48.291028",
+                },
+            }
+        },
+    }
+}
+
+# Same wrapper, but `point` is a list — EFA's ambiguous-match shape.
+EXAMPLE_STOPFINDER_MULTI = {
+    "stopFinder": {
+        "points": {
+            "point": [
+                {
+                    "name": "Linz/Donau, Hauptbahnhof",
+                    "object": "Hauptbahnhof",
+                    "stateless": "60501720",
+                    "ref": {"id": "60501720", "place": "Linz/Donau"},
+                },
+                {
+                    "name": "Linz/Donau, Hauptplatz",
+                    "object": "Hauptplatz",
+                    "stateless": "60501070",
+                    "ref": {"id": "60501070", "place": "Linz/Donau"},
+                },
+            ]
+        }
+    }
+}
+
 EXAMPLE_STOPFINDER = {
     "stopFinder": [
         {

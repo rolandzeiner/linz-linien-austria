@@ -128,33 +128,40 @@ async def search_stops(
 def _parse_stopfinder(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract stop candidates from a STOPFINDER_REQUEST JSON response.
 
-    EFA returns one of two shapes depending on whether the input was an
-    exact match or a list. Handle both.
+    EFA publishes the candidate list in one of two shapes, and the
+    LINZ AG deployment nests the second one a level deeper than the bare
+    "list of points" the name suggests:
+
+        stopFinder: [ {point}, {point} ]                     # shape 1
+        stopFinder: { points: { point: {…} | [ {…}, … ] } }  # shape 2
+
+    In shape 2 the inner ``point`` collapses to a bare dict whenever the
+    query resolved to a single best match — which, on this deployment,
+    is *every* query, exact or partial. Some EFA installs name the keys
+    ``stops``/``stop`` instead; both spellings are tolerated.
     """
     out: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 
-    # Shape 1: a "stopFinder" list of candidates.
-    candidates = payload.get("stopFinder")
-    if isinstance(candidates, list):
-        for c in candidates:
-            stop = _parse_one_stop(c)
+    def _collect(raw: Any) -> None:
+        for candidate in _as_list(raw):
+            stop = _parse_one_stop(candidate)
             if stop and stop["stop_id"] not in seen_ids:
                 seen_ids.add(stop["stop_id"])
                 out.append(stop)
 
-    # Shape 2: stopFinder is a dict containing "points" (a list of dicts) —
-    # this is the case when the user typed an exact stop name. Some EFA
-    # deployments use "stops" instead. Both are tolerated.
-    if isinstance(candidates, dict):
-        for key in ("points", "stops"):
-            inner = candidates.get(key)
-            if isinstance(inner, list):
-                for c in inner:
-                    stop = _parse_one_stop(c)
-                    if stop and stop["stop_id"] not in seen_ids:
-                        seen_ids.add(stop["stop_id"])
-                        out.append(stop)
+    candidates = payload.get("stopFinder")
+    if isinstance(candidates, list):
+        _collect(candidates)
+    elif isinstance(candidates, dict):
+        for outer_key, inner_key in (("points", "point"), ("stops", "stop")):
+            container = candidates.get(outer_key)
+            if isinstance(container, dict) and inner_key in container:
+                _collect(container[inner_key])
+            else:
+                # Already the candidate collection itself (or a lone
+                # point dict) rather than a wrapper around it.
+                _collect(container)
 
     return out
 

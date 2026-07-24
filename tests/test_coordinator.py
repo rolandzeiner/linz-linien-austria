@@ -31,7 +31,13 @@ from custom_components.linz_linien_austria.coordinator import (
     _line_dir_key,
 )
 
-from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE, EXAMPLE_STOPFINDER
+from .conftest import (
+    BASE_ENTRY_DATA,
+    EXAMPLE_DM_RESPONSE,
+    EXAMPLE_STOPFINDER,
+    EXAMPLE_STOPFINDER_MULTI,
+    EXAMPLE_STOPFINDER_SINGLE,
+)
 
 
 def _make_entry(data: dict | None = None) -> MockConfigEntry:
@@ -55,6 +61,26 @@ def test_parse_stopfinder_extracts_stable_ids() -> None:
     stops = _parse_stopfinder(EXAMPLE_STOPFINDER)
     assert {s["stop_id"] for s in stops} == {"60501720", "60501070"}
     assert all(s["place"] == "Linz/Donau" for s in stops)
+
+
+def test_parse_stopfinder_reads_nested_single_point() -> None:
+    """`stopFinder.points.point` as a bare dict must yield one candidate.
+
+    Regression guard: this is the shape the LINZ AG deployment returns
+    for every query, and the parser used to look for `points` as a list
+    and find nothing — so stop search returned zero hits and the config
+    flow could not add a stop at all.
+    """
+    stops = _parse_stopfinder(EXAMPLE_STOPFINDER_SINGLE)
+    assert [s["stop_id"] for s in stops] == ["60501720"]
+    assert stops[0]["name"] == "Linz/Donau, Hauptbahnhof"
+    assert stops[0]["latitude"] == pytest.approx(48.291028)
+
+
+def test_parse_stopfinder_reads_nested_point_list() -> None:
+    """The same wrapper with several candidates yields all of them."""
+    stops = _parse_stopfinder(EXAMPLE_STOPFINDER_MULTI)
+    assert [s["stop_id"] for s in stops] == ["60501720", "60501070"]
 
 
 def test_parse_stopfinder_reads_wgs84_coords() -> None:
