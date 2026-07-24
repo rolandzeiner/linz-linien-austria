@@ -138,6 +138,14 @@ class NextDepartureSensor(
             # departure inside the current live window.
             "lines_at_stop": data.get("lines_at_stop") or [],
         }
+        # WGS84 position of the resolved stop. Lets the card build a
+        # precise map deeplink instead of a name query, and gives
+        # templates a real location to compute against. Omitted entirely
+        # until the first fetch resolves a position, so a template can
+        # test for presence rather than for a sentinel.
+        if self.coordinator.latitude is not None:
+            attrs["latitude"] = self.coordinator.latitude
+            attrs["longitude"] = self.coordinator.longitude
         if first is not None:
             attrs["next_line"] = first.get("line")
             attrs["next_direction"] = first.get("direction")

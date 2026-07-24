@@ -45,7 +45,9 @@ async def test_sensor_state_and_attributes(hass: HomeAssistant) -> None:
     # The first refresh seeds `lines_at_stop` from the live snapshot.
     # The card editor reads this so its line picker can show every
     # line the integration has ever seen — not just the live window.
-    assert state.attributes["lines_at_stop"] == ["2", "3"]
+    # From the upstream roster, so line 17 is present despite having no
+    # departure in the live window.
+    assert state.attributes["lines_at_stop"] == ["2", "3", "17"]
 
 
 async def test_sensor_returns_none_with_empty_departures(

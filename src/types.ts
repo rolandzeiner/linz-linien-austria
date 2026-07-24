@@ -17,12 +17,17 @@ export interface HassEntity {
      *  title and the Google Maps query. */
     stop_name?: string;
     alerts?: unknown;
-    /** Persistent union of every line label the integration has
-     *  observed at this stop. Surfaced so the card editor's line-filter
-     *  picker can offer rush-hour / seasonal lines that aren't in the
-     *  current departure window. Empty list while the integration has
-     *  never seen a departure (fresh install before first refresh). */
+    /** Every line the current timetable runs through this stop, from the
+     *  upstream's own roster (`servingLines`). Surfaced so the card
+     *  editor's line-filter picker can offer rush-hour / seasonal lines
+     *  that aren't in the current departure window. Complete from the
+     *  first successful refresh; empty only before it. */
     lines_at_stop?: unknown;
+    /** WGS84 position of the resolved stop. Both keys are present or
+     *  both absent — the integration omits them until a fetch resolves
+     *  a position. Used for the header's map deeplink. */
+    latitude?: unknown;
+    longitude?: unknown;
   };
   last_changed?: string;
   last_updated?: string;
@@ -162,7 +167,12 @@ export type HaFormSchema =
  *  the upstream payload — see api.py::_normalise_departure. */
 export interface Departure {
   line: string;
+  /** Headsign text for this trip. Display only — it is unstable for
+   *  branching termini, so never key a filter or a lookup on it. */
   direction: string;
+  /** Stable Hin/Rück direction code. Absent on replacement-service rows
+   *  where the upstream publishes no line project. */
+  dir_code?: "H" | "R";
   origin?: string;
   platform?: string;
   mot?: number;

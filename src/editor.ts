@@ -44,14 +44,14 @@ export class LinzLinienAustriaCardEditor
 
   /** Lines available for the picker dropdown — union of:
    *
-   *  1. ``lines_at_stop`` (persistent set on the sensor): every line
-   *     label the integration has ever observed at the configured stop.
-   *     This is the authoritative source — covers rush-hour-only,
-   *     seasonal, and nightline routes that aren't in the current live
-   *     departure window.
-   *  2. ``departures`` (the live snapshot): catches lines that just
-   *     started serving the stop in the moments before the persistent
-   *     set has caught up (also covers a fresh install with no history).
+   *  1. ``lines_at_stop`` (the upstream's own roster for the stop):
+   *     every line the current timetable runs through here. This is the
+   *     authoritative source — covers rush-hour-only, seasonal, and
+   *     nightline routes that aren't in the current live departure
+   *     window.
+   *  2. ``departures`` (the live snapshot): catches a line running
+   *     through the stop that the published roster doesn't list, e.g. a
+   *     diverted route during a disruption.
    *  3. Any line already in the saved ``lines`` config — so a custom
    *     line typed by the user stays visible as a chip even when it
    *     hasn't appeared in either source above.

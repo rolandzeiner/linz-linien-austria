@@ -248,20 +248,26 @@ export class LinzLinienAustriaCard extends LitElement {
       stateObj.attributes.friendly_name ||
       "";
 
-    // Maps URL — uses the upstream-canonical stop name (which already
-    // carries the place suffix, e.g. "Linz/Donau, Hauptbahnhof") plus
-    // an explicit "Linz" so non-Linz stops can't collide with same-
-    // named stops elsewhere. EFA NAV5 coords ARE in
-    // `resolved_stop.coords_x/y` but they are projected (not WGS84)
-    // and would need a transform to be useful for Google Maps.
+    // Maps URL — prefer the stop's WGS84 position, which the integration
+    // now gets straight from the EFA (`coordOutputFormat=WGS84`). A
+    // lat/lon query lands on the actual bay; the name query below can
+    // only land on whatever Google decides the name means. The name
+    // path stays as the fallback for entries whose first fetch hasn't
+    // resolved a position yet, and carries an explicit "Linz" so
+    // non-Linz stops can't collide with same-named stops elsewhere.
+    const lat = stateObj.attributes.latitude;
+    const lon = stateObj.attributes.longitude;
     const resolvedStopName = stateObj.attributes.stop_name || stopName;
-    const mapsQuery = resolvedStopName
-      ? encodeURIComponent(
-          /Linz/i.test(resolvedStopName)
-            ? resolvedStopName
-            : `${resolvedStopName}, Linz`,
-        )
-      : "";
+    const mapsQuery =
+      typeof lat === "number" && typeof lon === "number"
+        ? `${lat},${lon}`
+        : resolvedStopName
+          ? encodeURIComponent(
+              /Linz/i.test(resolvedStopName)
+                ? resolvedStopName
+                : `${resolvedStopName}, Linz`,
+            )
+          : "";
     // Self-built URL — passed through `safeHttpsUri` defensively so a
     // future contributor can't wire an upstream attribute through this
     // binding and silently bypass the allowlist.

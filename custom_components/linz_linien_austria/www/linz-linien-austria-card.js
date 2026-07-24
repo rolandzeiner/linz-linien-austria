@@ -1085,7 +1085,7 @@ function e(e,t,i,r){var n,o=arguments.length,a=o<3?t:null===r?r=Object.getOwnPro
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>
-    `}static{this.styles=Ge}};e([pe({attribute:!1})],Ze.prototype,"hass",void 0),e([ue()],Ze.prototype,"_config",void 0),Ze=e([ce("linz-linien-austria-card-editor")],Ze),window.customCards=window.customCards||[],window.customCards.push({type:"linz-linien-austria-card",name:"Linz Linien Austria",description:"Live LINZ AG LINIEN departure monitor.",preview:!0,documentationURL:"https://github.com/rolandzeiner/linz-linien-austria",getEntitySuggestion:(e,t)=>t.startsWith("sensor.")?"linz_linien_austria"!==e?.entities?.[t]?.platform?null:{config:{type:"custom:linz-linien-austria-card",entity:t,show_hero:!0}}:null});let Ye=class extends se{constructor(){super(...arguments),this._versionMismatch=null,this._versionCheckDone=!1}static getConfigElement(){return document.createElement("linz-linien-austria-card-editor")}static getStubConfig(e){const t={show_hero:!0};if(!e)return t;const i=Object.keys(e.states).find(t=>{if(!t.startsWith("sensor."))return!1;const i=e.states[t]?.attributes;return void 0!==i&&"string"==typeof i.stop_id&&Array.isArray(i.departures)});return i&&(t.entity=i),t}setConfig(e){if(!e||"object"!=typeof e)throw new Error("Invalid configuration / Ungültige Konfiguration");this.config={show_hero:!0,...e}}_t(e,t){return je(e,{configLanguage:this.config?.language,hassLanguage:this.hass?.language},t)}shouldUpdate(e){if(!this.config)return!1;if(e.has("config"))return!0;const t=e.get("hass");return!t||!!this.config.entity&&t.states[this.config.entity]!==this.hass.states[this.config.entity]}getCardSize(){return 6}getGridOptions(){return{columns:12,rows:"auto",min_columns:6,min_rows:4}}firstUpdated(){this._maybeRunVersionCheck()}updated(e){this._maybeRunVersionCheck()}_maybeRunVersionCheck(){!this._versionCheckDone&&this.hass&&(this._versionCheckDone=!0,async function(e){if(!e?.callWS)return null;try{const t=await e.callWS({type:"linz_linien_austria/card_version"});if(t?.version&&"0.6.0"!==t.version)return t.version}catch{}return null}(this.hass).then(e=>{e&&this.isConnected&&(this._versionMismatch=e)}))}render(){const e={configLanguage:this.config?.language,hassLanguage:this.hass?.language};if(!this.hass)return F`<ha-card><div class="card-content">…</div></ha-card>`;if(!this.config.entity)return F`<ha-card>
+    `}static{this.styles=Ge}};e([pe({attribute:!1})],Ze.prototype,"hass",void 0),e([ue()],Ze.prototype,"_config",void 0),Ze=e([ce("linz-linien-austria-card-editor")],Ze),window.customCards=window.customCards||[],window.customCards.push({type:"linz-linien-austria-card",name:"Linz Linien Austria",description:"Live LINZ AG LINIEN departure monitor.",preview:!0,documentationURL:"https://github.com/rolandzeiner/linz-linien-austria",getEntitySuggestion:(e,t)=>t.startsWith("sensor.")?"linz_linien_austria"!==e?.entities?.[t]?.platform?null:{config:{type:"custom:linz-linien-austria-card",entity:t,show_hero:!0}}:null});let Ye=class extends se{constructor(){super(...arguments),this._versionMismatch=null,this._versionCheckDone=!1}static getConfigElement(){return document.createElement("linz-linien-austria-card-editor")}static getStubConfig(e){const t={show_hero:!0};if(!e)return t;const i=Object.keys(e.states).find(t=>{if(!t.startsWith("sensor."))return!1;const i=e.states[t]?.attributes;return void 0!==i&&"string"==typeof i.stop_id&&Array.isArray(i.departures)});return i&&(t.entity=i),t}setConfig(e){if(!e||"object"!=typeof e)throw new Error("Invalid configuration / Ungültige Konfiguration");this.config={show_hero:!0,...e}}_t(e,t){return je(e,{configLanguage:this.config?.language,hassLanguage:this.hass?.language},t)}shouldUpdate(e){if(!this.config)return!1;if(e.has("config"))return!0;const t=e.get("hass");return!t||!!this.config.entity&&t.states[this.config.entity]!==this.hass.states[this.config.entity]}getCardSize(){return 6}getGridOptions(){return{columns:12,rows:"auto",min_columns:6,min_rows:4}}firstUpdated(){this._maybeRunVersionCheck()}updated(e){this._maybeRunVersionCheck()}_maybeRunVersionCheck(){!this._versionCheckDone&&this.hass&&(this._versionCheckDone=!0,async function(e){if(!e?.callWS)return null;try{const t=await e.callWS({type:"linz_linien_austria/card_version"});if(t?.version&&"0.7.0"!==t.version)return t.version}catch{}return null}(this.hass).then(e=>{e&&this.isConnected&&(this._versionMismatch=e)}))}render(){const e={configLanguage:this.config?.language,hassLanguage:this.hass?.language};if(!this.hass)return F`<ha-card><div class="card-content">…</div></ha-card>`;if(!this.config.entity)return F`<ha-card>
         ${Ve(this._versionMismatch,e)}
         <div class="card-content empty-state" role="status">
           ${this._t("common.no_entity_picked")}
@@ -1095,27 +1095,27 @@ function e(e,t,i,r){var n,o=arguments.length,a=o<3?t:null===r?r=Object.getOwnPro
         <div class="card-content empty-state" role="status">
           ${this._t("common.entity_unavailable")}
         </div>
-      </ha-card>`;const i=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||"",r=t.attributes.stop_name||i,n=r?encodeURIComponent(/Linz/i.test(r)?r:`${r}, Linz`):"",o=n?"string"!=typeof(a=`https://www.google.com/maps/search/?api=1&query=${n}`)?"":/^https?:\/\//i.test(a)?a:"":null;var a;const s=this._t("card.open_in_maps"),l=t.attributes.departures??[],c=new Set((this.config.lines??[]).map(e=>e.trim()).filter(Boolean)),d=this.config.walk_times??{},h=l.filter(e=>{if(c.size>0&&!c.has(e.line))return!1;const t=d[e.line];if("number"==typeof t&&t>0){const i=this._countdownFor(e);if(null===i||i<t)return!1}return!0}),p="number"==typeof this.config.max_departures?Math.max(0,this.config.max_departures):h.length,u=this._computeHeroGroup(h),m=u[0],f=!1!==this.config.show_hero?new Set(u):new Set,g=h.filter(e=>!f.has(e)),_=0===p?[]:g.slice(0,p),v=Fe(m?.mot),b=this._userLineColor(m?.line)??We(m?.mot),w=b?`--header-color: ${b};`:"",y=new Set(h.map(e=>e.line).filter(Boolean)),$=(t.attributes.alerts??[]).filter(e=>{const t=e.affected_lines||[];return 0===t.length||t.some(e=>y.has(e))}),x=m?.direction||"",A=this.config.show_platform?this._platformText(m):"",k=A?`${x} · ${this._platformLabel(m,!0)} ${A}`:x,z=!1!==this.config.pulse_live,S=!!this.config.enable_animations;return F`
+      </ha-card>`;const i=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||"",r=t.attributes.latitude,n=t.attributes.longitude,o=t.attributes.stop_name||i,a="number"==typeof r&&"number"==typeof n?`${r},${n}`:o?encodeURIComponent(/Linz/i.test(o)?o:`${o}, Linz`):"",s=a?"string"!=typeof(l=`https://www.google.com/maps/search/?api=1&query=${a}`)?"":/^https?:\/\//i.test(l)?l:"":null;var l;const c=this._t("card.open_in_maps"),d=t.attributes.departures??[],h=new Set((this.config.lines??[]).map(e=>e.trim()).filter(Boolean)),p=this.config.walk_times??{},u=d.filter(e=>{if(h.size>0&&!h.has(e.line))return!1;const t=p[e.line];if("number"==typeof t&&t>0){const i=this._countdownFor(e);if(null===i||i<t)return!1}return!0}),m="number"==typeof this.config.max_departures?Math.max(0,this.config.max_departures):u.length,f=this._computeHeroGroup(u),g=f[0],_=!1!==this.config.show_hero?new Set(f):new Set,v=u.filter(e=>!_.has(e)),b=0===m?[]:v.slice(0,m),w=Fe(g?.mot),y=this._userLineColor(g?.line)??We(g?.mot),$=y?`--header-color: ${y};`:"",x=new Set(u.map(e=>e.line).filter(Boolean)),A=(t.attributes.alerts??[]).filter(e=>{const t=e.affected_lines||[];return 0===t.length||t.some(e=>x.has(e))}),k=g?.direction||"",z=this.config.show_platform?this._platformText(g):"",S=z?`${k} · ${this._platformLabel(g,!0)} ${z}`:k,C=!1!==this.config.pulse_live,E=!!this.config.enable_animations;return F`
       <ha-card
-        class=${ve({"no-pulse":!z,"with-animations":S})}
+        class=${ve({"no-pulse":!C,"with-animations":E})}
       >
         ${Ve(this._versionMismatch,e)}
-        ${this.config.hide_header?V:F`<header class="head" style=${w}>
+        ${this.config.hide_header?V:F`<header class="head" style=${$}>
               <span class="icon-tile" aria-hidden="true">
-                <ha-icon icon=${v}></ha-icon>
+                <ha-icon icon=${w}></ha-icon>
               </span>
               <div class="title-block">
                 <h3 class="title">${i}</h3>
-                ${k?F`<p class="subtitle">${k}</p>`:V}
+                ${S?F`<p class="subtitle">${S}</p>`:V}
               </div>
-              ${o?F`<div class="head-actions">
+              ${s?F`<div class="head-actions">
                     <a
                       class="icon-action"
-                      href=${o}
+                      href=${s}
                       target="_blank"
                       rel="noopener noreferrer"
-                      title=${s}
-                      aria-label="${s}: ${i}"
+                      title=${c}
+                      aria-label="${c}: ${i}"
                       @click=${e=>e.stopPropagation()}
                     >
                       <ha-icon
@@ -1125,12 +1125,12 @@ function e(e,t,i,r){var n,o=arguments.length,a=o<3?t:null===r?r=Object.getOwnPro
                     </a>
                   </div>`:V}
             </header>`}
-        ${!1!==this.config.show_alerts&&$.length>0?this._renderAlerts($):V}
-        ${this.config.show_hero&&u.length>0?this._renderHero(u):V}
-        ${0===p||0===_.length&&f.size>0?V:F`<ul class="departures" role="list">
-                ${0===_.length?F`<li class="empty">
-                      ${c.size>0&&l.length>0?this._t("card.no_matches_for_filter"):this._t("card.no_departures")}
-                    </li>`:Ce(_,e=>this._depKey(e),e=>this._renderRow(e))}
+        ${!1!==this.config.show_alerts&&A.length>0?this._renderAlerts(A):V}
+        ${this.config.show_hero&&f.length>0?this._renderHero(f):V}
+        ${0===m||0===b.length&&_.size>0?V:F`<ul class="departures" role="list">
+                ${0===b.length?F`<li class="empty">
+                      ${h.size>0&&d.length>0?this._t("card.no_matches_for_filter"):this._t("card.no_departures")}
+                    </li>`:Ce(b,e=>this._depKey(e),e=>this._renderRow(e))}
               </ul>`}
         <div class="foot">
           <span class="timestamp">${this._t("card.attribution")}</span>

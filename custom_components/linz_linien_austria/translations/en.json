@@ -57,7 +57,7 @@
           "lines": "Lines to keep (empty = all)"
         },
         "data_description": {
-          "lines": "Each entry uses the form line:direction (for example 2:solarCity). Leave empty to surface every departure."
+          "lines": "Pick the lines to keep. Leave empty to show every departure. The list fills once the stop has been fetched."
         }
       }
     }

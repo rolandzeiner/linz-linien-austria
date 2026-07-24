@@ -64,11 +64,21 @@ them.
 - **gzip-compressed responses.** Every outbound call sends
   `Accept-Encoding: gzip`; the EFAController honours it (~7× saving
   on departure responses, similar on the alerts feed).
-- **`lines_at_stop` attribute.** The sensor accumulates the union of
-  every line label observed at the configured stop and exposes it
-  for templates and the bundled card. Persists across HA restarts
-  via a per-entry Store; reconfiguring to a different stop
-  invalidates the cache. *(0.6.0)*
+- **`lines_at_stop` attribute.** Every line the current timetable runs
+  through the stop — including rush-hour, seasonal and nightline routes
+  with nothing departing right now — exposed for templates and the
+  bundled card. Read from the upstream's own line roster, so it is
+  complete from the first refresh and correct immediately after a
+  reconfigure. *(0.6.0, rebuilt in 0.7.0)*
+- **Stop coordinates.** The sensor carries the stop's `latitude` and
+  `longitude`, so the card's map link opens the actual bay instead of
+  guessing from the stop name, and templates can compute distances.
+  *(0.7.0)*
+- **Stable line filter.** The optional line filter keys on the
+  upstream's direction code rather than the destination text. Lines with
+  a branching terminus publish a different destination per vehicle, so
+  the old text keys could drop a line from the filter at random.
+  Existing filters are migrated automatically. *(0.7.0)*
 
 ### Bundled Lovelace card (`linz-linien-austria-card`)
 
@@ -200,7 +210,7 @@ them.
 | Stop name (search) | — | Partial match; LINZ AG returns up to 10 candidates. |
 | Polling interval | `60` s | Minimum 30 s; 15 s domain-wide cooldown still applies. |
 | Departures to fetch | `20` | The upstream fetch size. The integration also fetches some extra headroom so the realtime sort stays stable. The sensor exposes the full sorted result (capped at 45 for the HA recorder). **Raise this value if you use a tight card-side `lines` filter** so the card has enough pre-filter rows to pick from. |
-| Lines filter (options) | empty | List of `line:direction` keys. Empty = all. |
+| Lines filter (options) | empty | Pick from the dropdown, which lists every line at the stop by destination. Empty = all. |
 
 ### Card
 
@@ -301,6 +311,13 @@ narrowed away don't surface.
   Raise the integration's `Departures to fetch` so the card has more
   pre-filter rows to draw from. (Editor helper text spells this out
   in both the lines-filter and max-departures fields.)
+- **Line filter looks empty after updating to 0.7.0.** The filter's
+  storage format changed and is migrated on upgrade. If the upstream was
+  unreachable at that moment, the migration is finished on the next
+  successful refresh instead — the stop shows every line until then. A
+  line whose destination has changed since you selected it can't be
+  matched and is dropped, with the reason logged; re-select it in the
+  options flow.
 - **Card shows "No upcoming departures."** The stop has no scheduled
   service in the next ~2 hours (Linz at 03:00). Confirm via the
   LinzMobil app; if real departures exist there, file a bug with a

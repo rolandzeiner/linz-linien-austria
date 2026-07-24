@@ -100,11 +100,14 @@ def _settings_schema(
 class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Linz Linien Austria."""
 
-    # Bump VERSION + add async_migrate_entry when entry.data shape changes
+    # Bump VERSION + extend async_migrate_entry when entry.data shape changes
     # in a non-additive way (renames, removals, type changes). MINOR_VERSION
     # bumps for additive changes that older HA versions can still load.
     # Tracks the config-entry schema, NOT the integration release version.
-    VERSION = 1
+    #
+    # v2 (0.7.0): CONF_LINES keys moved from "<line>:<destination text>" to
+    # "<line>:<H|R>". See __init__.py::async_migrate_entry.
+    VERSION = 2
     MINOR_VERSION = 1
 
     def __init__(self) -> None:
@@ -271,7 +274,6 @@ class LinzLinienAustriaOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Show / save options for an existing entry."""
         config = {**self.config_entry.data, **self.config_entry.options}
-        existing_lines = sorted(_known_lines_from_runtime(self.config_entry))
 
         if user_input is not None:
             return self.async_create_entry(
@@ -288,10 +290,7 @@ class LinzLinienAustriaOptionsFlow(OptionsFlow):
                 default=config.get(CONF_LINES) or [],
             ): SelectSelector(
                 SelectSelectorConfig(
-                    options=[
-                        SelectOptionDict(value=line_dir, label=line_dir)
-                        for line_dir in existing_lines
-                    ],
+                    options=_line_filter_options(self.config_entry),
                     multiple=True,
                     custom_value=True,
                     mode=SelectSelectorMode.DROPDOWN,
@@ -304,20 +303,33 @@ class LinzLinienAustriaOptionsFlow(OptionsFlow):
         )
 
 
-def _known_lines_from_runtime(entry: ConfigEntry) -> set[str]:
-    """Pull the set of "<line>:<direction>" pairs from the live coordinator.
+def _line_filter_options(entry: ConfigEntry) -> list[SelectOptionDict]:
+    """Build the line-filter dropdown from the live coordinator's roster.
 
-    Best-effort: if the coordinator hasn't fetched yet (e.g. the entry is
-    paused) the user gets an empty list and can still type custom values
-    via SelectSelector(custom_value=True).
+    Values are the canonical ``"<line>:<H|R>"`` filter keys; labels spell
+    the direction out as ``"2 → solarCity"`` so the user isn't asked to
+    know what H and R mean. The roster covers every line in the current
+    timetable period, so rush-hour and seasonal routes are offered even
+    when nothing of theirs is departing right now.
+
+    Best-effort: if the coordinator hasn't fetched yet (a paused or
+    still-starting entry) the user gets an empty dropdown and can still
+    type a raw key via ``custom_value=True``.
     """
     coordinator = getattr(entry, "runtime_data", None)
     if coordinator is None or coordinator.data is None:
-        return set()
-    out: set[str] = set()
-    for dep in coordinator.data.get("departures") or []:
-        line = dep.get("line", "")
-        direction = dep.get("direction", "")
-        if line:
-            out.add(f"{line}:{direction}")
+        return []
+    out: list[SelectOptionDict] = []
+    for item in coordinator.data.get("served_lines") or []:
+        line = str(item.get("line") or "").strip()
+        dir_code = str(item.get("dir_code") or "").strip()
+        if not line or not dir_code:
+            continue
+        destination = str(item.get("destination") or "").strip()
+        out.append(
+            SelectOptionDict(
+                value=f"{line}:{dir_code}",
+                label=f"{line} → {destination}" if destination else line,
+            )
+        )
     return out

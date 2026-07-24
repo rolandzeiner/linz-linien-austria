@@ -57,7 +57,7 @@
           "lines": "Linien filtern (leer = alle)"
         },
         "data_description": {
-          "lines": "Format pro Eintrag: linie:richtung (z. B. 2:solarCity). Leer lassen, um alle Abfahrten zu sehen."
+          "lines": "Linien auswählen, die angezeigt werden sollen. Leer lassen, um alle Abfahrten zu sehen. Die Liste füllt sich, sobald die Haltestelle abgefragt wurde."
         }
       }
     }

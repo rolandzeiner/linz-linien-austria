@@ -22,6 +22,7 @@ import aiohttp
 
 from .const import (
     API_BASE_URL,
+    COORD_OUTPUT_FORMAT,
     DM_ENDPOINT,
     STOPFINDER_ENDPOINT,
     USER_AGENT,
@@ -118,6 +119,7 @@ async def search_stops(
         # default returns addresses + POIs too, which we don't want for
         # a departure-monitor integration.
         "anyObjFilter_sf": "2",
+        "coordOutputFormat": COORD_OUTPUT_FORMAT,
     }
     data = await _get_json(session, f"{API_BASE_URL}{STOPFINDER_ENDPOINT}", params)
     return _parse_stopfinder(data)[:limit]
@@ -157,31 +159,62 @@ def _parse_stopfinder(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _wgs84_from_coords(raw: Any) -> tuple[float, float] | None:
+    """Parse an EFA ``coords`` string into ``(latitude, longitude)``.
+
+    Every request this module makes sends
+    ``coordOutputFormat=WGS84[dd.ddddd]``, so the server emits decimal
+    degrees in **longitude,latitude** order (EFA's x,y convention —
+    note it is the reverse of the lat,lon order HA expects). Without
+    that parameter the same field carries projected NAV5/NAV4
+    coordinates, which are numerically plausible but ~6 orders of
+    magnitude off; the range guard below rejects those rather than
+    handing a garbage location to the device registry.
+    """
+    if not isinstance(raw, str) or "," not in raw:
+        return None
+    lon_str, lat_str = raw.split(",", 1)
+    try:
+        lon = float(lon_str)
+        lat = float(lat_str)
+    except ValueError:
+        return None
+    if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
+        return None
+    return (lat, lon)
+
+
 def _unwrap_efa_point(raw: Any) -> dict[str, Any] | None:
-    """Pull {stop_id, name, place} out of an EFA point shape.
+    """Pull {stop_id, name, place, latitude?, longitude?} out of an EFA point.
 
     Both stop-shaped payloads — the STOPFINDER candidate and the
     DM_REQUEST resolved stop — wrap the same fields: ``ref`` holds the
     stable stop ID (the top-level ``stateless`` is only a per-session
     indirection token, so prefer ``ref.id``), ``name``/``object`` the
-    label, ``posttown``/``ref.place`` the locality. Returns ``None`` for
-    a non-dict input so callers can short-circuit. Values are returned
-    *un*-stripped; the stopfinder path tightens (strip + digit-check)
-    on top, the DM path takes them as-is.
+    label, ``posttown``/``ref.place`` the locality, ``ref.coords`` the
+    WGS84 position. Returns ``None`` for a non-dict input so callers can
+    short-circuit. String values are returned *un*-stripped; the
+    stopfinder path tightens (strip + digit-check) on top, the DM path
+    takes them as-is. Lat/lon keys are omitted entirely when the
+    upstream sent no usable position.
     """
     if not isinstance(raw, dict):
         return None
     ref_raw = raw.get("ref")
     ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
-    return {
+    out: dict[str, Any] = {
         "stop_id": str(ref.get("id") or raw.get("stateless") or ""),
         "name": str(raw.get("name") or raw.get("object") or ""),
         "place": str(raw.get("posttown") or ref.get("place") or ""),
     }
+    coords = _wgs84_from_coords(ref.get("coords"))
+    if coords is not None:
+        out["latitude"], out["longitude"] = coords
+    return out
 
 
 def _parse_one_stop(raw: Any) -> dict[str, Any] | None:
-    """Normalise an EFA stop candidate to {stop_id, name, place, coords?}."""
+    """Normalise an EFA stop candidate to {stop_id, name, place, lat/lon?}."""
     point = _unwrap_efa_point(raw)
     if point is None:
         return None
@@ -191,31 +224,10 @@ def _parse_one_stop(raw: Any) -> dict[str, Any] | None:
     name = point["name"].strip()
     if not name:
         return None
-    place = point["place"].strip()
-    # ``raw`` is a dict here — ``_unwrap_efa_point`` returned non-None.
-    ref_raw = raw.get("ref")
-    ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
-    coords_raw = ref.get("coords") if ref else None
-    coords: tuple[float, float] | None = None
-    if isinstance(coords_raw, str) and "," in coords_raw:
-        try:
-            x, y = coords_raw.split(",", 1)
-            # EFA NAV5 / NAV4 coords are projected (not WGS84). Surface
-            # them raw — the card / templates can decide whether to use
-            # them and via what projection.
-            coords = (float(x), float(y))
-        except ValueError:
-            coords = None
-
-    out: dict[str, Any] = {
-        "stop_id": stop_id,
-        "name": name,
-        "place": place,
-    }
-    if coords is not None:
-        out["coords_x"] = coords[0]
-        out["coords_y"] = coords[1]
-    return out
+    point["stop_id"] = stop_id
+    point["name"] = name
+    point["place"] = point["place"].strip()
+    return point
 
 
 async def fetch_departures(
@@ -247,6 +259,10 @@ async def fetch_departures(
         # Include realtime data when available (the live linzag.at JSON
         # endpoint, unlike the OGD XML mirror, still surfaces it).
         "useRealtime": "1",
+        # Decimal-degree WGS84 instead of the projected NAV5 default, so
+        # the resolved stop carries a position usable for map links and
+        # the device registry without a client-side transform.
+        "coordOutputFormat": COORD_OUTPUT_FORMAT,
     }
     data = await _get_json(session, f"{API_BASE_URL}{DM_ENDPOINT}", params)
     return _parse_dm(data)
@@ -255,8 +271,10 @@ async def fetch_departures(
 def _parse_dm(payload: dict[str, Any]) -> dict[str, Any]:
     """Extract a normalised departures payload from a DM_REQUEST response.
 
-    Returns a dict with ``stop`` (resolved metadata) and ``departures``
-    (list of normalised entries, sorted by effective arrival time).
+    Returns a dict with ``stop`` (resolved metadata), ``departures``
+    (list of normalised entries, sorted by effective arrival time) and
+    ``served_lines`` (the timetable's complete line roster for the stop,
+    independent of what happens to be departing right now).
 
     Sort key explanation: the upstream returns departures in *scheduled*
     order, not realtime-corrected order. Two on-time-vs-late departures
@@ -284,7 +302,121 @@ def _parse_dm(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "stop": stop_meta,
         "departures": departures,
+        "served_lines": _parse_serving_lines(payload),
     }
+
+
+def _parse_serving_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract the stop's full line roster from the ``servingLines`` block.
+
+    Every DM response carries this alongside the departures: one entry
+    per line *and direction* that the current timetable period runs
+    through this stop — including rush-hour, seasonal and nightline
+    routes with no departure anywhere near the live window. That makes
+    it strictly better than harvesting labels off ``departureList`` over
+    time, which only ever converges on the subset that happened to be
+    observed.
+
+    Normalised shape (fields with no content are omitted):
+        line:        "2"            # display number
+        dir_code:    "H"            # Hin/Rück, the stable direction key
+        destination: "solarCity"    # headsign for this direction
+        dest_id:     "60500296"     # terminus stop id
+        desc:        "Linz JKU | Universität - Linz solarCity"
+        mot:         4              # mode-of-transport id
+    """
+    block = payload.get("servingLines")
+    if not isinstance(block, dict):
+        return []
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for entry in _as_list(block.get("lines")):
+        mode_raw = entry.get("mode") if isinstance(entry, dict) else None
+        if not isinstance(mode_raw, dict):
+            continue
+        diva_raw = mode_raw.get("diva")
+        diva: dict[str, Any] = diva_raw if isinstance(diva_raw, dict) else {}
+        line = str(mode_raw.get("number") or "").strip()
+        if not line:
+            continue
+        dir_code = _direction_code(diva.get("dir"), diva.get("stateless"))
+        # A line that serves the stop in both directions produces two
+        # entries; the same (line, direction) twice is upstream noise.
+        key = (line, dir_code or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        item: dict[str, Any] = {"line": line}
+        if dir_code:
+            item["dir_code"] = dir_code
+        for field_name, raw in (
+            ("destination", mode_raw.get("destination")),
+            ("dest_id", mode_raw.get("destID")),
+            ("desc", mode_raw.get("desc")),
+        ):
+            value = str(raw or "").strip()
+            if value:
+                item[field_name] = value
+        mot = _int_or_none(mode_raw.get("type"))
+        if mot is not None:
+            item["mot"] = mot
+            item["mot_name"] = _mot_name(mot)
+        out.append(item)
+    out.sort(key=lambda item: (_natural_line_key(item["line"]), item.get("dir_code", "")))
+    return out
+
+
+def _as_list(raw: Any) -> list[Any]:
+    """Coerce an EFA field that is a list of N, or a bare dict when N == 1.
+
+    EFA collapses single-element collections to the element itself
+    rather than emitting a one-item list, so every repeated field has to
+    be normalised before iterating or a single-line stop silently
+    iterates over dict *keys*.
+    """
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict):
+        return [raw]
+    return []
+
+
+def _natural_line_key(line: str) -> tuple[int, str]:
+    """Sort "2" before "12" before "45A", with non-numeric labels last."""
+    digits = ""
+    for char in line:
+        if not char.isdigit():
+            break
+        digits += char
+    if not digits:
+        return (10**6, line.casefold())
+    return (int(digits), line.casefold())
+
+
+def _direction_code(raw_dir: Any, raw_stateless: Any) -> str | None:
+    """Resolve the stable "H"/"R" direction code for a line.
+
+    ``liErgRiProj.direction`` (departures) and ``diva.dir``
+    (servingLines) are the primary sources. Both are absent on some
+    replacement-service rows, where the same code is still recoverable
+    from the 5-segment ``stateless`` line id
+    (``esg:02012:E:R:e25`` → ``R``).
+
+    Why this matters: the user-facing line filter used to key on the
+    *destination text*, which is unstable for branching termini — the
+    same line reports a different headsign depending on which vehicle
+    is next, so a text-keyed filter intermittently dropped the whole
+    line. The H/R code is per-direction and does not move.
+    """
+    code = str(raw_dir or "").strip().upper()
+    if code in ("H", "R"):
+        return code
+    parts = str(raw_stateless or "").split(":")
+    if len(parts) >= 4:
+        candidate = parts[3].strip().upper()
+        if candidate in ("H", "R"):
+            return candidate
+    return None
 
 
 def _departure_sort_key(dep: dict[str, Any]) -> tuple[int, int]:
@@ -343,7 +475,8 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
 
     Schema (only fields with meaningful content set; missing → omitted):
         line:           "2"            # display number
-        direction:      "solarCity"    # towards
+        direction:      "solarCity"    # towards (display text, unstable)
+        dir_code:       "H"            # Hin/Rück — the stable filter key
         origin:         "JKU"          # initial origin (for context)
         platform:       "1"            # bay/platform if known
         mot:            4              # mode-of-transport id (see const.py)
@@ -365,6 +498,10 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
     line = str(line_info.get("number") or line_info.get("symbol") or "").strip()
     direction = str(line_info.get("direction") or "").strip()
     origin = str(line_info.get("directionFrom") or "").strip()
+
+    proj_raw = line_info.get("liErgRiProj")
+    proj: dict[str, Any] = proj_raw if isinstance(proj_raw, dict) else {}
+    dir_code = _direction_code(proj.get("direction"), line_info.get("stateless"))
 
     mot = _int_or_none(line_info.get("motType"))
     countdown = _int_or_none(raw.get("countdown"))
@@ -400,6 +537,8 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
         "line": line,
         "direction": direction,
     }
+    if dir_code:
+        out["dir_code"] = dir_code
     if origin:
         out["origin"] = origin
     if platform:
