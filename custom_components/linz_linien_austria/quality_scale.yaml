@@ -69,14 +69,18 @@ rules:
   test-coverage:
     status: done
     comment: >-
-      Config flow, coordinator (parse, backoff, cooldown, rate-limit,
-      line filter incl. the headsign-change regression, roster-driven
-      lines_at_stop + fallback, WGS84 position), api payload
-      normalisation (stopfinder, departures, direction-code resolution,
-      servingLines roster incl. the single-element dict shape, projected-
-      coordinate guard), entry migration v1 to v2 (remap helper, deferred
-      heal path, idempotency, downgrade refusal), alerts, sensor, card
-      registration and diagnostics. Coverage gate at 90 percent.
+      167 tests at 95 percent (gate 90). Config flow (search, pick,
+      probe failure, duplicate abort, reconfigure, options incl. the
+      roster-backed line picker), coordinator (backoff, cooldown,
+      rate-limit, line filter and its headsign-change regression,
+      roster-driven lines_at_stop plus fallback, WGS84 position),
+      api payload normalisation (both stopfinder shapes, departures,
+      direction codes, servingLines roster, delay hints, bay and
+      operator, projected-coordinate guard), entry migration v1 to v2
+      (remap helper, deferred heal, idempotency, downgrade refusal),
+      the shared text normalisers, alerts, the full sensor attribute
+      contract incl. recorder exclusions and registry identity, card
+      registration and diagnostics.
 
   # Gold
   devices:

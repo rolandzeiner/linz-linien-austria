@@ -180,14 +180,14 @@ async def test_options_flow_allows_lines_filter(hass: HomeAssistant) -> None:
         {
             CONF_SCAN_INTERVAL: 90,
             CONF_LIMIT: 8,
-            CONF_LINES: ["2:solarCity"],
+            CONF_LINES: ["2:H"],
         },
     )
     assert result["type"] == FlowResultType.CREATE_ENTRY
     refreshed = hass.config_entries.async_get_entry(entry.entry_id)
     assert refreshed is not None
     assert refreshed.options[CONF_SCAN_INTERVAL] == 90
-    assert refreshed.options[CONF_LINES] == ["2:solarCity"]
+    assert refreshed.options[CONF_LINES] == ["2:H"]
 
 
 async def test_reconfigure_updates_settings(hass: HomeAssistant) -> None:
@@ -226,3 +226,231 @@ async def test_reconfigure_updates_settings(hass: HomeAssistant) -> None:
     assert refreshed is not None
     assert refreshed.data[CONF_STOP_ID] == "60501720"  # preserved
     assert refreshed.data[CONF_SCAN_INTERVAL] == 120
+
+
+# ---------------------------------------------------------------------
+# Pick step — the test-before-configure probe and its failure branches
+# ---------------------------------------------------------------------
+
+
+async def test_pick_probe_failure_surfaces_cannot_connect(
+    hass: HomeAssistant,
+) -> None:
+    """A stop that search found but the DM endpoint rejects must not save.
+
+    Without the probe a stale bookmarked stop id would create a
+    permanently broken entry that never produces a departure.
+    """
+    from custom_components.linz_linien_austria.api import EfaApiError
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    with _patch_search(SAMPLE_CANDIDATES):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SEARCH_QUERY: "Hauptbahnhof"}
+        )
+    with patch(
+        "custom_components.linz_linien_austria.config_flow.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=EfaApiError("stop gone"),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_STOP_ID: "60501720"}
+        )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "pick"
+    assert result["errors"]["base"] == "cannot_connect"
+    assert not hass.config_entries.async_entries(DOMAIN)
+
+
+
+async def test_whitespace_only_query_is_too_short(hass: HomeAssistant) -> None:
+    """The length check runs after trimming, so spaces don't pass it."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SEARCH_QUERY: "     "}
+    )
+    assert result["errors"][CONF_SEARCH_QUERY] == "search_too_short"
+
+
+# ---------------------------------------------------------------------
+# Entry schema version
+# ---------------------------------------------------------------------
+
+
+async def test_new_entry_is_created_at_current_schema_version(
+    hass: HomeAssistant,
+) -> None:
+    """A fresh entry must not immediately look like it needs migrating."""
+    await _bootstrap_entry(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.version == 2
+    assert entry.minor_version == 1
+
+
+# ---------------------------------------------------------------------
+# Options flow — line-filter picker sourced from the upstream roster
+# ---------------------------------------------------------------------
+
+
+async def _bootstrap_entry(hass: HomeAssistant, coordinator_payload=None):
+    """Run the full flow once and return the loaded entry.
+
+    Creating the entry makes HA set it up immediately, so the
+    coordinator's fetch has to be patched for the whole flow — otherwise
+    the entry lands in SETUP_RETRY and a later explicit setup call
+    raises OperationNotAllowed.
+    """
+    payload = coordinator_payload or {
+        "stop": {"stop_id": "60501720", "name": "Hbf", "place": "Linz"},
+        "served_lines": [],
+        "departures": [],
+    }
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=payload,
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        with _patch_search(SAMPLE_CANDIDATES):
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {CONF_SEARCH_QUERY: "Hauptbahnhof"}
+            )
+        with _patch_dm({"stop": {"stop_id": "60501720"}, "departures": []}):
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {CONF_STOP_ID: "60501720"}
+            )
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SCAN_INTERVAL: 60, CONF_LIMIT: 12}
+        )
+        await hass.async_block_till_done()
+    return hass.config_entries.async_entries(DOMAIN)[0]
+
+
+def _lines_selector_options(result) -> list[dict[str, str]]:
+    """Dig the line-filter selector's options out of a rendered options form."""
+    from custom_components.linz_linien_austria.const import CONF_LINES
+
+    schema = result["data_schema"].schema
+    for key, selector in schema.items():
+        if str(key) == CONF_LINES:
+            return list(selector.config["options"])
+    raise AssertionError("no lines field in the options schema")
+
+
+async def test_options_picker_labels_directions_readably(
+    hass: HomeAssistant,
+) -> None:
+    """The picker offers `2:H` as the value but shows `2 → solarCity`.
+
+    The H/R code is what makes the filter stable, but it means nothing
+    to a user — the label has to carry the destination instead.
+    """
+    from custom_components.linz_linien_austria.api import _parse_dm
+
+    from .conftest import EXAMPLE_DM_RESPONSE
+
+    entry = await _bootstrap_entry(hass, _parse_dm(EXAMPLE_DM_RESPONSE))
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    options = _lines_selector_options(result)
+
+    assert {"value": "2:H", "label": "2 → solarCity"} in options
+    assert {"value": "2:R", "label": "2 → Universität"} in options
+    # Line 17 has no live departure but is in the roster — it must still
+    # be offered, which is the entire point of the roster-backed picker.
+    assert any(o["value"] == "17:R" for o in options)
+
+
+async def test_options_picker_empty_before_first_fetch(
+    hass: HomeAssistant,
+) -> None:
+    """An entry that never fetched yields an empty picker, not a crash.
+
+    `custom_value=True` on the selector means the user can still type a
+    raw key, so an empty list is a degraded but usable state.
+    """
+    entry = await _bootstrap_entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _lines_selector_options(result) == []
+
+
+async def test_options_picker_skips_roster_rows_without_direction(
+    hass: HomeAssistant,
+) -> None:
+    """A roster row with no resolvable H/R code can't form a valid key."""
+    entry = await _bootstrap_entry(
+        hass,
+        {
+            "stop": {"stop_id": "60501720", "name": "Hbf", "place": "Linz"},
+            "served_lines": [
+                {"line": "2", "dir_code": "H", "destination": "solarCity"},
+                {"line": "X", "destination": "Nowhere"},  # no dir_code
+            ],
+            "departures": [],
+        },
+    )
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    values = [o["value"] for o in _lines_selector_options(result)]
+    assert values == ["2:H"]
+
+
+async def test_options_picker_falls_back_to_line_when_no_destination(
+    hass: HomeAssistant,
+) -> None:
+    """No headsign → label is just the line, never a dangling arrow."""
+    entry = await _bootstrap_entry(
+        hass,
+        {
+            "stop": {"stop_id": "60501720", "name": "Hbf", "place": "Linz"},
+            "served_lines": [{"line": "45", "dir_code": "R"}],
+            "departures": [],
+        },
+    )
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert _lines_selector_options(result) == [{"value": "45:R", "label": "45"}]
+
+
+# ---------------------------------------------------------------------
+# Candidate label formatting
+# ---------------------------------------------------------------------
+
+
+def test_candidate_label_appends_place_when_not_redundant() -> None:
+    from custom_components.linz_linien_austria.config_flow import (
+        _format_candidate_label,
+    )
+
+    assert (
+        _format_candidate_label({"name": "Hauptbahnhof", "place": "Linz/Donau"})
+        == "Hauptbahnhof (Linz/Donau)"
+    )
+
+
+def test_candidate_label_omits_place_already_in_name() -> None:
+    """EFA names usually embed the locality; repeating it reads as noise."""
+    from custom_components.linz_linien_austria.config_flow import (
+        _format_candidate_label,
+    )
+
+    assert (
+        _format_candidate_label(
+            {"name": "Linz/Donau, Hauptbahnhof", "place": "Linz/Donau"}
+        )
+        == "Linz/Donau, Hauptbahnhof"
+    )
+
+
+def test_candidate_label_handles_missing_name() -> None:
+    from custom_components.linz_linien_austria.config_flow import (
+        _format_candidate_label,
+    )
+
+    assert _format_candidate_label({}) == "—"

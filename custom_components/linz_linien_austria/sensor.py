@@ -158,6 +158,14 @@ class NextDepartureSensor(
             attrs["next_is_cancelled"] = bool(first.get("is_cancelled"))
             if "delay_minutes" in first:
                 attrs["next_delay_minutes"] = first["delay_minutes"]
+            # The operator's own words for why this trip is late. Kept
+            # recorded (unlike `departures`) — it's a short string that
+            # only changes when a disruption starts or clears, so the
+            # history is a useful record rather than per-tick noise.
+            if "delay_hint" in first:
+                attrs["next_delay_hint"] = first["delay_hint"]
+            if "stop_bay" in first:
+                attrs["next_stop_bay"] = first["stop_bay"]
             if "is_realtime" in first:
                 attrs["next_is_realtime"] = first["is_realtime"]
             if "scheduled" in first:

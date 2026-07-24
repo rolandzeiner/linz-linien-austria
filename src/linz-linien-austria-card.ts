@@ -622,6 +622,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const platform = this.config.show_platform
       ? this._platformText(d)
       : "";
+    const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
     return html`
       <div class="hero-entry">
         ${this._renderLineBadge(d)}
@@ -635,6 +636,14 @@ export class LinzLinienAustriaCard extends LitElement {
           ? html`<span class="rt-pill" title=${this._t("card.realtime")}>
               ${this._t("card.realtime")}
             </span>`
+          : nothing}
+        ${hint
+          ? // Full width via flex-basis so the caption wraps onto its own
+            // line under the badge/direction rather than fighting them
+            // for horizontal space. The hero de-dupes its departure out
+            // of the row list below, so without this the next departure
+            // would be the one row whose delay reason is never shown.
+            html`<span class="hero-hint">${hint}</span>`
           : nothing}
       </div>
     `;
@@ -652,6 +661,10 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes_short")}`;
+    // The operator's live reason for a delay. Suppressed on cancelled
+    // rows: "Entfällt" already says everything, and a "please be
+    // patient" caption under it reads as if the trip is merely late.
+    const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
 
     return html`
       <li
@@ -664,10 +677,15 @@ export class LinzLinienAustriaCard extends LitElement {
           d.direction
         } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
           d.is_realtime ? ` ${this._t("card.realtime")}` : ""
-        }"
+        }${hint ? `. ${hint}` : ""}"
       >
         ${this._renderLineBadge(d)}
-        <span class="row-direction">${d.direction || ""}</span>
+        <span class="row-main">
+          <span class="row-direction">${d.direction || ""}</span>
+          ${hint
+            ? html`<span class="row-hint" title=${hint}>${hint}</span>`
+            : nothing}
+        </span>
         <span class="row-tail">
           ${this.config.show_platform &&
           !d.is_cancelled &&

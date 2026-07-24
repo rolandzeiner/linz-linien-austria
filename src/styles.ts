@@ -189,6 +189,17 @@ export const cardStyles = css`
     gap: 8px;
     min-width: 0;
   }
+  /* Delay reason under the hero's badge + destination. flex-basis:100%
+     forces a wrap onto its own line inside the flex row, so a long
+     German hint never squeezes the destination into an ellipsis. */
+  .hero-hint {
+    flex-basis: 100%;
+    min-width: 0;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--linz-late);
+    overflow-wrap: anywhere;
+  }
   .hero-direction {
     font-weight: 500;
     color: var(--primary-text-color);
@@ -278,12 +289,35 @@ export const cardStyles = css`
   .row:last-child {
     border-bottom: none;
   }
+  /* Middle column wrapper. Stacks the destination over an optional
+     delay-hint caption. min-width:0 has to repeat here rather than
+     only on .row-direction: without it this grid child refuses to
+     shrink below its content and the ellipsis never engages. */
+  .row-main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    gap: 1px;
+  }
   .row-direction {
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--primary-text-color);
+  }
+  /* Operator's live delay reason. Muted and a size down so it reads as
+     an annotation on the destination rather than competing with it;
+     the warning tint ties it to the late-time colour on the same row. */
+  .row-hint {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    color: var(--linz-late);
   }
   .row-time {
     font-variant-numeric: tabular-nums;

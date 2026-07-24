@@ -175,6 +175,17 @@ export interface Departure {
   dir_code?: "H" | "R";
   origin?: string;
   platform?: string;
+  /** Named bay this departure leaves from, e.g. "Hauptbahnhof
+   *  (Kärntnerstraße)". Differs per row at multi-bay stops and is often
+   *  the only location cue when `platform` is the unknown-sentinel 0. */
+  stop_bay?: string;
+  /** Transport operator, e.g. "Linz Linien GmbH". Distinguishes
+   *  municipal service from ÖBB rail at shared stops. */
+  operator?: string;
+  /** The operator's live reason for a delay, flattened to one line
+   *  ("Behinderung! Verspätung! Bitte Geduld!"). Absent on trips running
+   *  to plan, which is the overwhelming majority. */
+  delay_hint?: string;
   mot?: number;
   mot_name?: string;
   countdown?: number;

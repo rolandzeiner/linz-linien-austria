@@ -28,6 +28,7 @@ from .const import (
     USER_AGENT,
 )
 from .http import base_request_headers
+from .text import decode_html, flatten_lines
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -486,6 +487,9 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
         dir_code:       "H"            # Hin/Rück — the stable filter key
         origin:         "JKU"          # initial origin (for context)
         platform:       "1"            # bay/platform if known
+        stop_bay:       "Hauptbahnhof (Kärntnerstraße)"  # named bay
+        operator:       "Linz Linien GmbH"
+        delay_hint:     "Behinderung! Verspätung! Bitte Geduld!"
         mot:            4              # mode-of-transport id (see const.py)
         mot_name:       "Tram"         # human-readable mode
         countdown:      3              # planned, in minutes
@@ -529,6 +533,21 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
 
     platform = str(raw.get("platform") or raw.get("platformName") or "").strip()
 
+    # The named bay this departure actually leaves from. At a multi-bay
+    # stop these differ per row ("Hauptbahnhof (Kärntnerstraße)" vs
+    # "(Busterminal)" vs "(Tiefgeschoß)") and carry far more meaning than
+    # the bare platform digit sitting next to them.
+    stop_bay = str(raw.get("nameWO") or "").strip()
+
+    operator_raw = raw.get("operator")
+    operator = (
+        str((operator_raw or {}).get("name") or "").strip()
+        if isinstance(operator_raw, dict)
+        else ""
+    )
+
+    delay_hint = _hint_text(line_info.get("hints"))
+
     # `realtimeTripStatus` is an enum that includes MONITORED (normal)
     # and TRIP_CANCELLED among other values. Surface only the cancellation
     # signal to the card — the other states are operator-side and don't
@@ -550,6 +569,12 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
         out["origin"] = origin
     if platform:
         out["platform"] = platform
+    if stop_bay:
+        out["stop_bay"] = stop_bay
+    if operator:
+        out["operator"] = operator
+    if delay_hint:
+        out["delay_hint"] = delay_hint
     if mot is not None:
         out["mot"] = mot
         out["mot_name"] = _mot_name(mot)
@@ -569,6 +594,36 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
     if trip_status:
         out["trip_status"] = trip_status
     return out
+
+
+def _hint_text(raw: Any) -> str:
+    """Flatten ``servingLine.hints`` into one line of plain text.
+
+    The upstream publishes the live reason a trip is running late —
+    "Behinderung!\\nVerspätung!\\nBitte Geduld!" — as a list of
+    ``{content}`` dicts, collapsing to a bare dict when there is exactly
+    one (the usual EFA single-element shape). The newlines are there to
+    fill a three-line dot-matrix display, so they become spaces on a
+    one-line card row.
+
+    Content comes from the same editorial CMS as the alerts feed, so it
+    runs through the shared HTML decoder — the hints observed in the
+    field are plain text, but `lineInfos` from that CMS is not, and an
+    unescaped `&auml;` in the middle of a German word is exactly the
+    kind of thing nobody notices until a user reports it.
+
+    Duplicates are dropped: several departures of the same line repeat
+    the identical hint, and EFA sometimes lists it twice on one row.
+    """
+    parts: list[str] = []
+    for hint in _as_list(raw):
+        content = hint.get("content") if isinstance(hint, dict) else hint
+        if not isinstance(content, str):
+            continue
+        flattened = flatten_lines(decode_html(content))
+        if flattened and flattened not in parts:
+            parts.append(flattened)
+    return " ".join(parts)
 
 
 def _iso_from_efa_datetime(raw: Any) -> str | None:

@@ -74,6 +74,15 @@ them.
   `longitude`, so the card's map link opens the actual bay instead of
   guessing from the stop name, and templates can compute distances.
   *(0.7.0)*
+- **Live delay reasons.** When the operator publishes why a trip is
+  running late ("Behinderung! Verspätung! Bitte Geduld!"), it appears on
+  the departure as `delay_hint` and reads as a caption on the card.
+  *(0.7.0)*
+- **Named bays and operator.** Each departure carries `stop_bay`
+  (`Hauptbahnhof (Busterminal)` vs `(Kärntnerstraße)` vs
+  `(Tiefgeschoß)`) and `operator`. At a sprawling stop the bay name says
+  more than the platform digit — and it's the only location cue on the
+  lines where the upstream reports no platform at all. *(0.7.0)*
 - **Stable line filter.** The optional line filter keys on the
   upstream's direction code rather than the destination text. Lines with
   a branching terminus publish a different destination per vehicle, so
@@ -90,6 +99,11 @@ them.
 - **Realtime cue** — small green bullet leading the time on rows
   where realtime data was available (WCAG 1.4.1: redundant cue for
   colour-blind / sunlight-glare users).
+- **Delay reason caption** — when the operator says why a trip is late,
+  the reason appears under the destination on the row and under the
+  hero's line badge, in the same warning colour as a late time. Hidden
+  on cancelled trips, where "Entfällt" already tells the whole story.
+  *(0.7.0)*
 - **Trip cancellations** — strikethrough line + direction, "Entfällt"
   label, no platform shown.
 - **Line badge** — fixed-width pill, MoT-tinted, with mode icon

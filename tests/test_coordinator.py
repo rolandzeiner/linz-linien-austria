@@ -162,6 +162,119 @@ def test_normalise_departure_omits_unresolvable_direction_code() -> None:
     assert "dir_code" not in normalised
 
 
+def test_normalise_departure_flattens_delay_hint() -> None:
+    """Multi-line dot-matrix hints collapse to one line for a card row."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": [
+                    {"content": "Behinderung!\nVerspätung!\nBitte Geduld!"}
+                ],
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Behinderung! Verspätung! Bitte Geduld!"
+
+
+def test_normalise_departure_handles_single_hint_dict() -> None:
+    """EFA collapses a one-element hints list to a bare dict."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": {"content": "Umleitung"},
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Umleitung"
+
+
+def test_normalise_departure_decodes_html_in_hint() -> None:
+    """Hints share a CMS with the alerts feed, so entities can appear."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": [{"content": "<strong>Versp&auml;tung</strong>"}],
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Verspätung"
+
+
+def test_normalise_departure_dedupes_repeated_hints() -> None:
+    """EFA sometimes lists the same hint twice on one row."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": [{"content": "Stau"}, {"content": "Stau"}],
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Stau"
+
+
+def test_normalise_departure_omits_empty_hint() -> None:
+    """No hints, junk hints, or blank content → the key is absent."""
+    for hints in (None, [], [{}], [{"content": "   "}], "nonsense", [123]):
+        out = _normalise_departure(
+            {
+                "countdown": 5,
+                "servingLine": {
+                    "number": "27",
+                    "direction": "Test",
+                    "hints": hints,
+                },
+            }
+        )
+        assert out is not None
+        assert "delay_hint" not in out, f"leaked for {hints!r}"
+
+
+def test_normalise_departure_carries_bay_and_operator() -> None:
+    """`nameWO` names the bay; `operator.name` identifies who runs it."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "platform": "5",
+            "nameWO": "Hauptbahnhof (Busterminal)",
+            "operator": {"code": "1", "name": "Linz Linien GmbH"},
+            "servingLine": {"number": "45", "direction": "Test"},
+        }
+    )
+    assert out is not None
+    assert out["stop_bay"] == "Hauptbahnhof (Busterminal)"
+    assert out["operator"] == "Linz Linien GmbH"
+    assert out["platform"] == "5"
+
+
+def test_normalise_departure_tolerates_malformed_operator() -> None:
+    """A non-dict `operator` must not raise or leak a stringified dict."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "operator": "Linz Linien GmbH",
+            "servingLine": {"number": "45", "direction": "Test"},
+        }
+    )
+    assert out is not None
+    assert "operator" not in out
+
+
 def test_normalise_departure_carries_realtime_correction() -> None:
     """A 1-minute delay shifts countdown_rt above the scheduled countdown."""
     raw = EXAMPLE_DM_RESPONSE["departureList"][0]
