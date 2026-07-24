@@ -167,6 +167,86 @@ EXAMPLE_STOPFINDER = {
 }
 
 
+# One departure carrying both sequence blocks, as returned when
+# `depType=stopEvents&includeCompleteStopSeq=1` is requested. `prevStopSeq`
+# is present on purpose: the parser must ignore it, and it is over half
+# the sequence payload the upstream bills us for.
+EXAMPLE_DM_WITH_SEQUENCE = {
+    "dm": {
+        "points": {
+            "point": {
+                "name": "Linz/Donau, Hauptbahnhof",
+                "ref": {"id": "60501720", "place": "Linz/Donau"},
+                "stateless": "60501720",
+            }
+        }
+    },
+    "departureList": [
+        {
+            "countdown": 2,
+            "dateTime": {
+                "year": "2026",
+                "month": "7",
+                "day": "24",
+                "hour": "18",
+                "minute": "56",
+            },
+            "servingLine": {
+                "number": "12",
+                "direction": "Auwiesen",
+                "motType": "5",
+                "delay": "1",
+                "liErgRiProj": {"direction": "H"},
+            },
+            "prevStopSeq": [
+                {
+                    "nameWO": "Bereits vorbei",
+                    "ref": {"id": "99999999", "arrDateTime": "20260724 18:50"},
+                }
+            ],
+            "onwardStopSeq": [
+                {
+                    "name": "Linz/Donau Waldeggstraße",
+                    "nameWO": "Waldeggstraße",
+                    "ref": {
+                        "id": "60500910",
+                        "arrDateTime": "20260724 18:58",
+                        "arrDelay": "1",
+                        "arrValid": "1",
+                        "depDateTime": "20260724 18:58",
+                        "depDelay": "1",
+                        "depValid": "1",
+                    },
+                },
+                {
+                    "name": "Linz/Donau Sophiengutstraße",
+                    "nameWO": "Sophiengutstraße",
+                    "ref": {
+                        # Scheduled-only stop: EFA still emits arrDelay,
+                        # but arrValid says it isn't a live prediction.
+                        "id": "60500920",
+                        "arrDateTime": "20260724 18:59",
+                        "arrDelay": "0",
+                        "arrValid": "0",
+                    },
+                },
+                {
+                    # No arrival at all — falls back to the departure time.
+                    "name": "Linz/Donau Kudlichstraße",
+                    "nameWO": "Kudlichstraße",
+                    "ref": {
+                        "id": "60500930",
+                        "depDateTime": "20260724 19:00",
+                        "depDelay": "2",
+                        "depValid": "1",
+                    },
+                },
+            ],
+        }
+    ],
+}
+
+
 EXAMPLE_DM_RESPONSE = {
     "dm": {
         "points": {

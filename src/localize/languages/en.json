@@ -24,7 +24,9 @@
     "cancelled": "Cancelled",
     "alerts_summary": "{count} service notice(s)",
     "affected_lines": "Affected lines",
-    "attribution": "Source: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0"
+    "attribution": "Source: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0",
+    "show_stops": "Show remaining stops for line {line} to {direction}",
+    "hide_stops": "Hide remaining stops for line {line} to {direction}"
   },
   "editor": {
     "entity": "Sensor",

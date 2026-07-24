@@ -47,6 +47,43 @@ CONF_LINES: Final = "lines"
 # `_heal_legacy_line_filter`. Never written by the config flow.
 CONF_LINES_LEGACY: Final = "lines_legacy_v1"
 CONF_SEARCH_QUERY: Final = "search_query"
+# Opt-in: ask the DM endpoint for each trip's onward stop list.
+CONF_SHOW_STOP_SEQUENCE: Final = "show_stop_sequence"
+
+# --- Onward stop sequence (opt-in) -----------------------------------
+# `depType=stopEvents&includeCompleteStopSeq=1` makes each departure
+# carry the full stop list of the trip it belongs to, with per-stop
+# realtime arrival and delay. That is strictly richer than the sibling
+# wiener-linien integration's `stops_ahead`, which has to be synthesised
+# from a locally-built GTFS trip-pattern index and carries no per-stop
+# delay — but here it is paid for on every single poll.
+#
+# Measured at Hauptbahnhof, gzipped (2026-07-24):
+#
+#     limit   with seq   without   ratio
+#       6      14.9 KB    6.8 KB    2.2x
+#       8      20.1 KB    7.1 KB    2.8x
+#      10      22.8 KB    7.9 KB    2.9x
+#      12      27.2 KB    8.1 KB    3.3x
+#      20      41.4 KB   10.3 KB    4.0x
+#
+# The marginal cost per departure jumps past 10 (8→10 costs 2.7 KB for
+# two more rows; 10→12 costs 4.4 KB for two), so 10 is where the curve
+# stops being efficient. At the 60 s default that is ~33 MB/day/stop
+# against ~15 MB without — hence opt-in, and hence the clamp.
+#
+# Half of what we pay for is waste: the response also carries
+# `prevStopSeq` (the stops already behind the vehicle), which is 53% of
+# the sequence volume and useless for a departure monitor. No EFA
+# parameter suppresses it, so it is dropped client-side on receipt.
+SEQUENCE_UPSTREAM_LIMIT: Final = 10
+
+# Hard cap on onward stops kept per departure. The longest Linz routes
+# run ~30 stops end to end, so a vehicle leaving its first stop can
+# legitimately carry near that many; 25 keeps the common case whole
+# while bounding the attribute payload if the upstream ever returns
+# something pathological.
+MAX_STOPS_AHEAD: Final = 25
 
 # Polling policy
 # Linz AG Linien EFA fair-use: keep aggregate request rate well below the

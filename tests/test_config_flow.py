@@ -454,3 +454,94 @@ def test_candidate_label_handles_missing_name() -> None:
     )
 
     assert _format_candidate_label({}) == "—"
+
+
+# ---------------------------------------------------------------------
+# show_stop_sequence — opt-in, and reachable from all three surfaces
+# ---------------------------------------------------------------------
+
+
+async def test_stop_sequence_defaults_off_on_new_entry(
+    hass: HomeAssistant,
+) -> None:
+    """The option roughly triples upstream traffic, so it must be opt-in."""
+    from custom_components.linz_linien_austria.const import (
+        CONF_SHOW_STOP_SEQUENCE,
+    )
+
+    entry = await _bootstrap_entry(hass)
+    assert entry.data[CONF_SHOW_STOP_SEQUENCE] is False
+
+
+async def test_stop_sequence_can_be_enabled_at_setup(
+    hass: HomeAssistant,
+) -> None:
+    from custom_components.linz_linien_austria.const import (
+        CONF_SHOW_STOP_SEQUENCE,
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    with _patch_search(SAMPLE_CANDIDATES):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SEARCH_QUERY: "Hauptbahnhof"}
+        )
+    with _patch_dm({"stop": {"stop_id": "60501720"}, "departures": []}):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_STOP_ID: "60501720"}
+        )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_SCAN_INTERVAL: 60, CONF_LIMIT: 12, CONF_SHOW_STOP_SEQUENCE: True},
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_SHOW_STOP_SEQUENCE] is True
+
+
+async def test_stop_sequence_toggled_via_options(hass: HomeAssistant) -> None:
+    """Options is where a user flips it after seeing the traffic cost."""
+    from custom_components.linz_linien_austria.const import (
+        CONF_LINES,
+        CONF_SHOW_STOP_SEQUENCE,
+    )
+
+    entry = await _bootstrap_entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_SCAN_INTERVAL: 60,
+            CONF_LIMIT: 12,
+            CONF_LINES: [],
+            CONF_SHOW_STOP_SEQUENCE: True,
+        },
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    refreshed = hass.config_entries.async_get_entry(entry.entry_id)
+    assert refreshed is not None
+    assert refreshed.options[CONF_SHOW_STOP_SEQUENCE] is True
+
+
+async def test_stop_sequence_toggled_via_reconfigure(
+    hass: HomeAssistant,
+) -> None:
+    from custom_components.linz_linien_austria.const import (
+        CONF_SHOW_STOP_SEQUENCE,
+    )
+
+    entry = await _bootstrap_entry(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_SCAN_INTERVAL: 90, CONF_LIMIT: 6, CONF_SHOW_STOP_SEQUENCE: True},
+    )
+    assert result["type"] == FlowResultType.ABORT
+    refreshed = hass.config_entries.async_get_entry(entry.entry_id)
+    assert refreshed is not None
+    assert refreshed.data[CONF_SHOW_STOP_SEQUENCE] is True
+    # The stop itself must survive a reconfigure untouched.
+    assert refreshed.data[CONF_STOP_ID] == "60501720"

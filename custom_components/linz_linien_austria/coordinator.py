@@ -27,6 +27,7 @@ from .const import (
     CONF_LIMIT,
     CONF_LINES,
     CONF_LINES_LEGACY,
+    CONF_SHOW_STOP_SEQUENCE,
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DEFAULT_LIMIT,
@@ -34,6 +35,7 @@ from .const import (
     DOMAIN,
     MAX_DEPARTURES_IN_ATTRS,
     MIN_POLL_SECONDS,
+    SEQUENCE_UPSTREAM_LIMIT,
 )
 from .rate_limit import async_enforce_domain_cooldown
 
@@ -62,6 +64,9 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Empty/missing means "no filter, surface every departure".
         lines_raw = config.get(CONF_LINES) or []
         self._lines_filter: set[str] = {str(x) for x in lines_raw if x}
+        self._show_stop_sequence: bool = bool(
+            config.get(CONF_SHOW_STOP_SEQUENCE, False)
+        )
         self._session = async_get_clientsession(hass)
 
         # Resolved stop position (WGS84), plucked from the DM response on
@@ -275,9 +280,19 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             MAX_DEPARTURES_IN_ATTRS + 15,
             max(self._limit + 5, self._limit * 2),
         )
+        if self._show_stop_sequence:
+            # Each row now drags its whole trip's stop list along, so the
+            # padding above would triple an already-tripled response. Trade
+            # depth of list for depth of detail — the user asked for the
+            # latter by enabling the option, and the option's own help text
+            # says the list gets shorter.
+            upstream_limit = min(upstream_limit, SEQUENCE_UPSTREAM_LIMIT)
         try:
             payload = await fetch_departures(
-                self._session, self._stop_id, limit=upstream_limit
+                self._session,
+                self._stop_id,
+                limit=upstream_limit,
+                include_stop_sequence=self._show_stop_sequence,
             )
         except EfaTimeoutError as err:
             raise UpdateFailed(

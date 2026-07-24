@@ -340,6 +340,67 @@ export const cardStyles = css`
       transparent
     );
   }
+  /* Chevron toggle for the onward-stop panel. 40px square meets the
+     WCAG 2.5.8 target minimum even though the glyph is 20px, and the
+     negative margin keeps it from pushing the time column around. */
+  .row-expand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin: -10px -8px -10px 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    --mdc-icon-size: 20px;
+  }
+  .row-expand:hover {
+    background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+  }
+  .row-expand:focus-visible {
+    outline: 2px solid var(--primary-color, #03a9f4);
+    outline-offset: -2px;
+  }
+  /* The panel spans all three grid columns so the stop list starts at
+     the row's left edge rather than inside the direction column. */
+  .stops-ahead {
+    grid-column: 1 / -1;
+    margin: 4px 0 2px 0;
+    padding: 6px 0 6px 10px;
+    list-style: none;
+    border-left: 2px solid
+      color-mix(in srgb, var(--linz-accent) 45%, transparent);
+  }
+  .stop-ahead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 2px 0;
+    font-size: 0.78rem;
+  }
+  .stop-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--secondary-text-color);
+  }
+  .stop-time {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--secondary-text-color);
+  }
+  .stop-time.late {
+    color: var(--linz-late);
+  }
+  .stop-time.early {
+    color: var(--linz-early);
+  }
   .row-time.now {
     color: var(--linz-accent);
   }

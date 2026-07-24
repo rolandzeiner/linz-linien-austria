@@ -15,6 +15,7 @@ import type {
   HomeAssistant,
   LinzLinienAustriaCardConfig,
   LovelaceCardEditor,
+  StopAhead,
 } from "./types";
 import { translate } from "./localize/localize";
 import { motColor, motIcon } from "./mot";
@@ -119,6 +120,14 @@ export class LinzLinienAustriaCard extends LitElement {
   // hass-tick. Reset on entity change is unnecessary — version drift
   // is a process-wide property, not per-entity.
   private _versionCheckDone = false;
+
+  // Rows whose onward-stop list is expanded, keyed by `_depKey`. A Set
+  // rather than a single id so several rows can stay open at once, and
+  // keyed by departure identity rather than list index so a refresh
+  // that reorders or drops rows can't transfer an open state onto a
+  // different trip. Reassigned (never mutated in place) so Lit sees the
+  // change — `@state` compares by reference.
+  @state() private _expandedStops: ReadonlySet<string> = new Set();
 
   public setConfig(config: LinzLinienAustriaCardConfig): void {
     // Only validate the *shape* (must be an object). Missing `entity`
@@ -665,6 +674,12 @@ export class LinzLinienAustriaCard extends LitElement {
     // rows: "Entfällt" already says everything, and a "please be
     // patient" caption under it reads as if the trip is merely late.
     const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
+    // Onward stops only exist when the integration option is on, and are
+    // meaningless for a trip that isn't running.
+    const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
+    const key = this._depKey(d);
+    const expanded = this._expandedStops.has(key);
+    const panelId = `stops-${this._slugify(key)}`;
 
     return html`
       <li
@@ -672,6 +687,7 @@ export class LinzLinienAustriaCard extends LitElement {
           row: true,
           "row-rt": !!d.is_realtime,
           "row-cancelled": !!d.is_cancelled,
+          "row-expandable": stopsAhead.length > 0,
         })}
         aria-label="${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
           d.direction
@@ -708,9 +724,92 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
+          ${stopsAhead.length > 0
+            ? html`<button
+                class="row-expand"
+                type="button"
+                aria-expanded=${expanded ? "true" : "false"}
+                aria-controls=${panelId}
+                aria-label=${this._t(
+                  expanded ? "card.hide_stops" : "card.show_stops",
+                  { line: d.line, direction: d.direction },
+                )}
+                title=${this._t(
+                  expanded ? "card.hide_stops" : "card.show_stops",
+                  { line: d.line, direction: d.direction },
+                )}
+                @click=${() => this._toggleStops(key)}
+              >
+                <ha-icon
+                  icon=${expanded ? "mdi:chevron-up" : "mdi:chevron-down"}
+                ></ha-icon>
+              </button>`
+            : nothing}
         </span>
+        ${expanded && stopsAhead.length > 0
+          ? this._renderStopsAhead(stopsAhead, panelId)
+          : nothing}
       </li>
     `;
+  }
+
+  /** Flip one row's onward-stop panel open or closed. */
+  private _toggleStops(key: string): void {
+    const next = new Set(this._expandedStops);
+    if (!next.delete(key)) next.add(key);
+    this._expandedStops = next;
+  }
+
+  /** Build a DOM-id-safe token from a departure key.
+   *
+   *  Keys embed stop names and timestamps, so they can carry umlauts,
+   *  spaces and colons — none of which are safe in the `aria-controls`
+   *  IDREF that ties the button to its panel. */
+  private _slugify(value: string): string {
+    return value.replace(/[^a-zA-Z0-9_-]+/g, "-");
+  }
+
+  /** The expanded panel: remaining stops with predicted arrival times.
+   *
+   *  Rendered as a `<ul>` inside the row's `<li>`, which is valid — a
+   *  list item may contain flow content including nested lists.
+   */
+  private _renderStopsAhead(
+    stops: StopAhead[],
+    panelId: string,
+  ): TemplateResult {
+    return html`
+      <ul class="stops-ahead" id=${panelId}>
+        ${stops.map((s) => {
+          const delay = s.delay_minutes;
+          const late = typeof delay === "number" && delay > 0;
+          const early = typeof delay === "number" && delay < 0;
+          return html`<li class="stop-ahead">
+            <span class="stop-name">${s.name}</span>
+            <span
+              class=${classMap({
+                "stop-time": true,
+                late,
+                early,
+              })}
+              >${this._clockTime(s.arrival)}</span
+            >
+          </li>`;
+        })}
+      </ul>
+    `;
+  }
+
+  /** Render an ISO local timestamp as HH:MM.
+   *
+   *  The upstream emits these without a zone offset because they are
+   *  already Linz local time, so they are sliced rather than parsed —
+   *  `new Date()` would reinterpret them in the viewer's zone and shift
+   *  the whole list for anyone not on CET.
+   */
+  private _clockTime(iso: string | undefined): string {
+    if (!iso || iso.length < 16) return "";
+    return iso.slice(11, 16);
   }
 
   private _renderLineBadge(d: Departure): TemplateResult {

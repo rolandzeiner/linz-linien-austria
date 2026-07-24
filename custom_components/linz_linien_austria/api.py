@@ -24,6 +24,7 @@ from .const import (
     API_BASE_URL,
     COORD_OUTPUT_FORMAT,
     DM_ENDPOINT,
+    MAX_STOPS_AHEAD,
     STOPFINDER_ENDPOINT,
     USER_AGENT,
 )
@@ -243,6 +244,7 @@ async def fetch_departures(
     stop_id: str,
     *,
     limit: int = 12,
+    include_stop_sequence: bool = False,
 ) -> dict[str, Any]:
     """Fetch the next ``limit`` departures from a verified stop.
 
@@ -250,6 +252,10 @@ async def fetch_departures(
     ``itdDate``/``itdTime`` is only useful for offset queries. ``mode=direct``
     skips the line-selection step the EFA UI does — we want every line that
     serves the stop, not just one.
+
+    ``include_stop_sequence`` asks for each trip's full stop list, which
+    roughly triples the response. Callers are expected to have clamped
+    ``limit`` accordingly — see ``SEQUENCE_UPSTREAM_LIMIT``.
     """
     params: dict[str, str] = {
         "outputFormat": "JSON",
@@ -272,11 +278,19 @@ async def fetch_departures(
         # the device registry without a client-side transform.
         "coordOutputFormat": COORD_OUTPUT_FORMAT,
     }
+    if include_stop_sequence:
+        # `stopEvents` switches each row from a bare departure to a trip
+        # event, which is what makes the stop list available at all;
+        # `includeCompleteStopSeq` then attaches it.
+        params["depType"] = "stopEvents"
+        params["includeCompleteStopSeq"] = "1"
     data = await _get_json(session, f"{API_BASE_URL}{DM_ENDPOINT}", params)
-    return _parse_dm(data)
+    return _parse_dm(data, include_stop_sequence=include_stop_sequence)
 
 
-def _parse_dm(payload: dict[str, Any]) -> dict[str, Any]:
+def _parse_dm(
+    payload: dict[str, Any], *, include_stop_sequence: bool = False
+) -> dict[str, Any]:
     """Extract a normalised departures payload from a DM_REQUEST response.
 
     Returns a dict with ``stop`` (resolved metadata), ``departures``
@@ -301,7 +315,9 @@ def _parse_dm(payload: dict[str, Any]) -> dict[str, Any]:
 
     departures: list[dict[str, Any]] = []
     for d in raw_departures:
-        normalised = _normalise_departure(d)
+        normalised = _normalise_departure(
+            d, include_stop_sequence=include_stop_sequence
+        )
         if normalised is not None:
             departures.append(normalised)
 
@@ -478,7 +494,9 @@ def _int_or_none(raw: Any) -> int | None:
         return None
 
 
-def _normalise_departure(raw: Any) -> dict[str, Any] | None:
+def _normalise_departure(
+    raw: Any, *, include_stop_sequence: bool = False
+) -> dict[str, Any] | None:
     """Reduce one EFA departure entry to a flat dict.
 
     Schema (only fields with meaningful content set; missing → omitted):
@@ -491,6 +509,7 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
         operator:       "Linz Linien GmbH"
         delay_hint:     "Behinderung! Verspätung! Bitte Geduld!"
         mot:            4              # mode-of-transport id (see const.py)
+        stops_ahead:    [{...}]        # opt-in; see _parse_onward_stops
         mot_name:       "Tram"         # human-readable mode
         countdown:      3              # planned, in minutes
         countdown_rt:   4              # realtime if available
@@ -593,7 +612,95 @@ def _normalise_departure(raw: Any) -> dict[str, Any] | None:
         out["is_cancelled"] = True
     if trip_status:
         out["trip_status"] = trip_status
+    if include_stop_sequence:
+        # `prevStopSeq` is deliberately never read: it lists the stops the
+        # vehicle has already left, which a departure monitor has no use
+        # for, and it is over half the sequence payload. The upstream has
+        # no flag to suppress it, so dropping it here is the only lever.
+        stops_ahead = _parse_onward_stops(raw.get("onwardStopSeq"))
+        if stops_ahead:
+            out["stops_ahead"] = stops_ahead
     return out
+
+
+def _parse_onward_stops(raw: Any) -> list[dict[str, Any]]:
+    """Reduce ``onwardStopSeq`` to the stops still ahead on this trip.
+
+    Each entry keeps only what a card row needs, because this list is
+    repeated for every departure and is the reason the opt-in exists:
+
+        name:           "Waldeggstraße"          # nameWO, no place prefix
+        stop_id:        "60500910"
+        arrival:        "2026-07-24T18:54:00"    # ISO local
+        delay_minutes:  2                        # only when realtime-valid
+
+    Times arrive in EFA's compact ``"YYYYMMDD HH:MM"`` form here, not the
+    nested dict the departure rows use. Arrival wins over departure —
+    a rider tracking a vehicle cares when it reaches their stop — with
+    departure as the fallback for the first entry, which sometimes
+    carries no arrival.
+
+    `arrValid`/`depValid` gate the delay: EFA emits ``arrDelay`` even for
+    purely scheduled stops, where it is a leftover rather than a
+    prediction, and surfacing that as "+0" would imply live tracking the
+    upstream isn't claiming.
+    """
+    out: list[dict[str, Any]] = []
+    for entry in _as_list(raw):
+        if not isinstance(entry, dict):
+            continue
+        ref_raw = entry.get("ref")
+        ref: dict[str, Any] = ref_raw if isinstance(ref_raw, dict) else {}
+
+        name = str(entry.get("nameWO") or entry.get("name") or "").strip()
+        if not name:
+            continue
+
+        arrival = _iso_from_efa_compact(
+            ref.get("arrDateTime") or ref.get("depDateTime")
+        )
+        used_arrival = bool(ref.get("arrDateTime"))
+        valid = ref.get("arrValid") if used_arrival else ref.get("depValid")
+        delay = _int_or_none(
+            ref.get("arrDelay") if used_arrival else ref.get("depDelay")
+        )
+
+        stop: dict[str, Any] = {"name": name}
+        stop_id = str(ref.get("id") or "").strip()
+        if stop_id:
+            stop["stop_id"] = stop_id
+        if arrival:
+            stop["arrival"] = arrival
+        if delay is not None and delay != -9999 and str(valid) == "1":
+            stop["delay_minutes"] = delay
+        out.append(stop)
+        if len(out) >= MAX_STOPS_AHEAD:
+            break
+    return out
+
+
+def _iso_from_efa_compact(raw: Any) -> str | None:
+    """Parse EFA's compact ``"YYYYMMDD HH:MM"`` stamp to ISO-8601 local.
+
+    The stop-sequence block uses this form, unlike the departure rows'
+    nested ``{year, month, …}`` dict that `_iso_from_efa_datetime`
+    handles. Seconds are dropped — the ``*Sec`` variants exist but
+    minute resolution is what the rest of the payload speaks.
+    """
+    if not isinstance(raw, str):
+        return None
+    parts = raw.split()
+    if len(parts) != 2 or len(parts[0]) != 8:
+        return None
+    date, time = parts
+    hour, _, minute = time.partition(":")
+    try:
+        return (
+            f"{int(date[0:4]):04d}-{int(date[4:6]):02d}-{int(date[6:8]):02d}"
+            f"T{int(hour):02d}:{int(minute):02d}:00"
+        )
+    except ValueError:
+        return None
 
 
 def _hint_text(raw: Any) -> str:

@@ -162,6 +162,20 @@ export type HaFormSchema =
   | HaFormGridSchema
   | HaFormExpandableSchema;
 
+/** One stop still ahead on a departure's trip, as normalised by
+ *  api.py::_parse_onward_stops. Nearest first. */
+export interface StopAhead {
+  /** Short stop name, no place prefix ("Waldeggstraße"). */
+  name: string;
+  stop_id?: string;
+  /** Predicted arrival at this stop, ISO local. */
+  arrival?: string;
+  /** Delay carried to this stop, in minutes. Present only where the
+   *  upstream marked the prediction realtime-valid, so its absence
+   *  means "scheduled", not "on time". */
+  delay_minutes?: number;
+}
+
 /** A single normalised departure as surfaced in sensor attributes by the
  *  Python coordinator. Optional fields are dropped when not present in
  *  the upstream payload — see api.py::_normalise_departure. */
@@ -186,6 +200,10 @@ export interface Departure {
    *  ("Behinderung! Verspätung! Bitte Geduld!"). Absent on trips running
    *  to plan, which is the overwhelming majority. */
   delay_hint?: string;
+  /** Remaining stops on this trip, nearest first. Only present when the
+   *  integration's `show_stop_sequence` option is on — it roughly
+   *  triples the upstream response, so it is opt-in. */
+  stops_ahead?: StopAhead[];
   mot?: number;
   mot_name?: string;
   countdown?: number;

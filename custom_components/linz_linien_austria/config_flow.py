@@ -24,6 +24,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -43,6 +44,7 @@ from .const import (
     CONF_LIMIT,
     CONF_LINES,
     CONF_SEARCH_QUERY,
+    CONF_SHOW_STOP_SEQUENCE,
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DEFAULT_LIMIT,
@@ -90,6 +92,10 @@ def _settings_schema(
                 mode=NumberSelectorMode.BOX,
             )
         ),
+        vol.Optional(
+            CONF_SHOW_STOP_SEQUENCE,
+            default=defaults.get(CONF_SHOW_STOP_SEQUENCE, False),
+        ): BooleanSelector(),
     }
     if extra:
         fields.update(extra)
@@ -223,6 +229,9 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_STOP_NAME: stop["name"],
                 CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
                 CONF_LIMIT: int(user_input[CONF_LIMIT]),
+                CONF_SHOW_STOP_SEQUENCE: bool(
+                    user_input.get(CONF_SHOW_STOP_SEQUENCE, False)
+                ),
             }
             return self.async_create_entry(title=stop["name"], data=data)
 
@@ -247,6 +256,9 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
                 **entry.data,
                 CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
                 CONF_LIMIT: int(user_input[CONF_LIMIT]),
+                CONF_SHOW_STOP_SEQUENCE: bool(
+                    user_input.get(CONF_SHOW_STOP_SEQUENCE, False)
+                ),
             }
             return self.async_update_and_abort(entry, data=new_data)
 
@@ -280,6 +292,9 @@ class LinzLinienAustriaOptionsFlow(OptionsFlow):
                     CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
                     CONF_LIMIT: int(user_input[CONF_LIMIT]),
                     CONF_LINES: list(user_input.get(CONF_LINES) or []),
+                    CONF_SHOW_STOP_SEQUENCE: bool(
+                        user_input.get(CONF_SHOW_STOP_SEQUENCE, False)
+                    ),
                 }
             )
 

@@ -83,6 +83,12 @@ them.
   `(Tiefgeschoß)`) and `operator`. At a sprawling stop the bay name says
   more than the platform digit — and it's the only location cue on the
   lines where the upstream reports no platform at all. *(0.7.0)*
+- **Onward stops, opt-in.** Turn on *Show onward stops* and every
+  departure carries the rest of its trip — each remaining stop with a
+  live predicted arrival and the delay carried to it, so you can see
+  whether a late tram is expected to recover before your stop. Off by
+  default: it roughly triples the data fetched per refresh, so while it
+  is on the departure list is shortened to 10. *(0.7.0)*
 - **Stable line filter.** The optional line filter keys on the
   upstream's direction code rather than the destination text. Lines with
   a branching terminus publish a different destination per vehicle, so
@@ -99,6 +105,10 @@ them.
 - **Realtime cue** — small green bullet leading the time on rows
   where realtime data was available (WCAG 1.4.1: redundant cue for
   colour-blind / sunlight-glare users).
+- **Onward-stop expander** — when *Show onward stops* is on, each row
+  gets a chevron that reveals the rest of the trip: every remaining stop
+  with its predicted arrival, late stops tinted so a delay that recovers
+  down the line is visible at a glance. *(0.7.0)*
 - **Delay reason caption** — when the operator says why a trip is late,
   the reason appears under the destination on the row and under the
   hero's line badge, in the same warning colour as a late time. Hidden
@@ -207,6 +217,12 @@ them.
 - Service-disruption alerts (`XML_ADDINFO_REQUEST`) refresh on an
   independent 5-min domain-wide cadence; the cache is shared across
   all entries.
+- With *Show onward stops* on, each poll also asks for every trip's
+  remaining stop list, which roughly triples the response. The upstream
+  fetch is clamped to 10 departures to bound that, and around half of
+  what the upstream sends back is the stops the vehicle has already
+  passed — there's no way to ask it not to, so those are discarded on
+  arrival.
 - Every outbound request carries a canonical `User-Agent` of the
   form `HomeAssistant/<ha_ver> linz_linien_austria/<int_ver>` so
   LINZ AG's log parser can identify this integration specifically,
@@ -225,6 +241,7 @@ them.
 | Polling interval | `60` s | Minimum 30 s; 15 s domain-wide cooldown still applies. |
 | Departures to fetch | `20` | The upstream fetch size. The integration also fetches some extra headroom so the realtime sort stays stable. The sensor exposes the full sorted result (capped at 45 for the HA recorder). **Raise this value if you use a tight card-side `lines` filter** so the card has enough pre-filter rows to pick from. |
 | Lines filter (options) | empty | Pick from the dropdown, which lists every line at the stop by destination. Empty = all. |
+| Show onward stops | off | Adds each trip's remaining stops with live arrival times. Roughly triples the data fetched per refresh (~23 KB vs ~8 KB per poll at a busy stop), so the upstream fetch is clamped to 10 departures while it's on. |
 
 ### Card
 
