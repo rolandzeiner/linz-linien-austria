@@ -2,8 +2,10 @@
 
 ## Dev setup
 
-1. `python -m venv .venv && source .venv/bin/activate`
-2. `pip install -r requirements_test.txt && pip install pre-commit`
+Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
+
+1. `uv venv --python 3.14 && source .venv/bin/activate`
+2. `uv pip install -r requirements_test.txt pre-commit`
 3. `pre-commit install`
 4. `npm ci && npm run build` (Lovelace card bundle)
 
