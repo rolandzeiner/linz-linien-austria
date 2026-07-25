@@ -447,12 +447,21 @@ export class LinzLinienAustriaCard extends LitElement {
     `;
   }
 
+  /** EFA's priority vocabulary isn't fully documented and varies across
+   *  Mentz deployments — "high" and "veryHigh" both denote elevated
+   *  severity. Match any token containing "high" (case-insensitive) so a
+   *  "veryHigh" notice still sorts and styles as high-priority rather
+   *  than silently dropping to normal. */
+  private _isHighPriority(priority: string | undefined): boolean {
+    return typeof priority === "string" && /high/i.test(priority);
+  }
+
   private _renderAlerts(alerts: AlertInfo[]): TemplateResult {
     // Sort high-priority alerts first so the most actionable ones don't
     // get hidden behind the <details> fold.
     const sorted = [...alerts].sort((a, b) => {
-      const av = a.priority === "high" ? 0 : 1;
-      const bv = b.priority === "high" ? 0 : 1;
+      const av = this._isHighPriority(a.priority) ? 0 : 1;
+      const bv = this._isHighPriority(b.priority) ? 0 : 1;
       return av - bv;
     });
     const summary = this._t("card.alerts_summary", {
@@ -480,7 +489,7 @@ export class LinzLinienAustriaCard extends LitElement {
                 <li
                   class=${classMap({
                     alert: true,
-                    "alert-high": a.priority === "high",
+                    "alert-high": this._isHighPriority(a.priority),
                   })}
                 >
                   <div class="alert-title">${a.title}</div>
@@ -613,28 +622,62 @@ export class LinzLinienAustriaCard extends LitElement {
               >`
             : nothing}
         </div>
-        <div class="hero-meta">
-          ${repeat(
-            group,
-            (d) => this._depKey(d),
-            (d) => this._renderHeroEntry(d),
-          )}
-        </div>
+        ${
+          // Entries and their onward-stop panels are interleaved as direct
+          // grid children (no .hero-meta wrapper) so each panel auto-places
+          // in the row directly below its entry, while .hero-time stays
+          // pinned to column 1 / row 1 — matching the wiener-linien hero.
+          group.map(
+            (d) => html`${this._renderHeroEntry(d)}${this._renderHeroStops(d)}`,
+          )
+        }
       </section>
     `;
   }
 
-  /** One row inside the hero meta column — line badge, direction, and
-   *  per-departure flags (Live pill, Steig). One row when the group
-   *  has a single entry; stacks cleanly when two or more arrive at
-   *  the same minute. */
+  /** One row inside the hero — line badge, direction, and per-departure
+   *  flags (Live pill, Steig). One row when the group has a single entry;
+   *  stacks cleanly when two or more arrive at the same minute. When the
+   *  departure carries onward stops, the whole entry becomes the toggle
+   *  for its stops-ahead panel (chevron + role=button), mirroring both the
+   *  row list below and the wiener-linien hero. */
   private _renderHeroEntry(d: Departure): TemplateResult {
     const platform = this.config.show_platform
       ? this._platformText(d)
       : "";
     const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
+    const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
+    const expandable = stopsAhead.length > 0;
+    const key = this._depKey(d);
+    const expanded = this._expandedStops.has(key);
+    const panelId = `hero-stops-${this._slugify(key)}`;
+    const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    }`;
+    const entryLabel = expandable
+      ? `${baseLabel}. ${this._t(
+          expanded ? "card.hide_stops" : "card.show_stops",
+          { line: d.line, direction: d.direction },
+        )}`
+      : baseLabel;
     return html`
-      <div class="hero-entry">
+      <div
+        class=${classMap({
+          "hero-entry": true,
+          "hero-entry-expandable": expandable,
+          expanded,
+        })}
+        role=${expandable ? "button" : nothing}
+        tabindex=${expandable ? "0" : nothing}
+        aria-expanded=${expandable ? (expanded ? "true" : "false") : nothing}
+        aria-controls=${expandable ? panelId : nothing}
+        aria-label=${expandable ? entryLabel : nothing}
+        @click=${() => expandable && this._toggleStops(key)}
+        @keydown=${(ev: KeyboardEvent) =>
+          this._onExpanderKeydown(ev, expandable, () =>
+            this._toggleStops(key),
+          )}
+      >
         ${this._renderLineBadge(d)}
         <span class="hero-direction">${d.direction || ""}</span>
         ${!d.is_cancelled && platform
@@ -647,6 +690,13 @@ export class LinzLinienAustriaCard extends LitElement {
               ${this._t("card.realtime")}
             </span>`
           : nothing}
+        ${expandable
+          ? html`<ha-icon
+              class="hero-chevron"
+              icon="mdi:chevron-down"
+              aria-hidden="true"
+            ></ha-icon>`
+          : nothing}
         ${hint
           ? // Full width via flex-basis so the caption wraps onto its own
             // line under the badge/direction rather than fighting them
@@ -655,6 +705,36 @@ export class LinzLinienAustriaCard extends LitElement {
             // would be the one row whose delay reason is never shown.
             html`<span class="hero-hint">${hint}</span>`
           : nothing}
+      </div>
+    `;
+  }
+
+  /** Collapsible onward-stop panel for a hero entry. Rendered as a sibling
+   *  grid child immediately after its entry (auto-placed in the next grid
+   *  row) so the trail animates open directly beneath it. Returns `nothing`
+   *  when the departure carries no onward stops. Shares `_expandedStops`
+   *  and `_renderStopsAheadTrail` with the row list, so a departure that
+   *  ever appears in both surfaces stays in sync. */
+  private _renderHeroStops(d: Departure): TemplateResult | typeof nothing {
+    const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
+    if (stopsAhead.length === 0) return nothing;
+    const key = this._depKey(d);
+    const expanded = this._expandedStops.has(key);
+    const panelId = `hero-stops-${this._slugify(key)}`;
+    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    }`;
+    return html`
+      <div class=${classMap({ "hero-detail": true, expanded })}>
+        <div
+          class="hero-detail-inner"
+          id=${panelId}
+          role="region"
+          aria-label=${regionLabel}
+          aria-hidden=${expanded ? "false" : "true"}
+        >
+          ${this._renderStopsAheadTrail(stopsAhead, d)}
+        </div>
       </div>
     `;
   }
@@ -824,12 +904,20 @@ export class LinzLinienAustriaCard extends LitElement {
     expanded: boolean,
     d: Departure,
   ): TemplateResult {
+    // A `role="region"` landmark needs an accessible name or it's flagged
+    // by axe/WCAG. Name it after the trip it belongs to, mirroring the
+    // hero/row aria pattern, so AT users know which departure's onward
+    // stops they've expanded.
+    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    }`;
     return html`
       <li class=${classMap({ "row-detail": true, expanded })}>
         <div
           class="row-detail-inner"
           id=${panelId}
           role="region"
+          aria-label=${regionLabel}
           aria-hidden=${expanded ? "false" : "true"}
         >
           ${this._renderStopsAheadTrail(stops, d)}

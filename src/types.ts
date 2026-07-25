@@ -187,14 +187,20 @@ export interface Departure {
   /** Stable Hin/Rück direction code. Absent on replacement-service rows
    *  where the upstream publishes no line project. */
   dir_code?: "H" | "R";
+  /** Initial origin of the trip, for context. Surfaced as a sensor
+   *  attribute for templates/automations; the card does not render it. */
   origin?: string;
   platform?: string;
   /** Named bay this departure leaves from, e.g. "Hauptbahnhof
    *  (Kärntnerstraße)". Differs per row at multi-bay stops and is often
-   *  the only location cue when `platform` is the unknown-sentinel 0. */
+   *  the only location cue when `platform` is the unknown-sentinel 0.
+   *  The card surfaces the *next* departure's bay via the sensor's
+   *  `next_stop_bay` attribute for templates; it is not drawn on the
+   *  per-row card layout. */
   stop_bay?: string;
   /** Transport operator, e.g. "Linz Linien GmbH". Distinguishes
-   *  municipal service from ÖBB rail at shared stops. */
+   *  municipal service from ÖBB rail at shared stops. Template-facing
+   *  attribute only — the card does not render it. */
   operator?: string;
   /** The operator's live reason for a delay, flattened to one line
    *  ("Behinderung! Verspätung! Bitte Geduld!"). Absent on trips running

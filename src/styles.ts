@@ -148,13 +148,27 @@ export const cardStyles = css`
   .hero {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: var(--ha-spacing-3, 12px);
+    column-gap: var(--ha-spacing-3, 12px);
+    row-gap: 6px;
     align-items: center;
     padding: var(--ha-spacing-3, 12px) var(--linz-pad-x);
     margin: var(--ha-spacing-3, 12px) var(--linz-pad-x) 0;
     border-radius: var(--ha-radius-lg, 12px);
     --hero-color: var(--linz-accent);
     background: color-mix(in srgb, var(--hero-color) 12%, transparent);
+  }
+  /* The big countdown pins to column 1 / row 1 and stays centred against
+     the first entry; entries and their onward-stop panels flow down
+     column 2 in interleaved row order so each panel sits directly under
+     its trigger entry. Mirrors the wiener-linien hero grid. */
+  .hero > .hero-time {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .hero > .hero-entry,
+  .hero > .hero-detail {
+    grid-column: 2;
+    min-width: 0;
   }
   .hero-time {
     display: flex;
@@ -173,21 +187,49 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
   }
-  /* Hero meta — column of (badge + direction + flags) rows. One row
-     per departure in the group; rows wrap so tags spill to a second
-     line on narrow column widths. */
-  .hero-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-  }
   .hero-entry {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+  /* When a hero entry carries onward stops the whole entry is the toggle. */
+  .hero-entry-expandable {
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+  }
+  .hero-entry-expandable:focus-visible {
+    outline: 2px solid var(--primary-color, #03a9f4);
+    outline-offset: 2px;
+  }
+  /* Decorative chevron — rotates on expand, pushed to the entry's right
+     edge. Matches the row chevron. */
+  .hero-chevron {
+    --mdc-icon-size: 20px;
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--secondary-text-color);
+    transition: transform 0.24s ease;
+  }
+  .hero-entry-expandable.expanded .hero-chevron {
+    transform: rotate(180deg);
+  }
+  /* Hero-side collapsible panel — same 0fr→1fr grid-row trick as
+     .row-detail so the trail animates to its intrinsic height. Reuses
+     the .stops-ahead inner styling. */
+  .hero-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.24s ease;
+  }
+  .hero-detail-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .hero-detail.expanded {
+    grid-template-rows: 1fr;
   }
   /* Delay reason under the hero's badge + destination. flex-basis:100%
      forces a wrap onto its own line inside the flex row, so a long
@@ -408,16 +450,16 @@ export const cardStyles = css`
     --stops-ahead-line: var(--linz-accent);
     --stops-ahead-dot-size: 9px;
     --stops-ahead-line-width: 2px;
-    /* Indent so the dot column lands under the centre of the row's line
-       badge, making the trail read as descending out of the badge
-       rather than floating at the card's left edge.
-         2px row padding + half the badge width - half a dot.
-       The badge is 3.6em at its own font-size of 0.85rem, so half of it
-       is 1.53rem. Spelled in rem deliberately: an em here would resolve
-       against this list's 0.78rem, not the badge's. */
-    --stops-ahead-indent: calc(
-      2px + 1.53rem - var(--stops-ahead-dot-size) / 2
-    );
+    /* Indent so the trail descends from under the RIGHT side of the line
+       badge, with the stop names landing under the direction column —
+       matching the wiener-linien card. The badge is a fixed 3.6em at its
+       own 0.85rem font (= 3.06rem wide); pulling back ~10px puts the
+       connecting line just inside the badge's right edge rather than out
+       in the gap. Spelled in rem, not em, so it resolves against the
+       badge's size and not this list's 0.78rem. Narrow cards drop back to
+       flush-left (see the <360px container block) so long station names
+       keep their width. */
+    --stops-ahead-indent: calc(3.06rem - 10px);
     position: relative;
     list-style: none;
     margin: 2px 0 6px 0;
@@ -839,6 +881,11 @@ export const cardStyles = css`
     .row {
       gap: 8px;
       padding: 8px var(--ha-spacing-3, 12px);
+    }
+    /* Flush-left on narrow cards so long station names keep their width,
+       mirroring the wiener-linien narrow-card fallback. */
+    .stops-ahead {
+      --stops-ahead-indent: 0px;
     }
   }
 
