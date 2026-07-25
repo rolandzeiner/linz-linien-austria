@@ -1,4 +1,5 @@
 """Tests for the Linz Linien Austria diagnostics module."""
+
 import json
 from unittest.mock import AsyncMock, patch
 

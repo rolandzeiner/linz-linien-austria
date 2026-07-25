@@ -6,6 +6,7 @@ aggregate*. An ``asyncio.Lock`` serialises the check-then-update so two
 concurrent callers can't both observe the same ``last_call_ts`` and
 skip the wait.
 """
+
 from __future__ import annotations
 
 import asyncio

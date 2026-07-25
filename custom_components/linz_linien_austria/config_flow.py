@@ -7,6 +7,7 @@ Two-step flow:
 The flow performs a real STOPFINDER + DM probe before saving so the
 ``test-before-configure`` Quality-Scale rule is satisfied.
 """
+
 from __future__ import annotations
 
 import logging
@@ -155,9 +156,7 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_SEARCH_QUERY): TextSelector()}
-            ),
+            data_schema=vol.Schema({vol.Required(CONF_SEARCH_QUERY): TextSelector()}),
             errors=errors,
             description_placeholders={"example": "Hauptbahnhof"},
         )

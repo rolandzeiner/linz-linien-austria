@@ -1,4 +1,5 @@
 """Tests for the alerts parser + per-line filter."""
+
 from __future__ import annotations
 
 from typing import Any, Self
@@ -39,9 +40,7 @@ EXAMPLE_ADDINFO = {
                         "infoLinkText": "L 191 — Verlegung Hauptplatz",
                         "content": "<p><strong>Ab 1.5.</strong></p><p>L191 wird umgeleitet.</p>",
                     },
-                    "concernedLines": [
-                        {"number": "191", "name": "Stadtteilbus 191"}
-                    ],
+                    "concernedLines": [{"number": "191", "name": "Stadtteilbus 191"}],
                     "validityPeriod": [
                         {
                             "itdDateTime_From": {
@@ -129,19 +128,13 @@ def test_iso_from_efa_dt_rejects_missing_itd_date_dict() -> None:
 
 def test_iso_from_efa_dt_rejects_unparseable_date_components() -> None:
     assert (
-        _iso_from_efa_dt(
-            {"itdDate": {"year": "abc", "month": "5", "day": "1"}}
-        )
-        is None
+        _iso_from_efa_dt({"itdDate": {"year": "abc", "month": "5", "day": "1"}}) is None
     )
 
 
 def test_iso_from_efa_dt_rejects_zero_date_components() -> None:
     assert (
-        _iso_from_efa_dt(
-            {"itdDate": {"year": "0", "month": "0", "day": "0"}}
-        )
-        is None
+        _iso_from_efa_dt({"itdDate": {"year": "0", "month": "0", "day": "0"}}) is None
     )
 
 
@@ -158,9 +151,7 @@ def test_iso_from_efa_dt_zeroes_unparseable_time_components() -> None:
 
 def test_iso_from_efa_dt_handles_missing_time_block() -> None:
     """No `itdTime` at all → 00:00 fallback (not a crash)."""
-    out = _iso_from_efa_dt(
-        {"itdDate": {"year": "2026", "month": "5", "day": "1"}}
-    )
+    out = _iso_from_efa_dt({"itdDate": {"year": "2026", "month": "5", "day": "1"}})
     assert out == "2026-05-01T00:00:00"
 
 
@@ -174,21 +165,11 @@ def test_parse_alert_rejects_non_dict() -> None:
 
 
 def test_parse_alert_rejects_publish_zero() -> None:
-    assert (
-        _parse_alert(
-            {"infoID": "x", "publish": "0", "deactivated": "false"}
-        )
-        is None
-    )
+    assert _parse_alert({"infoID": "x", "publish": "0", "deactivated": "false"}) is None
 
 
 def test_parse_alert_rejects_missing_info_id() -> None:
-    assert (
-        _parse_alert(
-            {"infoID": "", "publish": "1", "deactivated": "false"}
-        )
-        is None
-    )
+    assert _parse_alert({"infoID": "", "publish": "1", "deactivated": "false"}) is None
 
 
 def test_parse_alert_rejects_missing_title() -> None:

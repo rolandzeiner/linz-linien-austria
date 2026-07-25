@@ -16,6 +16,7 @@ its own request, with a different cache lifetime than departures.
   when the last entry is removed (entry-count refcount in
   ``hass.data[DOMAIN][ENTRY_COUNT_KEY]``).
 """
+
 from __future__ import annotations
 
 import logging
@@ -88,7 +89,7 @@ def _iso_from_efa_dt(raw: Any) -> str | None:
         year = int(date.get("year") or 0)
         month = int(date.get("month") or 0)
         day = int(date.get("day") or 0)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if not (year and month and day):
         return None
@@ -97,7 +98,7 @@ def _iso_from_efa_dt(raw: Any) -> str | None:
         try:
             hour = int(time_block.get("hour") or 0)
             minute = int(time_block.get("minute") or 0)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             hour = minute = 0
     return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:00"
 
@@ -114,10 +115,10 @@ def _parse_alert(raw: dict[str, Any]) -> TrafficInfo | None:
     if not info_id:
         return None
     info_link_raw = raw.get("infoLink")
-    info_link: dict[str, Any] = (
-        info_link_raw if isinstance(info_link_raw, dict) else {}
-    )
-    title = str(info_link.get("infoLinkText") or info_link.get("subtitle") or "").strip()
+    info_link: dict[str, Any] = info_link_raw if isinstance(info_link_raw, dict) else {}
+    title = str(
+        info_link.get("infoLinkText") or info_link.get("subtitle") or ""
+    ).strip()
     if not title:
         return None
     html_body = str(info_link.get("content") or "").strip()
@@ -259,9 +260,7 @@ def served_lines_from_data(
     return out
 
 
-def get_alerts_for_lines(
-    hass: HomeAssistant, lines: set[str]
-) -> list[dict[str, Any]]:
+def get_alerts_for_lines(hass: HomeAssistant, lines: set[str]) -> list[dict[str, Any]]:
     """Return the cached alerts whose ``affected_lines`` overlap ``lines``.
 
     A `system-wide notice (no `affected_lines`)` falls through unfiltered

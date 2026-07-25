@@ -10,6 +10,7 @@ Covers all branches of `JSModuleRegistration` that the integration
 lifecycle does not exercise on its own (yaml-mode skip, version
 mismatch update, already-registered RuntimeError, unregister paths).
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -265,12 +266,8 @@ async def test_wait_caps_retries_and_warns(
             cb = scheduler.call_args.args[2]
             await cb(0)
 
-    assert (
-        scheduler.call_count == card_registration._LOVELACE_LOAD_RETRY_MAX - 1
-    )
-    assert any(
-        "never reported `loaded`" in rec.message for rec in caplog.records
-    )
+    assert scheduler.call_count == card_registration._LOVELACE_LOAD_RETRY_MAX - 1
+    assert any("never reported `loaded`" in rec.message for rec in caplog.records)
 
 
 # ---------------------------------------------------------------------------

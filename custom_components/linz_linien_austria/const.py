@@ -1,4 +1,5 @@
 """Constants for Linz Linien Austria."""
+
 from __future__ import annotations
 
 import json

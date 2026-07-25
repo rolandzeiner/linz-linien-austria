@@ -7,6 +7,7 @@ small HTML vocabulary. Keeping the decoder here means `alerts.py` and
 `api.py` share one entity table instead of drifting apart, without
 `api.py` (the lowest layer) having to import from `alerts.py`.
 """
+
 from __future__ import annotations
 
 import re
@@ -49,7 +50,7 @@ def decode_html(html: str) -> str:
         if token.startswith("#"):
             try:
                 decoded = chr(int(token[1:]))
-            except (ValueError, OverflowError):
+            except ValueError, OverflowError:
                 return match.group(0)
             # Drop C0 control characters (a malformed `&#0;` etc.) —
             # they corrupt the recorder row and the card's text

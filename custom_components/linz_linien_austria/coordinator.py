@@ -1,4 +1,5 @@
 """DataUpdateCoordinator for Linz Linien Austria."""
+
 from __future__ import annotations
 
 import logging
@@ -146,9 +147,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
         self._consecutive_failures = 0
         if self.update_interval != self._normal_interval:
-            _LOGGER.info(
-                "Recovered from outage; restoring normal poll cadence"
-            )
+            _LOGGER.info("Recovered from outage; restoring normal poll cadence")
             self.update_interval = self._normal_interval
 
     def _note_failure(self) -> None:
@@ -194,7 +193,9 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         options = {**self._entry.options}
         healed: list[str] = []
         for container in (data, options):
-            legacy = [str(x) for x in (container.pop(CONF_LINES_LEGACY, None) or []) if x]
+            legacy = [
+                str(x) for x in (container.pop(CONF_LINES_LEGACY, None) or []) if x
+            ]
             if not legacy:
                 continue
             remapped = _remap_line_keys(legacy, roster, self._entry.title)
@@ -232,9 +233,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not self._rate_limited:
             return
         self._rate_limited = False
-        ir.async_delete_issue(
-            self.hass, DOMAIN, f"rate_limited_{self._entry.entry_id}"
-        )
+        ir.async_delete_issue(self.hass, DOMAIN, f"rate_limited_{self._entry.entry_id}")
 
     # ------------------------------------------------------------------
     # Core data fetch

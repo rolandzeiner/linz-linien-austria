@@ -8,6 +8,7 @@ from a one-shot debug log enable; over-publishing it via diagnostics
 just leaks "user X catches their bus at stop Y at HH:MM" patterns into
 search-indexed issue bodies.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -77,9 +78,7 @@ async def async_get_config_entry_diagnostics(
             "last_exception": repr(coordinator.last_exception),
             "update_interval": str(coordinator.update_interval),
             "departures_count": (
-                int(data.get("departures_count", 0))
-                if isinstance(data, dict)
-                else 0
+                int(data.get("departures_count", 0)) if isinstance(data, dict) else 0
             ),
             "alerts_count": len(alerts),
         },

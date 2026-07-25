@@ -16,6 +16,7 @@ headers are present. ``http.py::base_request_headers`` is the
 single source of truth; if a future call site reaches for ``session.get``
 directly without going through it, this test will catch the drift.
 """
+
 from __future__ import annotations
 
 import re

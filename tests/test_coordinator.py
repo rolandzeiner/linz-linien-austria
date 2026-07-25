@@ -1,4 +1,5 @@
 """Tests for the Linz Linien Austria coordinator + EFA payload normalisation."""
+
 from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -172,9 +173,7 @@ def test_normalise_departure_flattens_delay_hint() -> None:
             "servingLine": {
                 "number": "27",
                 "direction": "Test",
-                "hints": [
-                    {"content": "Behinderung!\nVerspätung!\nBitte Geduld!"}
-                ],
+                "hints": [{"content": "Behinderung!\nVerspätung!\nBitte Geduld!"}],
             },
         }
     )
@@ -412,11 +411,14 @@ async def test_rate_limit_raises_repair_issue(hass: HomeAssistant) -> None:
     entry.add_to_hass(hass)
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
 
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=EfaHttpError(429, "Too Many Requests"),
-    ), pytest.raises(UpdateFailed):
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=EfaHttpError(429, "Too Many Requests"),
+        ),
+        pytest.raises(UpdateFailed),
+    ):
         await coordinator._async_update_data()
 
     registry = ir.async_get(hass)
@@ -431,9 +433,7 @@ async def test_rate_limit_raises_repair_issue(hass: HomeAssistant) -> None:
         return_value=parsed,
     ):
         await coordinator._async_update_data()
-    assert registry.async_get_issue(
-        DOMAIN, f"rate_limited_{entry.entry_id}"
-    ) is None
+    assert registry.async_get_issue(DOMAIN, f"rate_limited_{entry.entry_id}") is None
 
 
 async def test_config_entry_not_ready_on_first_refresh_failure(
@@ -489,9 +489,7 @@ async def test_repeated_failures_back_off_then_cap(hass: HomeAssistant) -> None:
     for _ in range(20):
         coordinator._note_failure()
     assert coordinator.update_interval is not None
-    assert (
-        coordinator.update_interval.total_seconds() == BACKOFF_CAP_SECONDS
-    )
+    assert coordinator.update_interval.total_seconds() == BACKOFF_CAP_SECONDS
 
 
 async def test_recovery_restores_normal_cadence(hass: HomeAssistant) -> None:
@@ -584,11 +582,14 @@ async def test_non_update_failed_error_still_notes_failure(
     entry.add_to_hass(hass)
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
 
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("unexpected"),
-    ), pytest.raises(RuntimeError):
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("unexpected"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
         await coordinator._async_update_data()
 
     assert coordinator._consecutive_failures == 1

@@ -1,4 +1,5 @@
 """Shared pytest fixtures for Linz Linien Austria tests."""
+
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -31,6 +32,7 @@ def make_response_cm(resp: Any) -> MagicMock:
     cm.__aenter__ = AsyncMock(return_value=resp)
     cm.__aexit__ = AsyncMock(return_value=None)
     return cm
+
 
 # Canonical entry-data shape used across the test suite. Individual
 # tests can splat overrides via ``{**BASE_ENTRY_DATA, ...}``.
