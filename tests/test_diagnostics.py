@@ -20,7 +20,7 @@ SECRET_TOKEN = "ZZZ-SUPER-SECRET-LEAK-CANARY-ZZZ"
 
 async def test_diagnostics_emits_payload(hass: HomeAssistant) -> None:
     """Diagnostics surface the entry, coordinator state, and live data."""
-    from custom_components.linz_linien_austria.api import _parse_dm
+    from custom_components.linz_linien_austria.parser import _parse_dm
 
     entry = MockConfigEntry(
         domain=DOMAIN,

@@ -37,6 +37,7 @@ from .const import (
     MIN_POLL_SECONDS,
     SEQUENCE_UPSTREAM_LIMIT,
 )
+from .migration import _has_legacy_line_filter, _remap_line_keys
 from .rate_limit import async_enforce_domain_cooldown
 
 _LOGGER = logging.getLogger(__name__)
@@ -189,10 +190,6 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         the current tick already honours it — updating the entry triggers
         a reload, but the reload races the rest of this parse.
         """
-        # Imported here rather than at module scope: __init__ imports the
-        # coordinator, so a top-level import would be circular.
-        from . import _remap_line_keys
-
         data = {**self._entry.data}
         options = {**self._entry.options}
         healed: list[str] = []
@@ -260,6 +257,16 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             data = await self._fetch_departures()
         except UpdateFailed:
+            self._note_failure()
+            raise
+        except Exception:
+            # Any non-UpdateFailed failure — e.g. an unexpected error in
+            # the deferred line-filter heal's async_update_entry, or the
+            # post-fetch parse — must still widen the backoff. The
+            # invariant is "any refresh failure adjusts cadence"; without
+            # this arm such a failure would leave the counter untouched.
+            # Re-raise unchanged so HA wraps it as it would any other
+            # coordinator error.
             self._note_failure()
             raise
         self._note_success()
@@ -411,13 +418,6 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # plain labels above.
             "served_lines": served_lines,
         }
-
-
-def _has_legacy_line_filter(entry: LinzLinienAustriaConfigEntry) -> bool:
-    """True while an entry still carries un-remapped v1 line-filter keys."""
-    return bool(
-        entry.data.get(CONF_LINES_LEGACY) or entry.options.get(CONF_LINES_LEGACY)
-    )
 
 
 def _line_dir_key(dep: dict[str, Any]) -> str:

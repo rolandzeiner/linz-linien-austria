@@ -14,8 +14,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.linz_linien_austria import _remap_line_keys
-from custom_components.linz_linien_austria.api import EfaTimeoutError, _parse_dm
+from custom_components.linz_linien_austria.api import EfaTimeoutError
 from custom_components.linz_linien_austria.const import (
     CONF_LINES,
     CONF_LINES_LEGACY,
@@ -23,6 +22,8 @@ from custom_components.linz_linien_austria.const import (
     CONF_STOP_NAME,
     DOMAIN,
 )
+from custom_components.linz_linien_austria.migration import _remap_line_keys
+from custom_components.linz_linien_austria.parser import _parse_dm
 
 from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
@@ -111,7 +112,7 @@ async def test_migration_rewrites_data_and_option_keys(
         new_callable=AsyncMock,
         return_value=parsed,
     ), patch(
-        "custom_components.linz_linien_austria.fetch_departures",
+        "custom_components.linz_linien_austria.migration.fetch_departures",
         new_callable=AsyncMock,
         return_value=parsed,
     ):
@@ -141,7 +142,7 @@ async def test_migration_skips_fetch_when_no_filter_stored(
         new_callable=AsyncMock,
         return_value=parsed,
     ), patch(
-        "custom_components.linz_linien_austria.fetch_departures",
+        "custom_components.linz_linien_austria.migration.fetch_departures",
         new_callable=AsyncMock,
         side_effect=AssertionError("migration must not fetch without a filter"),
     ):
@@ -166,7 +167,7 @@ async def test_migration_survives_upstream_failure(
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
     with patch(
-        "custom_components.linz_linien_austria.fetch_departures",
+        "custom_components.linz_linien_austria.migration.fetch_departures",
         new_callable=AsyncMock,
         side_effect=EfaTimeoutError("upstream down"),
     ), patch(
@@ -190,7 +191,7 @@ async def test_deferred_remap_completes_on_first_poll(
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
     with patch(
-        "custom_components.linz_linien_austria.fetch_departures",
+        "custom_components.linz_linien_austria.migration.fetch_departures",
         new_callable=AsyncMock,
         side_effect=EfaTimeoutError("upstream down"),
     ), patch(
@@ -219,7 +220,7 @@ async def test_parked_keys_do_not_filter_everything_away(
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
     with patch(
-        "custom_components.linz_linien_austria.fetch_departures",
+        "custom_components.linz_linien_austria.migration.fetch_departures",
         new_callable=AsyncMock,
         side_effect=EfaTimeoutError("upstream down"),
     ), patch(
@@ -276,7 +277,7 @@ async def test_migration_is_idempotent_on_current_version(
         new_callable=AsyncMock,
         return_value=parsed,
     ), patch(
-        "custom_components.linz_linien_austria.fetch_departures",
+        "custom_components.linz_linien_austria.migration.fetch_departures",
         new_callable=AsyncMock,
         side_effect=AssertionError("a v2 entry must not re-migrate"),
     ):

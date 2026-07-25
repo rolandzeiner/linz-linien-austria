@@ -14,10 +14,6 @@ from custom_components.linz_linien_austria.api import (
     EfaHttpError,
     EfaPayloadError,
     EfaTimeoutError,
-    _normalise_departure,
-    _parse_dm,
-    _parse_stopfinder,
-    _wgs84_from_coords,
 )
 from custom_components.linz_linien_austria.const import (
     BACKOFF_CAP_SECONDS,
@@ -29,6 +25,12 @@ from custom_components.linz_linien_austria.const import (
 from custom_components.linz_linien_austria.coordinator import (
     LinzLinienAustriaCoordinator,
     _line_dir_key,
+)
+from custom_components.linz_linien_austria.parser import (
+    _normalise_departure,
+    _parse_dm,
+    _parse_stopfinder,
+    _wgs84_from_coords,
 )
 
 from .conftest import (
@@ -565,6 +567,31 @@ async def test_generic_api_error_uses_connection_translation(
         with pytest.raises(UpdateFailed) as excinfo:
             await coordinator._async_update_data()
         assert excinfo.value.translation_key == "api_connection_error"
+
+
+async def test_non_update_failed_error_still_notes_failure(
+    hass: HomeAssistant,
+) -> None:
+    """A non-UpdateFailed error must still widen the backoff.
+
+    `_fetch_departures` only maps the `Efa*Error` family to
+    `UpdateFailed`; an unexpected error (e.g. a raise inside the deferred
+    line-filter heal) would otherwise escape without touching the failure
+    counter. The broad arm in `_async_update_data` keeps the "any refresh
+    failure adjusts cadence" invariant and re-raises unchanged.
+    """
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("unexpected"),
+    ), pytest.raises(RuntimeError):
+        await coordinator._async_update_data()
+
+    assert coordinator._consecutive_failures == 1
 
 
 # ---------------------------------------------------------------------

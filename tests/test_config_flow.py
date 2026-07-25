@@ -351,7 +351,7 @@ async def test_options_picker_labels_directions_readably(
     The H/R code is what makes the filter stable, but it means nothing
     to a user — the label has to carry the destination instead.
     """
-    from custom_components.linz_linien_austria.api import _parse_dm
+    from custom_components.linz_linien_austria.parser import _parse_dm
 
     from .conftest import EXAMPLE_DM_RESPONSE
 

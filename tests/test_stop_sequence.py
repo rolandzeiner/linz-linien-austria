@@ -14,12 +14,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.linz_linien_austria.api import (
-    _iso_from_efa_compact,
-    _parse_dm,
-    _parse_onward_stops,
-    fetch_departures,
-)
+from custom_components.linz_linien_austria.api import fetch_departures
 from custom_components.linz_linien_austria.const import (
     CONF_LIMIT,
     CONF_SHOW_STOP_SEQUENCE,
@@ -31,6 +26,11 @@ from custom_components.linz_linien_austria.const import (
 )
 from custom_components.linz_linien_austria.coordinator import (
     LinzLinienAustriaCoordinator,
+)
+from custom_components.linz_linien_austria.parser import (
+    _iso_from_efa_compact,
+    _parse_dm,
+    _parse_onward_stops,
 )
 
 from .conftest import (

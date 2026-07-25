@@ -18,12 +18,13 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.linz_linien_austria.api import EfaTimeoutError, _parse_dm
+from custom_components.linz_linien_austria.api import EfaTimeoutError
 from custom_components.linz_linien_austria.const import (
     ALERTS_KEY,
     ATTRIBUTION,
     DOMAIN,
 )
+from custom_components.linz_linien_austria.parser import _parse_dm
 
 from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE
 
