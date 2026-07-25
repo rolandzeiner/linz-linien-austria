@@ -11,7 +11,7 @@ pytest-cov>=7.1.0,<8
 # floor here either matches PHACC (redundant) or contradicts it (unresolvable).
 # Let PHACC's transitive pin govern; dependabot bumps of syrupy can't apply.
 mypy==2.3.0
-ruff==0.15.22
+ruff==0.16.0
 # pycares cap not needed: HA 2026.5+ pins aiodns 4.x which speaks the
 # pycares 5 API natively, so the resolver picks pycares 5 transitively
 # without us having to cap it.
