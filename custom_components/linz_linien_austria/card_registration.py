@@ -30,7 +30,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers.event import async_call_later
 
-from .const import CARD_VERSION
+from .const import CARD_FILENAME, CARD_URL_BASE, CARD_VERSION
 
 # Typed access to LovelaceData via the public HassKey HA exposes since
 # 2024.x. The string fallback covers HA versions that pre-date the key
@@ -61,7 +61,10 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-URL_BASE = "/linz-linien-austria"
+# Single source of truth is const.py — these must match the static path
+# the card bundle is actually served from and the URL the user copies
+# onto their dashboard.
+URL_BASE = CARD_URL_BASE
 
 # Cap on _async_wait_for_lovelace_resources retry ticks. Each tick is 5s,
 # so 60 ticks = 5 min. Reaching the cap means Lovelace's resource loader
@@ -74,7 +77,7 @@ _LOVELACE_LOAD_RETRY_INTERVAL_S = 5
 JSMODULES: list[dict[str, str]] = [
     {
         "name": "Linz Linien Austria Card",
-        "filename": "linz-linien-austria-card.js",
+        "filename": CARD_FILENAME,
         "version": CARD_VERSION,
     },
 ]

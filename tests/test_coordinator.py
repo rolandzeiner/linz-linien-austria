@@ -14,9 +14,6 @@ from custom_components.linz_linien_austria.api import (
     EfaHttpError,
     EfaPayloadError,
     EfaTimeoutError,
-    _normalise_departure,
-    _parse_dm,
-    _parse_stopfinder,
 )
 from custom_components.linz_linien_austria.const import (
     BACKOFF_CAP_SECONDS,
@@ -29,8 +26,20 @@ from custom_components.linz_linien_austria.coordinator import (
     LinzLinienAustriaCoordinator,
     _line_dir_key,
 )
+from custom_components.linz_linien_austria.parser import (
+    _normalise_departure,
+    _parse_dm,
+    _parse_stopfinder,
+    _wgs84_from_coords,
+)
 
-from .conftest import BASE_ENTRY_DATA, EXAMPLE_DM_RESPONSE, EXAMPLE_STOPFINDER
+from .conftest import (
+    BASE_ENTRY_DATA,
+    EXAMPLE_DM_RESPONSE,
+    EXAMPLE_STOPFINDER,
+    EXAMPLE_STOPFINDER_MULTI,
+    EXAMPLE_STOPFINDER_SINGLE,
+)
 
 
 def _make_entry(data: dict | None = None) -> MockConfigEntry:
@@ -54,6 +63,218 @@ def test_parse_stopfinder_extracts_stable_ids() -> None:
     stops = _parse_stopfinder(EXAMPLE_STOPFINDER)
     assert {s["stop_id"] for s in stops} == {"60501720", "60501070"}
     assert all(s["place"] == "Linz/Donau" for s in stops)
+
+
+def test_parse_stopfinder_reads_nested_single_point() -> None:
+    """`stopFinder.points.point` as a bare dict must yield one candidate.
+
+    Regression guard: this is the shape the LINZ AG deployment returns
+    for every query, and the parser used to look for `points` as a list
+    and find nothing — so stop search returned zero hits and the config
+    flow could not add a stop at all.
+    """
+    stops = _parse_stopfinder(EXAMPLE_STOPFINDER_SINGLE)
+    assert [s["stop_id"] for s in stops] == ["60501720"]
+    assert stops[0]["name"] == "Linz/Donau, Hauptbahnhof"
+    assert stops[0]["latitude"] == pytest.approx(48.291028)
+
+
+def test_parse_stopfinder_reads_nested_point_list() -> None:
+    """The same wrapper with several candidates yields all of them."""
+    stops = _parse_stopfinder(EXAMPLE_STOPFINDER_MULTI)
+    assert [s["stop_id"] for s in stops] == ["60501720", "60501070"]
+
+
+def test_parse_stopfinder_reads_wgs84_coords() -> None:
+    """Candidates carry lat/lon; a candidate without coords omits both keys."""
+    stops = {s["stop_id"]: s for s in _parse_stopfinder(EXAMPLE_STOPFINDER)}
+    assert stops["60501720"]["latitude"] == pytest.approx(48.291028)
+    assert stops["60501720"]["longitude"] == pytest.approx(14.291325)
+    assert "latitude" not in stops["60501070"]
+
+
+def test_wgs84_guard_rejects_projected_coords() -> None:
+    """Projected NAV5 easting/northing must never pass as a lat/lon pair.
+
+    Dropping `coordOutputFormat` from a request would silently reintroduce
+    these; the range guard turns that into a missing position rather than
+    a device pinned to the middle of the ocean.
+    """
+    assert _wgs84_from_coords("14.291325,48.291028") == pytest.approx(
+        (48.291028, 14.291325)
+    )
+    assert _wgs84_from_coords("5447580,809422") is None
+    assert _wgs84_from_coords("not,coords") is None
+    assert _wgs84_from_coords("14.29") is None
+    assert _wgs84_from_coords(None) is None
+
+
+def test_parse_serving_lines_normalises_roster() -> None:
+    """The roster keeps one entry per line+direction with a resolved code."""
+    roster = _parse_dm(EXAMPLE_DM_RESPONSE)["served_lines"]
+    assert [(r["line"], r["dir_code"]) for r in roster] == [
+        ("2", "H"),
+        ("2", "R"),
+        ("3", "H"),
+        ("17", "R"),  # recovered from `stateless`, no `diva.dir` present
+    ]
+    outbound = roster[0]
+    assert outbound["destination"] == "solarCity"
+    assert outbound["dest_id"] == "60500296"
+    assert outbound["mot_name"] == "Tram"
+
+
+def test_parse_serving_lines_handles_single_line_dict() -> None:
+    """EFA collapses a one-element collection to a bare dict, not a list."""
+    payload = {
+        "servingLines": {
+            "lines": {
+                "mode": {
+                    "number": "50",
+                    "type": "8",
+                    "destination": "Pöstlingberg",
+                    "diva": {"dir": "H"},
+                }
+            }
+        }
+    }
+    roster = _parse_dm(payload)["served_lines"]
+    assert [(r["line"], r["dir_code"]) for r in roster] == [("50", "H")]
+
+
+def test_parse_serving_lines_tolerates_missing_block() -> None:
+    """No `servingLines` at all yields an empty roster, not a crash."""
+    assert _parse_dm({"departureList": []})["served_lines"] == []
+
+
+def test_normalise_departure_resolves_direction_code() -> None:
+    """`liErgRiProj` wins; `stateless` is the fallback."""
+    first, second = EXAMPLE_DM_RESPONSE["departureList"]
+    assert _normalise_departure(first)["dir_code"] == "H"
+    # Second row has no liErgRiProj — must fall back to the stateless id.
+    assert _normalise_departure(second)["dir_code"] == "H"
+
+
+def test_normalise_departure_omits_unresolvable_direction_code() -> None:
+    """A row with neither source omits `dir_code` rather than inventing one."""
+    normalised = _normalise_departure(
+        {"countdown": 5, "servingLine": {"number": "9", "direction": "Test"}}
+    )
+    assert normalised is not None
+    assert "dir_code" not in normalised
+
+
+def test_normalise_departure_flattens_delay_hint() -> None:
+    """Multi-line dot-matrix hints collapse to one line for a card row."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": [
+                    {"content": "Behinderung!\nVerspätung!\nBitte Geduld!"}
+                ],
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Behinderung! Verspätung! Bitte Geduld!"
+
+
+def test_normalise_departure_handles_single_hint_dict() -> None:
+    """EFA collapses a one-element hints list to a bare dict."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": {"content": "Umleitung"},
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Umleitung"
+
+
+def test_normalise_departure_decodes_html_in_hint() -> None:
+    """Hints share a CMS with the alerts feed, so entities can appear."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": [{"content": "<strong>Versp&auml;tung</strong>"}],
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Verspätung"
+
+
+def test_normalise_departure_dedupes_repeated_hints() -> None:
+    """EFA sometimes lists the same hint twice on one row."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "servingLine": {
+                "number": "27",
+                "direction": "Test",
+                "hints": [{"content": "Stau"}, {"content": "Stau"}],
+            },
+        }
+    )
+    assert out is not None
+    assert out["delay_hint"] == "Stau"
+
+
+def test_normalise_departure_omits_empty_hint() -> None:
+    """No hints, junk hints, or blank content → the key is absent."""
+    for hints in (None, [], [{}], [{"content": "   "}], "nonsense", [123]):
+        out = _normalise_departure(
+            {
+                "countdown": 5,
+                "servingLine": {
+                    "number": "27",
+                    "direction": "Test",
+                    "hints": hints,
+                },
+            }
+        )
+        assert out is not None
+        assert "delay_hint" not in out, f"leaked for {hints!r}"
+
+
+def test_normalise_departure_carries_bay_and_operator() -> None:
+    """`nameWO` names the bay; `operator.name` identifies who runs it."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "platform": "5",
+            "nameWO": "Hauptbahnhof (Busterminal)",
+            "operator": {"code": "1", "name": "Linz Linien GmbH"},
+            "servingLine": {"number": "45", "direction": "Test"},
+        }
+    )
+    assert out is not None
+    assert out["stop_bay"] == "Hauptbahnhof (Busterminal)"
+    assert out["operator"] == "Linz Linien GmbH"
+    assert out["platform"] == "5"
+
+
+def test_normalise_departure_tolerates_malformed_operator() -> None:
+    """A non-dict `operator` must not raise or leak a stringified dict."""
+    out = _normalise_departure(
+        {
+            "countdown": 5,
+            "operator": "Linz Linien GmbH",
+            "servingLine": {"number": "45", "direction": "Test"},
+        }
+    )
+    assert out is not None
+    assert "operator" not in out
 
 
 def test_normalise_departure_carries_realtime_correction() -> None:
@@ -195,9 +416,8 @@ async def test_rate_limit_raises_repair_issue(hass: HomeAssistant) -> None:
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
         new_callable=AsyncMock,
         side_effect=EfaHttpError(429, "Too Many Requests"),
-    ):
-        with pytest.raises(UpdateFailed):
-            await coordinator._async_update_data()
+    ), pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
 
     registry = ir.async_get(hass)
     issue = registry.async_get_issue(DOMAIN, f"rate_limited_{entry.entry_id}")
@@ -349,17 +569,42 @@ async def test_generic_api_error_uses_connection_translation(
         assert excinfo.value.translation_key == "api_connection_error"
 
 
+async def test_non_update_failed_error_still_notes_failure(
+    hass: HomeAssistant,
+) -> None:
+    """A non-UpdateFailed error must still widen the backoff.
+
+    `_fetch_departures` only maps the `Efa*Error` family to
+    `UpdateFailed`; an unexpected error (e.g. a raise inside the deferred
+    line-filter heal) would otherwise escape without touching the failure
+    counter. The broad arm in `_async_update_data` keeps the "any refresh
+    failure adjusts cadence" invariant and re-raises unchanged.
+    """
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("unexpected"),
+    ), pytest.raises(RuntimeError):
+        await coordinator._async_update_data()
+
+    assert coordinator._consecutive_failures == 1
+
+
 # ---------------------------------------------------------------------
 # Line filter + helper
 # ---------------------------------------------------------------------
 
 
 async def test_lines_filter_drops_unselected_routes(hass: HomeAssistant) -> None:
-    """When CONF_LINES is set, only matching `<line>:<direction>` rows survive."""
+    """When CONF_LINES is set, only matching `<line>:<H|R>` rows survive."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=BASE_ENTRY_DATA,
-        options={CONF_LINES: ["2:solarCity"]},
+        options={CONF_LINES: ["2:H"]},
         title=BASE_ENTRY_DATA[CONF_STOP_NAME],
         unique_id=f"stop_{BASE_ENTRY_DATA[CONF_STOP_ID]}",
     )
@@ -379,9 +624,48 @@ async def test_lines_filter_drops_unselected_routes(hass: HomeAssistant) -> None
     assert {d["line"] for d in departures} == {"2"}
 
 
+async def test_lines_filter_survives_headsign_change(hass: HomeAssistant) -> None:
+    """A branching terminus changes the headsign; the filter must not care.
+
+    This is the bug the H/R key exists to fix. Line 2 towards a branching
+    terminus reports "solarCity" on one vehicle and "Ebelsberg" on the
+    next; keying the filter on that text dropped the whole line whenever
+    the short-turn variant came up.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=BASE_ENTRY_DATA,
+        options={CONF_LINES: ["2:H"]},
+        title=BASE_ENTRY_DATA[CONF_STOP_NAME],
+        unique_id=f"stop_{BASE_ENTRY_DATA[CONF_STOP_ID]}",
+    )
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    short_turn = {
+        "stop": {"stop_id": "60501720", "name": "Hauptbahnhof", "place": "Linz"},
+        "served_lines": [{"line": "2", "dir_code": "H", "destination": "solarCity"}],
+        "departures": [
+            # Same line, same direction, different published headsign.
+            {"line": "2", "direction": "Ebelsberg", "dir_code": "H", "countdown": 4},
+        ],
+    }
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=short_turn,
+    ):
+        await coordinator.async_refresh()
+
+    assert coordinator.data is not None
+    assert len(coordinator.data["departures"]) == 1
+
+
 def test_line_dir_key_format() -> None:
-    """Helper returns `<line>:<direction>` with empty fallbacks."""
-    assert _line_dir_key({"line": "2", "direction": "solarCity"}) == "2:solarCity"
+    """Helper returns `<line>:<H|R>` with empty fallbacks."""
+    assert _line_dir_key({"line": "2", "dir_code": "H"}) == "2:H"
+    # Headsign text must not leak into the key — that was the old bug.
+    assert _line_dir_key({"line": "2", "direction": "solarCity"}) == "2:"
     assert _line_dir_key({}) == ":"
 
 
@@ -419,26 +703,24 @@ async def test_teardown_invokes_registered_unsubs(hass: HomeAssistant) -> None:
 
 
 # ---------------------------------------------------------------------
-# Persistent lines_at_stop accumulation — feeds the card editor's picker
+# lines_at_stop from the upstream roster — feeds the card editor's picker
 # ---------------------------------------------------------------------
 
 
-async def test_lines_at_stop_accumulates_across_refreshes(
+async def test_lines_at_stop_comes_from_roster_not_live_window(
     hass: HomeAssistant,
 ) -> None:
-    """Successive fetches union new line labels into the persisted set.
+    """The picker lists every line in the timetable, not just what's departing.
 
-    The card editor's line-filter picker reads `lines_at_stop`; if the
-    set were re-derived per fetch the picker would forget rush-hour /
-    seasonal lines as soon as they exited the live window. Accumulation
-    is what fixes that.
+    Line 17 is in the fixture's `servingLines` roster but has no row in
+    `departureList`. Deriving the picker from observed departures would
+    hide it until one happened to show up; the roster has it on the
+    first fetch.
     """
     entry = _make_entry()
     entry.add_to_hass(hass)
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    await coordinator._async_setup()
 
-    # First refresh exposes lines 2 and 3.
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
     with patch(
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
@@ -446,46 +728,31 @@ async def test_lines_at_stop_accumulates_across_refreshes(
         return_value=parsed,
     ):
         await coordinator.async_refresh()
+
     assert coordinator.data is not None
-    assert coordinator.data["lines_at_stop"] == ["2", "3"]
-
-    # Second refresh: only line 17 visible right now. The persisted set
-    # must still include 2 and 3 — that's the whole point.
-    only_line_17 = {
-        "stop": parsed["stop"],
-        "departures": [
-            {"line": "17", "direction": "Auwiesen", "countdown": 5},
-        ],
-    }
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=only_line_17,
-    ):
-        await coordinator.async_refresh()
-    assert coordinator.data is not None
-    assert coordinator.data["lines_at_stop"] == ["17", "2", "3"]
+    # Natural-sorted, one label per line despite line 2 having two
+    # directions in the roster.
+    assert coordinator.data["lines_at_stop"] == ["2", "3", "17"]
+    assert {d["line"] for d in coordinator.data["departures"]} == {"2", "3"}
 
 
-async def test_lines_at_stop_harvested_before_user_filter(
+async def test_lines_at_stop_ignores_user_line_filter(
     hass: HomeAssistant,
 ) -> None:
-    """The harvest must use the unfiltered upstream payload.
+    """The roster must not narrow when the user filters to one line.
 
-    If the user filters to one line+direction, the picker still has to
-    show every line that serves the stop — otherwise narrowing the
-    filter would freeze the picker at that one line forever.
+    Otherwise deselecting a line in the options flow would remove it
+    from the picker that put it there — a one-way door.
     """
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=BASE_ENTRY_DATA,
-        options={CONF_LINES: ["2:solarCity"]},
+        options={CONF_LINES: ["2:H"]},
         title=BASE_ENTRY_DATA[CONF_STOP_NAME],
         unique_id=f"stop_{BASE_ENTRY_DATA[CONF_STOP_ID]}",
     )
     entry.add_to_hass(hass)
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    await coordinator._async_setup()
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
     with patch(
@@ -496,86 +763,49 @@ async def test_lines_at_stop_harvested_before_user_filter(
         await coordinator.async_refresh()
 
     assert coordinator.data is not None
-    # Filtered departures show only line 2…
     assert {d["line"] for d in coordinator.data["departures"]} == {"2"}
-    # …but lines_at_stop still has every line in the raw payload.
-    assert coordinator.data["lines_at_stop"] == ["2", "3"]
+    assert coordinator.data["lines_at_stop"] == ["2", "3", "17"]
 
 
-async def test_lines_at_stop_persists_across_coordinator_instances(
+async def test_lines_at_stop_falls_back_to_observed_labels(
     hass: HomeAssistant,
 ) -> None:
-    """A second coordinator for the same entry rehydrates the set on setup."""
-    entry = _make_entry()
-    entry.add_to_hass(hass)
-    coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    await coordinator._async_setup()
+    """An empty roster falls back to the lines seen in the departure list.
 
-    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
-    ):
-        await coordinator.async_refresh()
-    assert coordinator.data["lines_at_stop"] == ["2", "3"]
-
-    # Simulate HA restart: brand-new coordinator, same entry. After
-    # `_async_setup` it must restore the persisted set without needing
-    # a fresh fetch.
-    rehydrated = LinzLinienAustriaCoordinator(hass, entry)
-    await rehydrated._async_setup()
-    assert rehydrated._lines_at_stop == {"2", "3"}
-
-
-async def test_lines_at_stop_drops_when_stop_id_changes(
-    hass: HomeAssistant,
-) -> None:
-    """A reconfigure to a different stop must invalidate the cached labels.
-
-    Cached lines belong to the old physical stop and would mislead the
-    card editor at the new stop. Mismatched `stop_id` on load → start
-    fresh.
+    A stop with departures but an empty picker is a worse failure than a
+    picker that undercounts, so the fallback stays.
     """
     entry = _make_entry()
     entry.add_to_hass(hass)
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    await coordinator._async_setup()
 
-    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    no_roster = {
+        "stop": {"stop_id": "60501720", "name": "Hauptbahnhof", "place": "Linz"},
+        "served_lines": [],
+        "departures": [
+            {"line": "3", "direction": "Auwiesen", "dir_code": "H", "countdown": 2},
+            {"line": "2", "direction": "solarCity", "dir_code": "H", "countdown": 5},
+        ],
+    }
     with patch(
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
         new_callable=AsyncMock,
-        return_value=parsed,
+        return_value=no_roster,
     ):
         await coordinator.async_refresh()
-    assert coordinator._lines_at_stop == {"2", "3"}
 
-    # Same entry_id, different stop_id (post-reconfigure). The stored
-    # file still has the old stop_id tag, so the new instance's
-    # `_async_setup` must NOT load from it.
-    moved_entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={**BASE_ENTRY_DATA, CONF_STOP_ID: "99999999"},
-        options={},
-        title="Some other stop",
-        unique_id="stop_99999999",
-        entry_id=entry.entry_id,
-    )
-    moved_entry.add_to_hass(hass)
-    moved_coordinator = LinzLinienAustriaCoordinator(hass, moved_entry)
-    await moved_coordinator._async_setup()
-    assert moved_coordinator._lines_at_stop == set()
+    assert coordinator.data is not None
+    assert coordinator.data["lines_at_stop"] == ["2", "3"]
 
 
-async def test_async_remove_storage_clears_persisted_state(
+async def test_coordinator_exposes_wgs84_stop_position(
     hass: HomeAssistant,
 ) -> None:
-    """`async_remove_storage` removes the file so a re-add starts fresh."""
+    """The resolved stop's WGS84 position is plucked onto the coordinator."""
     entry = _make_entry()
     entry.add_to_hass(hass)
     coordinator = LinzLinienAustriaCoordinator(hass, entry)
-    await coordinator._async_setup()
+    assert coordinator.latitude is None
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
     with patch(
@@ -585,11 +815,40 @@ async def test_async_remove_storage_clears_persisted_state(
     ):
         await coordinator.async_refresh()
 
-    await coordinator.async_remove_storage()
+    # EFA publishes lon,lat — the parser must not hand them back swapped.
+    assert coordinator.latitude == pytest.approx(48.291028)
+    assert coordinator.longitude == pytest.approx(14.291325)
 
-    rehydrated = LinzLinienAustriaCoordinator(hass, entry)
-    await rehydrated._async_setup()
-    assert rehydrated._lines_at_stop == set()
+
+async def test_coordinator_keeps_last_known_position_when_absent(
+    hass: HomeAssistant,
+) -> None:
+    """A later response without coords must not blank an established position."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        await coordinator.async_refresh()
+
+    without_coords = {
+        "stop": {"stop_id": "60501720", "name": "Hauptbahnhof", "place": "Linz"},
+        "served_lines": [],
+        "departures": [],
+    }
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=without_coords,
+    ):
+        await coordinator.async_refresh()
+
+    assert coordinator.latitude == pytest.approx(48.291028)
 
 
 # Quiet timedelta import — avoids "imported but unused" if the test

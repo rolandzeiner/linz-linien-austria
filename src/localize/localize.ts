@@ -33,7 +33,7 @@ export interface TranslateContext {
  *  config override beats HA's active language; final fallback is English.
  *  Strip any region suffix (`de-AT` → `de`) so we don't need a separate
  *  catalogue per region. */
-export function resolveLang(ctx: TranslateContext): string {
+function resolveLang(ctx: TranslateContext): string {
   const raw = ctx.configLanguage || ctx.hassLanguage || "en";
   const code = raw.replace("-", "_").split("_")[0];
   return code === "de" ? "de" : "en";

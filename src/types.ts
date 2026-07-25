@@ -13,15 +13,21 @@ export interface HassEntity {
     attribution?: string;
     departures?: unknown;
     stop_id?: string | number;
+    /** Canonical stop label from the EFA upstream — used for the card
+     *  title and the Google Maps query. */
+    stop_name?: string;
     alerts?: unknown;
-    /** Persistent union of every line label the integration has
-     *  observed at this stop. Surfaced so the card editor's line-filter
-     *  picker can offer rush-hour / seasonal lines that aren't in the
-     *  current departure window. Empty list while the integration has
-     *  never seen a departure (fresh install before first refresh). */
+    /** Every line the current timetable runs through this stop, from the
+     *  upstream's own roster (`servingLines`). Surfaced so the card
+     *  editor's line-filter picker can offer rush-hour / seasonal lines
+     *  that aren't in the current departure window. Complete from the
+     *  first successful refresh; empty only before it. */
     lines_at_stop?: unknown;
-    latitude?: number;
-    longitude?: number;
+    /** WGS84 position of the resolved stop. Both keys are present or
+     *  both absent — the integration omits them until a fetch resolves
+     *  a position. Used for the header's map deeplink. */
+    latitude?: unknown;
+    longitude?: unknown;
   };
   last_changed?: string;
   last_updated?: string;
@@ -36,6 +42,10 @@ export interface HassEntity {
  *  untyped and is read with a cast at the call site. */
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
+  /** Entity registry, keyed by entity_id. The card-picker's
+   *  `getEntitySuggestion` reads `platform` to suggest only entities
+   *  owned by this integration. */
+  entities?: Record<string, { platform?: string } & Record<string, unknown>>;
   language?: string;
   themes?: { darkMode?: boolean } & Record<string, unknown>;
   config?: { time_zone?: string } & Record<string, unknown>;
@@ -152,14 +162,54 @@ export type HaFormSchema =
   | HaFormGridSchema
   | HaFormExpandableSchema;
 
+/** One stop still ahead on a departure's trip, as normalised by
+ *  api.py::_parse_onward_stops. Nearest first. */
+export interface StopAhead {
+  /** Short stop name, no place prefix ("Waldeggstraße"). */
+  name: string;
+  stop_id?: string;
+  /** Predicted arrival at this stop, ISO local. */
+  arrival?: string;
+  /** Delay carried to this stop, in minutes. Present only where the
+   *  upstream marked the prediction realtime-valid, so its absence
+   *  means "scheduled", not "on time". */
+  delay_minutes?: number;
+}
+
 /** A single normalised departure as surfaced in sensor attributes by the
  *  Python coordinator. Optional fields are dropped when not present in
  *  the upstream payload — see api.py::_normalise_departure. */
 export interface Departure {
   line: string;
+  /** Headsign text for this trip. Display only — it is unstable for
+   *  branching termini, so never key a filter or a lookup on it. */
   direction: string;
+  /** Stable Hin/Rück direction code. Absent on replacement-service rows
+   *  where the upstream publishes no line project. */
+  dir_code?: "H" | "R";
+  /** Initial origin of the trip, for context. Surfaced as a sensor
+   *  attribute for templates/automations; the card does not render it. */
   origin?: string;
   platform?: string;
+  /** Named bay this departure leaves from, e.g. "Hauptbahnhof
+   *  (Kärntnerstraße)". Differs per row at multi-bay stops and is often
+   *  the only location cue when `platform` is the unknown-sentinel 0.
+   *  The card surfaces the *next* departure's bay via the sensor's
+   *  `next_stop_bay` attribute for templates; it is not drawn on the
+   *  per-row card layout. */
+  stop_bay?: string;
+  /** Transport operator, e.g. "Linz Linien GmbH". Distinguishes
+   *  municipal service from ÖBB rail at shared stops. Template-facing
+   *  attribute only — the card does not render it. */
+  operator?: string;
+  /** The operator's live reason for a delay, flattened to one line
+   *  ("Behinderung! Verspätung! Bitte Geduld!"). Absent on trips running
+   *  to plan, which is the overwhelming majority. */
+  delay_hint?: string;
+  /** Remaining stops on this trip, nearest first. Only present when the
+   *  integration's `show_stop_sequence` option is on — it roughly
+   *  triples the upstream response, so it is opt-in. */
+  stops_ahead?: StopAhead[];
   mot?: number;
   mot_name?: string;
   countdown?: number;
@@ -203,7 +253,8 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
   /** Whether to render the big "next departure" hero block. Defaults true. */
   show_hero?: boolean;
   /** Cap the rendered list. Defaults to whatever the integration delivers
-   *  (already capped at 30). Useful for narrow column layouts. */
+   *  (the `departures` attribute, capped at 45 — MAX_DEPARTURES_IN_ATTRS
+   *  in const.py). Useful for narrow column layouts. */
   max_departures?: number;
   /** Card-side filter: only render departures whose ``line`` is in this
    *  set. Empty / missing means "show every line". This is independent

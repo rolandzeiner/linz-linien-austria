@@ -1,6 +1,7 @@
 """Linz Linien Austria integration."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -24,12 +25,17 @@ from .alerts import (
 from .card_registration import JSModuleRegistration
 from .const import (
     CARD_VERSION,
+    CONF_LINES,
+    CONF_LINES_LEGACY,
     DOMAIN,
     ENTRY_COUNT_KEY,
     LINES_AT_STOP_STORAGE_KEY_PREFIX,
     LINES_AT_STOP_STORAGE_VERSION,
 )
 from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordinator
+from .migration import _remap_line_keys, _try_fetch_roster
+
+_LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -83,6 +89,87 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     else:
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_card)
 
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: LinzLinienAustriaConfigEntry
+) -> bool:
+    """Migrate a config entry to the current schema version.
+
+    v1 → v2: rewrite ``CONF_LINES`` filter keys from
+    ``"<line>:<destination text>"`` to ``"<line>:<H|R>"``, and delete the
+    orphaned ``lines_at_stop`` Store file (superseded by the upstream
+    ``servingLines`` roster).
+
+    The remap needs the stop's line roster, which costs one DM request.
+    That request must never be allowed to fail the migration: HA wraps
+    this call in a bare ``except Exception: return False``, and a
+    ``False`` return puts the entry in ``MIGRATION_ERROR`` — a terminal
+    state the user can only escape by deleting and re-adding the entry.
+    There is no retry path out of here, not even via
+    ``ConfigEntryNotReady``.
+
+    So the fetch is best-effort. When it succeeds (the overwhelmingly
+    common case) the filter is fully remapped before setup continues.
+    When it fails, the legacy keys are parked in ``CONF_LINES_LEGACY``
+    and the coordinator finishes the job on its first successful poll,
+    where a failure is an ordinary retry. Either way the entry reaches
+    v2 and stays loadable.
+    """
+    if entry.version > 2:
+        # Downgrade from a future version — nothing sensible to do.
+        return False
+    if entry.version == 2:
+        return True
+
+    new_data = {**entry.data}
+    new_options = {**entry.options}
+    legacy_lines = [str(x) for x in (entry.data.get(CONF_LINES) or []) if x]
+    legacy_option_lines = [
+        str(x) for x in (entry.options.get(CONF_LINES) or []) if x
+    ]
+
+    if legacy_lines or legacy_option_lines:
+        roster = await _try_fetch_roster(hass, entry)
+        if roster is not None:
+            if legacy_lines:
+                new_data[CONF_LINES] = _remap_line_keys(
+                    legacy_lines, roster, entry.title
+                )
+            if legacy_option_lines:
+                new_options[CONF_LINES] = _remap_line_keys(
+                    legacy_option_lines, roster, entry.title
+                )
+        else:
+            # Park the originals for the coordinator to heal. Clearing
+            # the live keys is deliberate: a v1 key matches nothing under
+            # v2, so leaving them in place would filter every departure
+            # away until the first poll. An unfiltered stop for one tick
+            # is the better failure.
+            _LOGGER.info(
+                "Line roster unavailable while migrating %s; the line filter "
+                "will be remapped on the next successful update",
+                entry.title,
+            )
+            if legacy_lines:
+                new_data[CONF_LINES] = []
+                new_data[CONF_LINES_LEGACY] = legacy_lines
+            if legacy_option_lines:
+                new_options[CONF_LINES] = []
+                new_options[CONF_LINES_LEGACY] = legacy_option_lines
+
+    # The Store file is per-entry and nothing reads it any more.
+    legacy_store: Store[dict[str, Any]] = Store(
+        hass,
+        LINES_AT_STOP_STORAGE_VERSION,
+        f"{LINES_AT_STOP_STORAGE_KEY_PREFIX}.{entry.entry_id}",
+    )
+    await legacy_store.async_remove()
+
+    hass.config_entries.async_update_entry(
+        entry, data=new_data, options=new_options, version=2, minor_version=1
+    )
     return True
 
 
@@ -162,21 +249,16 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: HomeAssistant, entry: LinzLinienAustriaConfigEntry
 ) -> None:
-    """Drop persisted state for this entry, plus the Lovelace resource on the last entry.
+    """Drop the Lovelace resource once the last entry of this domain is gone.
 
-    The per-entry ``lines_at_stop`` Store file is owned by this entry — remove it
-    unconditionally so a future re-add starts fresh and stale paths don't accumulate.
     The card resource is registered once globally per integration, so reloading or
     removing a single entry must not remove it; only when no other entries of this
     domain remain do we unregister.
-    """
-    lines_store: Store[dict[str, Any]] = Store(
-        hass,
-        LINES_AT_STOP_STORAGE_VERSION,
-        f"{LINES_AT_STOP_STORAGE_KEY_PREFIX}.{entry.entry_id}",
-    )
-    await lines_store.async_remove()
 
+    No per-entry persisted state is left to clean up: the ``lines_at_stop`` Store
+    this used to remove is gone as of entry schema v2 (``async_migrate_entry``
+    deletes any file left behind by v1).
+    """
     remaining = [
         e
         for e in hass.config_entries.async_entries(DOMAIN)

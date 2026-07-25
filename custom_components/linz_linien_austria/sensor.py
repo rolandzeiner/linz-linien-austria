@@ -114,8 +114,9 @@ class NextDepartureSensor(
         - ``resolved_stop``: the stop metadata as returned by EFA on the
           last successful refresh (may differ in casing/place suffix).
         - Convenience top-level fields for template ergonomics:
-          ``next_line``, ``next_direction``, ``next_delay_minutes``,
-          ``next_is_realtime``, ``next_scheduled``, ``next_realtime``.
+          ``next_line``, ``next_direction``, ``next_mot``,
+          ``next_delay_minutes``, ``next_is_realtime``,
+          ``next_is_cancelled``, ``next_scheduled``, ``next_realtime``.
         """
         data = self.coordinator.data or {}
         first = self._first_departure()
@@ -137,12 +138,34 @@ class NextDepartureSensor(
             # departure inside the current live window.
             "lines_at_stop": data.get("lines_at_stop") or [],
         }
+        # WGS84 position of the resolved stop. Lets the card build a
+        # precise map deeplink instead of a name query, and gives
+        # templates a real location to compute against. Omitted entirely
+        # until the first fetch resolves a position, so a template can
+        # test for presence rather than for a sentinel.
+        if self.coordinator.latitude is not None:
+            attrs["latitude"] = self.coordinator.latitude
+            attrs["longitude"] = self.coordinator.longitude
         if first is not None:
             attrs["next_line"] = first.get("line")
             attrs["next_direction"] = first.get("direction")
             attrs["next_mot"] = first.get("mot_name")
+            # Departures are sorted active-first, cancelled last
+            # (api.py::_departure_sort_key), so the first row is only
+            # cancelled when *every* upcoming departure is. Surface a
+            # plain bool so templates/automations don't treat the
+            # countdown as a catchable trip.
+            attrs["next_is_cancelled"] = bool(first.get("is_cancelled"))
             if "delay_minutes" in first:
                 attrs["next_delay_minutes"] = first["delay_minutes"]
+            # The operator's own words for why this trip is late. Kept
+            # recorded (unlike `departures`) — it's a short string that
+            # only changes when a disruption starts or clears, so the
+            # history is a useful record rather than per-tick noise.
+            if "delay_hint" in first:
+                attrs["next_delay_hint"] = first["delay_hint"]
+            if "stop_bay" in first:
+                attrs["next_stop_bay"] = first["stop_bay"]
             if "is_realtime" in first:
                 attrs["next_is_realtime"] = first["is_realtime"]
             if "scheduled" in first:

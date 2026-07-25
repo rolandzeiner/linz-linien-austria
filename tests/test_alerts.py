@@ -1,7 +1,7 @@
 """Tests for the alerts parser + per-line filter."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
@@ -10,7 +10,6 @@ from homeassistant.core import HomeAssistant
 
 from custom_components.linz_linien_austria import alerts as alerts_mod
 from custom_components.linz_linien_austria.alerts import (
-    _decode_html,
     _iso_from_efa_dt,
     _parse_addinfo,
     _parse_alert,
@@ -80,16 +79,6 @@ EXAMPLE_ADDINFO = {
 }
 
 
-def test_decode_html_strips_tags_and_decodes_german_entities() -> None:
-    text = _decode_html(
-        "<p>Ab <strong>1.5.</strong></p><p>L191 wird "
-        "umgeleitet.&nbsp;Sch&ouml;n!</p>"
-    )
-    assert "<" not in text
-    assert ">" not in text
-    assert "Schön!" in text
-
-
 def test_parse_alert_skips_deactivated() -> None:
     out = _parse_alert(
         {"infoID": "x", "deactivated": "true", "publish": "1", "infoLink": {}}
@@ -122,28 +111,6 @@ def test_parse_addinfo_drops_deactivated_keeps_active() -> None:
     assert high.priority == "high"
     # No concerned lines on this one — should propagate as empty list.
     assert high.affected_lines == []
-
-
-# ---------------------------------------------------------------------
-# _decode_html — entity edge cases
-# ---------------------------------------------------------------------
-
-
-def test_decode_html_resolves_numeric_entities() -> None:
-    """Numeric entities like `&#252;` must decode via chr()."""
-    assert "ü" in _decode_html("Gr&#252;n")
-
-
-def test_decode_html_leaves_unknown_entity_intact() -> None:
-    """Unknown named entities pass through verbatim (don't crash)."""
-    out = _decode_html("a&unknownEntity;b")
-    assert "&unknownEntity;" in out
-
-
-def test_decode_html_leaves_overflow_numeric_entity_intact() -> None:
-    """An out-of-range numeric entity is rejected by `chr()` — pass through."""
-    out = _decode_html("a&#9999999999999;b")
-    assert "&#9999999999999;" in out
 
 
 # ---------------------------------------------------------------------
@@ -312,7 +279,7 @@ class _FakeSession:
         self._exc = exc
         self._body = body
 
-    def get(self, *_a: Any, **_kw: Any) -> "_FakeResp":
+    def get(self, *_a: Any, **_kw: Any) -> _FakeResp:
         if self._exc is not None:
             raise self._exc
         return _FakeResp(self._body)
@@ -332,10 +299,10 @@ class _FakeResp:
     # synchronous `get()` returns to be an async context manager. The
     # production code wraps every fetch in this CM since the audit fix
     # for deterministic connection-pool release.
-    async def __aenter__(self) -> "_FakeResp":
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *_exc: Any) -> None:
+    async def __aexit__(self, *_exc: object) -> None:
         return None
 
 

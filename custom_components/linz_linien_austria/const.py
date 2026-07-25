@@ -35,8 +35,55 @@ USER_AGENT: Final = (
 CONF_STOP_ID: Final = "stop_id"
 CONF_STOP_NAME: Final = "stop_name"
 CONF_LIMIT: Final = "limit"
-CONF_LINES: Final = "lines"  # optional filter — list of "<line>:<direction>"
+# Optional filter — list of "<line>:<H|R>" keys, e.g. "2:H". Entry
+# schema v1 keyed the second segment on the destination *text*
+# ("2:solarCity"), which is unstable for branching termini; v2 keys it
+# on the EFA Hin/Rück code instead. `async_migrate_entry` rewrites v1
+# keys in place — see __init__.py.
+CONF_LINES: Final = "lines"
+# Transient holding pen for v1 keys the migration could not remap because
+# the upstream was unreachable at upgrade time. The coordinator drains it
+# on its first successful poll and removes the key — see
+# `_heal_legacy_line_filter`. Never written by the config flow.
+CONF_LINES_LEGACY: Final = "lines_legacy_v1"
 CONF_SEARCH_QUERY: Final = "search_query"
+# Opt-in: ask the DM endpoint for each trip's onward stop list.
+CONF_SHOW_STOP_SEQUENCE: Final = "show_stop_sequence"
+
+# --- Onward stop sequence (opt-in) -----------------------------------
+# `depType=stopEvents&includeCompleteStopSeq=1` makes each departure
+# carry the full stop list of the trip it belongs to, with per-stop
+# realtime arrival and delay. That is strictly richer than the sibling
+# wiener-linien integration's `stops_ahead`, which has to be synthesised
+# from a locally-built GTFS trip-pattern index and carries no per-stop
+# delay — but here it is paid for on every single poll.
+#
+# Measured at Hauptbahnhof, gzipped (2026-07-24):
+#
+#     limit   with seq   without   ratio
+#       6      14.9 KB    6.8 KB    2.2x
+#       8      20.1 KB    7.1 KB    2.8x
+#      10      22.8 KB    7.9 KB    2.9x
+#      12      27.2 KB    8.1 KB    3.3x
+#      20      41.4 KB   10.3 KB    4.0x
+#
+# The marginal cost per departure jumps past 10 (8→10 costs 2.7 KB for
+# two more rows; 10→12 costs 4.4 KB for two), so 10 is where the curve
+# stops being efficient. At the 60 s default that is ~33 MB/day/stop
+# against ~15 MB without — hence opt-in, and hence the clamp.
+#
+# Half of what we pay for is waste: the response also carries
+# `prevStopSeq` (the stops already behind the vehicle), which is 53% of
+# the sequence volume and useless for a departure monitor. No EFA
+# parameter suppresses it, so it is dropped client-side on receipt.
+SEQUENCE_UPSTREAM_LIMIT: Final = 10
+
+# Hard cap on onward stops kept per departure. The longest Linz routes
+# run ~30 stops end to end, so a vehicle leaving its first stop can
+# legitimately carry near that many; 25 keeps the common case whole
+# while bounding the attribute payload if the upstream ever returns
+# something pathological.
+MAX_STOPS_AHEAD: Final = 25
 
 # Polling policy
 # Linz AG Linien EFA fair-use: keep aggregate request rate well below the
@@ -65,7 +112,32 @@ BACKOFF_CAP_SECONDS: Final = 1800
 API_BASE_URL: Final = "https://www.linzag.at/static"
 DM_ENDPOINT: Final = "/XML_DM_REQUEST"  # Departure Monitor
 STOPFINDER_ENDPOINT: Final = "/XML_STOPFINDER_REQUEST"  # Stop search
-# XSLT_ADDINFO_REQUEST returns the active line/stop-info notices that
+
+# Ask the EFA for decimal-degree WGS84 instead of its projected NAV5
+# default. Sent on every request that can return a position; without it
+# `ref.coords` carries Gauss-Krüger easting/northing that looks like a
+# plausible float pair but is unusable as a geographic location.
+COORD_OUTPUT_FORMAT: Final = "WGS84[dd.ddddd]"
+
+# --- Two upstream capabilities this deployment does NOT have ----------
+# Both were probed directly against EFAController/10.6.30.4 (2026-07-24).
+# Recorded here because both are patterns the sibling wiener-linien
+# integration uses, and re-deriving "why doesn't Linz do that too?" costs
+# an afternoon each time.
+#
+# 1. No multi-stop batching. XML_DM_REQUEST serves exactly one stop per
+#    request. Repeated `name_dm` params return only the first stop;
+#    `name_dm=A,B` and `mergeDep=1` + `name_dm_1`/`name_dm_2` both return
+#    zero departures. There is no equivalent of wiener-linien's
+#    `batch.py`, so N configured stops means N requests — the 15 s
+#    DOMAIN_COOLDOWN_SECONDS below is the only aggregate throttle.
+#
+# 2. No conditional GET. The EFAController sends neither `ETag` nor
+#    `Last-Modified` on any endpoint, so there is nothing to revalidate
+#    against and a 304 fast path is impossible. `Accept-Encoding: gzip`
+#    is honoured and is the only transfer saving available (see http.py).
+# ----------------------------------------------------------------------
+# XML_ADDINFO_REQUEST returns the active line/stop-info notices that
 # the LinzMobil app surfaces in its alerts banner. Refreshed on a
 # domain-wide 5-min cadence — these don't change any faster than
 # operator-side editorial activity (typically a few times an hour) and
@@ -120,10 +192,14 @@ CARD_VERSION: Final = INTEGRATION_VERSION
 CARD_URL_BASE: Final = "/linz-linien-austria"
 CARD_FILENAME: Final = "linz-linien-austria-card.js"
 
-# Per-entry persistent record of every line ever seen at the configured
-# stop. The card editor's line-filter picker reads this so the user can
-# select rush-hour-only or seasonal lines that aren't in the current
-# departure window. Tagged with `stop_id` so a reconfigure that changes
-# stops invalidates stale cached lines instead of carrying them across.
+# LEGACY (entry schema v1 only). Up to 0.6.0 the coordinator accumulated
+# every line label it had ever observed at the stop into this Store,
+# because there was no known way to ask the upstream for the stop's full
+# roster. There is: every DM response carries a `servingLines` block with
+# the complete timetable roster (api.py::_parse_serving_lines), which is
+# both immediately complete and correct after a reconfigure. The Store is
+# no longer written or read — these constants survive only so
+# `async_migrate_entry` can delete the orphaned file. Remove both once
+# entry schema v1 is no longer in the field.
 LINES_AT_STOP_STORAGE_VERSION: Final = 1
 LINES_AT_STOP_STORAGE_KEY_PREFIX: Final = f"{DOMAIN}.lines_at_stop"

@@ -20,11 +20,13 @@
         "description": "Wie oft Abfahrten geholt werden und wie viele zur Verfügung stehen sollen.",
         "data": {
           "scan_interval": "Abfrageintervall (Sekunden)",
-          "limit": "Anzahl der Abfahrten"
+          "limit": "Anzahl der Abfahrten",
+          "show_stop_sequence": "Folgehaltestellen anzeigen"
         },
         "data_description": {
           "scan_interval": "Untergrenze 30 s. Zusätzlich wirkt eine domänenweite Schonzeit von 15 s, damit parallele Haltestellen die Frequenz nicht insgesamt unterlaufen.",
-          "limit": "Wie viele Abfahrten pro Aktualisierung geholt werden. Die Attribute sind auf 30 begrenzt."
+          "limit": "Wie viele Abfahrten pro Aktualisierung geholt werden. Die Attribute sind auf 30 begrenzt.",
+          "show_stop_sequence": "Zeigt die restlichen Haltestellen jeder Fahrt mit Echtzeit-Ankunft. Verdreifacht etwa die Datenmenge pro Abfrage — die Abfahrtsliste wird daher auf 10 Einträge verkürzt. Standardmäßig aus."
         }
       },
       "reconfigure": {
@@ -32,7 +34,11 @@
         "description": "Abfrageintervall oder Anzahl der Abfahrten anpassen. Für eine andere Haltestelle bitte einen neuen Eintrag anlegen.",
         "data": {
           "scan_interval": "Abfrageintervall (Sekunden)",
-          "limit": "Anzahl der Abfahrten"
+          "limit": "Anzahl der Abfahrten",
+          "show_stop_sequence": "Folgehaltestellen anzeigen"
+        },
+        "data_description": {
+          "show_stop_sequence": "Zeigt die restlichen Haltestellen jeder Fahrt mit Echtzeit-Ankunft. Verdreifacht etwa die Datenmenge pro Abfrage — die Abfahrtsliste wird daher auf 10 Einträge verkürzt. Standardmäßig aus."
         }
       }
     },
@@ -54,10 +60,12 @@
         "data": {
           "scan_interval": "Abfrageintervall (Sekunden)",
           "limit": "Anzahl der Abfahrten",
-          "lines": "Linien filtern (leer = alle)"
+          "lines": "Linien filtern (leer = alle)",
+          "show_stop_sequence": "Folgehaltestellen anzeigen"
         },
         "data_description": {
-          "lines": "Format pro Eintrag: linie:richtung (z. B. 2:solarCity). Leer lassen, um alle Abfahrten zu sehen."
+          "lines": "Linien auswählen, die angezeigt werden sollen. Leer lassen, um alle Abfahrten zu sehen. Die Liste füllt sich, sobald die Haltestelle abgefragt wurde.",
+          "show_stop_sequence": "Zeigt die restlichen Haltestellen jeder Fahrt mit Echtzeit-Ankunft. Verdreifacht etwa die Datenmenge pro Abfrage — die Abfahrtsliste wird daher auf 10 Einträge verkürzt. Standardmäßig aus."
         }
       }
     }

@@ -68,6 +68,21 @@ rules:
     comment: LINZ AG LINIEN EFA is a public open-data endpoint (no API key, no per-user credentials). There is nothing to re-authenticate.
   test-coverage:
     status: done
+    comment: >-
+      186 tests at 96 percent (gate 90). Config flow (search, pick,
+      probe failure, duplicate abort, reconfigure, options incl. the
+      roster-backed line picker), coordinator (backoff, cooldown,
+      rate-limit, line filter and its headsign-change regression,
+      roster-driven lines_at_stop plus fallback, WGS84 position),
+      api payload normalisation (both stopfinder shapes, departures,
+      direction codes, servingLines roster, delay hints, bay and
+      operator, projected-coordinate guard), entry migration v1 to v2
+      (remap helper, deferred heal, idempotency, downgrade refusal),
+      the opt-in onward stop sequence (request flags, parsing, the
+      prevStopSeq drop, realtime-validity gating, the cost clamp),
+      the shared text normalisers, alerts, the full sensor attribute
+      contract incl. recorder exclusions and registry identity, card
+      registration and diagnostics.
 
   # Gold
   devices:

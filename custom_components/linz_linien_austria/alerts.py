@@ -19,7 +19,6 @@ its own request, with a different cache lifetime than departures.
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
@@ -40,6 +39,7 @@ from .const import (
 )
 from .http import base_request_headers
 from .rate_limit import async_enforce_domain_cooldown
+from .text import decode_html
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,50 +74,6 @@ class TrafficInfo:
             "valid_to": self.valid_to,
             "created": self.created,
         }
-
-
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
-_HTML_ENTITY_RE = re.compile(r"&([a-zA-Z]+|#\d+);")
-_HTML_ENTITIES: dict[str, str] = {
-    "nbsp": " ",
-    "amp": "&",
-    "lt": "<",
-    "gt": ">",
-    "quot": '"',
-    "apos": "'",
-    "auml": "ä",
-    "ouml": "ö",
-    "uuml": "ü",
-    "Auml": "Ä",
-    "Ouml": "Ö",
-    "Uuml": "Ü",
-    "szlig": "ß",
-}
-
-
-def _decode_html(html: str) -> str:
-    """Strip HTML tags + decode the handful of entities the EFA emits.
-
-    A full HTML parser would be overkill for the limited tag set the
-    upstream uses (`<p>`, `<strong>`, `<em>`, `<br />`). Convert `<br>`
-    family to newlines first, then strip everything else, then decode
-    the entity vocabulary (German umlauts + the canonical five).
-    """
-    text = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
-    text = _HTML_TAG_RE.sub("", text)
-
-    def _replace(match: re.Match[str]) -> str:
-        token = match.group(1)
-        if token.startswith("#"):
-            try:
-                return chr(int(token[1:]))
-            except (ValueError, OverflowError):
-                return match.group(0)
-        return _HTML_ENTITIES.get(token, match.group(0))
-
-    text = _HTML_ENTITY_RE.sub(_replace, text)
-    # Collapse runs of whitespace inside paragraphs but keep newlines.
-    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
 
 def _iso_from_efa_dt(raw: Any) -> str | None:
@@ -165,7 +121,7 @@ def _parse_alert(raw: dict[str, Any]) -> TrafficInfo | None:
     if not title:
         return None
     html_body = str(info_link.get("content") or "").strip()
-    description = _decode_html(html_body) if html_body else ""
+    description = decode_html(html_body) if html_body else ""
 
     affected: list[str] = []
     concerned = raw.get("concernedLines")
@@ -274,22 +230,33 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     _LOGGER.debug("alerts cache refreshed: %d entries", len(alerts))
 
 
-def served_lines_from_data(data: dict[str, Any] | None) -> set[str]:
-    """Extract the set of line numbers currently serving a stop.
+def served_lines_from_data(
+    data: dict[str, Any] | None, *, strip: bool = False
+) -> set[str]:
+    """Extract the set of line numbers from a departures payload.
 
-    Shared between the coordinator (which slices the alerts cache at
-    refresh time) and diagnostics (which reproduces the same slice at
-    dump time). Identical comprehension on both sides was a tiny
-    duplication waiting to drift; centralise the field name + truthy-
-    string filter here.
+    Three call sites share this: the coordinator harvests the unfiltered
+    ``lines_at_stop`` universe (``strip=True``, since those labels feed
+    the card editor's picker and a stray space would split a line in
+    two), then the coordinator and diagnostics both slice the alerts
+    cache via ``get_alerts_for_lines``. Centralising the field name +
+    truthy filter here keeps the call sites from drifting apart.
+
+    ``strip`` trims surrounding whitespace off each label; the empty
+    string the trim can leave behind is dropped by the truthy filter.
     """
     if not isinstance(data, dict):
         return set()
-    return {
-        str(d.get("line") or "")
-        for d in (data.get("departures") or [])
-        if d.get("line")
-    }
+    out: set[str] = set()
+    for d in data.get("departures") or []:
+        if not isinstance(d, dict) or not d.get("line"):
+            continue
+        line = str(d.get("line") or "")
+        if strip:
+            line = line.strip()
+        if line:
+            out.add(line)
+    return out
 
 
 def get_alerts_for_lines(

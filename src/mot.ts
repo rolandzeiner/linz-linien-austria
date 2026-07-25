@@ -11,7 +11,7 @@
 /** Material icon for each mode of transport. Falls back via the
  *  helper to the caller-supplied default when the upstream sends an
  *  unknown id. */
-export const MOT_ICON: Record<number, string> = {
+const MOT_ICON: Record<number, string> = {
   0: "mdi:train",
   1: "mdi:train",
   2: "mdi:subway-variant",
@@ -30,7 +30,7 @@ export const MOT_ICON: Record<number, string> = {
  *  ``#f08000`` doubles as the card's `--linz-accent`; we return it
  *  for any id not in the table so callers don't need a separate
  *  fallback path. */
-export const MOT_COLOR_DEFAULT = "#f08000";
+const MOT_COLOR_DEFAULT = "#f08000";
 
 const MOT_COLORS: Record<number, string> = {
   0: "#455a64", // train

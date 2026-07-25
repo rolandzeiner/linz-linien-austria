@@ -12,7 +12,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.debounce import Debouncer
-from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .alerts import get_alerts_for_lines, served_lines_from_data
@@ -23,21 +22,23 @@ from .api import (
     EfaTimeoutError,
     fetch_departures,
 )
-from .rate_limit import async_enforce_domain_cooldown
 from .const import (
     BACKOFF_CAP_SECONDS,
     CONF_LIMIT,
     CONF_LINES,
+    CONF_LINES_LEGACY,
+    CONF_SHOW_STOP_SEQUENCE,
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DEFAULT_LIMIT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    LINES_AT_STOP_STORAGE_KEY_PREFIX,
-    LINES_AT_STOP_STORAGE_VERSION,
     MAX_DEPARTURES_IN_ATTRS,
     MIN_POLL_SECONDS,
+    SEQUENCE_UPSTREAM_LIMIT,
 )
+from .migration import _has_legacy_line_filter, _remap_line_keys
+from .rate_limit import async_enforce_domain_cooldown
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,21 +65,15 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Empty/missing means "no filter, surface every departure".
         lines_raw = config.get(CONF_LINES) or []
         self._lines_filter: set[str] = {str(x) for x in lines_raw if x}
+        self._show_stop_sequence: bool = bool(
+            config.get(CONF_SHOW_STOP_SEQUENCE, False)
+        )
         self._session = async_get_clientsession(hass)
 
-        # Persistent union of every line label ever observed at this
-        # stop, surfaced via `lines_at_stop` so the card editor's
-        # line-filter picker can offer rush-hour / seasonal / nightline
-        # lines that don't have a departure inside the live window
-        # right now. The Store file is tagged with `stop_id` so a
-        # reconfigure that changes stops invalidates the cached set
-        # rather than carrying lines across to a different stop.
-        self._lines_store: Store[dict[str, Any]] = Store(
-            hass,
-            LINES_AT_STOP_STORAGE_VERSION,
-            f"{LINES_AT_STOP_STORAGE_KEY_PREFIX}.{entry.entry_id}",
-        )
-        self._lines_at_stop: set[str] = set()
+        # Resolved stop position (WGS84), plucked from the DM response on
+        # every refresh. None until the first successful fetch.
+        self._latitude: float | None = None
+        self._longitude: float | None = None
 
         self._rate_limited: bool = False
         self._unsub: list[Callable[[], None]] = []
@@ -119,55 +114,19 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             unsub()
         self._unsub.clear()
 
-    async def _async_setup(self) -> None:
-        """Load persisted state before the first refresh.
+    # ------------------------------------------------------------------
+    # Properties surfaced to the sensor platform and diagnostics
+    # ------------------------------------------------------------------
 
-        HA invokes this once inside ``async_config_entry_first_refresh``
-        before the initial fetch, so by the time `_fetch_departures`
-        unions in newly observed lines the persisted set is already
-        populated. Mismatched ``stop_id`` (a reconfigure switched the
-        entry to a different stop) is treated as "start fresh" — the
-        cached labels belong to a different physical location and would
-        mislead the card editor.
-        """
-        raw = await self._lines_store.async_load()
-        if not isinstance(raw, dict):
-            return
-        if raw.get("stop_id") != self._stop_id:
-            return
-        labels = raw.get("lines")
-        if not isinstance(labels, list):
-            return
-        self._lines_at_stop = {
-            str(label) for label in labels if isinstance(label, str) and label
-        }
+    @property
+    def latitude(self) -> float | None:
+        """Stop latitude from the resolved DM stop (None before first fetch)."""
+        return self._latitude
 
-    async def _persist_lines_at_stop_if_changed(
-        self, observed: set[str]
-    ) -> None:
-        """Union freshly observed line labels into the persistent set.
-
-        Skips the disk write when nothing changed — most fetches at a
-        mature stop add nothing. Tagged with the current ``stop_id`` so
-        a future reconfigure to a different stop is detectable on load.
-        """
-        if not observed:
-            return
-        before = self._lines_at_stop
-        merged = before | observed
-        if merged == before:
-            return
-        self._lines_at_stop = merged
-        await self._lines_store.async_save(
-            {
-                "stop_id": self._stop_id,
-                "lines": sorted(self._lines_at_stop),
-            }
-        )
-
-    async def async_remove_storage(self) -> None:
-        """Drop the persisted lines-at-stop file (called on entry removal)."""
-        await self._lines_store.async_remove()
+    @property
+    def longitude(self) -> float | None:
+        """Stop longitude from the resolved DM stop (None before first fetch)."""
+        return self._longitude
 
     # ------------------------------------------------------------------
     # Backoff bookkeeping
@@ -219,6 +178,39 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.update_interval = new_interval
 
     # ------------------------------------------------------------------
+    # Deferred v1 → v2 line-filter migration
+    # ------------------------------------------------------------------
+
+    def _heal_legacy_line_filter(self, roster: list[dict[str, Any]]) -> None:
+        """Remap parked v1 line keys now that the roster is available.
+
+        Only reached when `async_migrate_entry` couldn't fetch the roster
+        at upgrade time. Rewrites both `data` and `options`, drops the
+        holding key, and refreshes this coordinator's in-memory filter so
+        the current tick already honours it — updating the entry triggers
+        a reload, but the reload races the rest of this parse.
+        """
+        data = {**self._entry.data}
+        options = {**self._entry.options}
+        healed: list[str] = []
+        for container in (data, options):
+            legacy = [str(x) for x in (container.pop(CONF_LINES_LEGACY, None) or []) if x]
+            if not legacy:
+                continue
+            remapped = _remap_line_keys(legacy, roster, self._entry.title)
+            container[CONF_LINES] = remapped
+            healed.extend(remapped)
+
+        self._lines_filter = set(healed)
+        _LOGGER.info(
+            "Remapped the line filter on %s to the new direction-code format",
+            self._entry.title,
+        )
+        self.hass.config_entries.async_update_entry(
+            self._entry, data=data, options=options
+        )
+
+    # ------------------------------------------------------------------
     # Repair issues
     # ------------------------------------------------------------------
 
@@ -267,6 +259,16 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except UpdateFailed:
             self._note_failure()
             raise
+        except Exception:
+            # Any non-UpdateFailed failure — e.g. an unexpected error in
+            # the deferred line-filter heal's async_update_entry, or the
+            # post-fetch parse — must still widen the backoff. The
+            # invariant is "any refresh failure adjusts cadence"; without
+            # this arm such a failure would leave the counter untouched.
+            # Re-raise unchanged so HA wraps it as it would any other
+            # coordinator error.
+            self._note_failure()
+            raise
         self._note_success()
         return data
 
@@ -285,9 +287,19 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             MAX_DEPARTURES_IN_ATTRS + 15,
             max(self._limit + 5, self._limit * 2),
         )
+        if self._show_stop_sequence:
+            # Each row now drags its whole trip's stop list along, so the
+            # padding above would triple an already-tripled response. Trade
+            # depth of list for depth of detail — the user asked for the
+            # latter by enabling the option, and the option's own help text
+            # says the list gets shorter.
+            upstream_limit = min(upstream_limit, SEQUENCE_UPSTREAM_LIMIT)
         try:
             payload = await fetch_departures(
-                self._session, self._stop_id, limit=upstream_limit
+                self._session,
+                self._stop_id,
+                limit=upstream_limit,
+                include_stop_sequence=self._show_stop_sequence,
             )
         except EfaTimeoutError as err:
             raise UpdateFailed(
@@ -329,17 +341,45 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Successful refresh — clear any rate-limit banner.
         self._clear_rate_limit_issue()
 
-        # Harvest line labels from the FULL upstream payload before any
-        # user-side line filter is applied — the card editor's picker
-        # needs the unfiltered universe (otherwise filtering down to one
-        # line would freeze `lines_at_stop` at that single line forever).
-        observed_lines = {
-            str(d.get("line", "")).strip()
-            for d in (payload.get("departures") or [])
-            if isinstance(d, dict) and d.get("line")
-        }
-        observed_lines.discard("")
-        await self._persist_lines_at_stop_if_changed(observed_lines)
+        resolved_stop = payload.get("stop") or {}
+        latitude = resolved_stop.get("latitude")
+        longitude = resolved_stop.get("longitude")
+        if isinstance(latitude, float) and isinstance(longitude, float):
+            self._latitude = latitude
+            self._longitude = longitude
+
+        # The stop's full line roster, straight from the timetable — see
+        # api.py::_parse_serving_lines. Complete on the first fetch, so
+        # unlike the label-accumulation it replaced it needs no
+        # persistence and is never stale after a reconfigure. Read from
+        # the FULL payload, before the user's line filter narrows it:
+        # the card editor's picker has to offer lines the user has
+        # currently filtered *out*, or deselecting one would be a
+        # one-way door.
+        served_lines = payload.get("served_lines") or []
+        # `served_lines` arrives natural-sorted ("2" before "12") and
+        # carries one entry per direction; dict.fromkeys collapses the
+        # H/R pair back to one label while keeping that order, so no
+        # second sort key is needed here.
+        lines_at_stop = list(
+            dict.fromkeys(
+                label
+                for item in served_lines
+                if (label := str(item.get("line") or "").strip())
+            )
+        )
+        # Fall back to the observed labels only when the upstream sent no
+        # roster at all (empty `servingLines` block). Rare, but a stop
+        # with departures and an empty picker is a worse failure than a
+        # picker that undercounts.
+        if not lines_at_stop:
+            lines_at_stop = sorted(served_lines_from_data(payload, strip=True))
+
+        # Finish a migration that couldn't reach the upstream at upgrade
+        # time (see __init__.py::async_migrate_entry). Runs at most once
+        # per entry; the roster it needs is in hand right now.
+        if served_lines and _has_legacy_line_filter(self._entry):
+            self._heal_legacy_line_filter(served_lines)
 
         # Apply the optional line filter (if the user picked specific
         # line+direction tuples, drop everything else).
@@ -360,21 +400,34 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Slice the domain-wide alerts cache to alerts whose
         # `affected_lines` overlap any line currently serving this stop
         # (or system-wide alerts with no affected_lines list).
-        served_lines = served_lines_from_data({"departures": departures})
-        alerts = get_alerts_for_lines(self.hass, served_lines)
+        visible_lines = served_lines_from_data({"departures": departures})
+        alerts = get_alerts_for_lines(self.hass, visible_lines)
 
         return {
             "stop_id": self._stop_id,
             "stop_name": self._stop_name,
-            "resolved_stop": payload.get("stop") or {},
+            "resolved_stop": resolved_stop,
             "departures": departures,
             "departures_count": len(departures),
             "alerts": alerts,
             "alerts_count": len(alerts),
-            "lines_at_stop": sorted(self._lines_at_stop),
+            "lines_at_stop": lines_at_stop,
+            # Per-direction roster behind `lines_at_stop`. The options
+            # flow reads it to label the filter picker ("2 → solarCity"
+            # rather than the opaque "2:H"); the card only needs the
+            # plain labels above.
+            "served_lines": served_lines,
         }
 
 
 def _line_dir_key(dep: dict[str, Any]) -> str:
-    """Build the canonical key used in CONF_LINES filter entries."""
-    return f"{dep.get('line', '')}:{dep.get('direction', '')}"
+    """Build the canonical key used in CONF_LINES filter entries.
+
+    Keyed on the stable Hin/Rück code, not the destination text — see
+    api.py::_direction_code for why the text form was a bug. A departure
+    with no resolvable code (replacement service) yields "<line>:", which
+    matches nothing in a v2 filter and so is dropped when a filter is
+    active; that is the safe direction to fail, since the alternative
+    would be surfacing a row the user explicitly filtered away.
+    """
+    return f"{dep.get('line', '')}:{dep.get('dir_code', '')}"

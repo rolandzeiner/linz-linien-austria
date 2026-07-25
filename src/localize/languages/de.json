@@ -24,7 +24,9 @@
     "cancelled": "Entfällt",
     "alerts_summary": "{count} Verkehrshinweis(e)",
     "affected_lines": "Betroffene Linien",
-    "attribution": "Datenquelle: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0"
+    "attribution": "Datenquelle: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0",
+    "show_stops": "Folgehaltestellen der Linie {line} Richtung {direction} anzeigen",
+    "hide_stops": "Folgehaltestellen der Linie {line} Richtung {direction} ausblenden"
   },
   "editor": {
     "entity": "Sensor",

@@ -148,13 +148,27 @@ export const cardStyles = css`
   .hero {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: var(--ha-spacing-3, 12px);
+    column-gap: var(--ha-spacing-3, 12px);
+    row-gap: 6px;
     align-items: center;
     padding: var(--ha-spacing-3, 12px) var(--linz-pad-x);
     margin: var(--ha-spacing-3, 12px) var(--linz-pad-x) 0;
     border-radius: var(--ha-radius-lg, 12px);
     --hero-color: var(--linz-accent);
     background: color-mix(in srgb, var(--hero-color) 12%, transparent);
+  }
+  /* The big countdown pins to column 1 / row 1 and stays centred against
+     the first entry; entries and their onward-stop panels flow down
+     column 2 in interleaved row order so each panel sits directly under
+     its trigger entry. Mirrors the wiener-linien hero grid. */
+  .hero > .hero-time {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .hero > .hero-entry,
+  .hero > .hero-detail {
+    grid-column: 2;
+    min-width: 0;
   }
   .hero-time {
     display: flex;
@@ -173,21 +187,60 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
   }
-  /* Hero meta — column of (badge + direction + flags) rows. One row
-     per departure in the group; rows wrap so tags spill to a second
-     line on narrow column widths. */
-  .hero-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-  }
   .hero-entry {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+  /* When a hero entry carries onward stops the whole entry is the toggle. */
+  .hero-entry-expandable {
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+  }
+  .hero-entry-expandable:focus-visible {
+    outline: 2px solid var(--primary-color, #03a9f4);
+    outline-offset: 2px;
+  }
+  /* Decorative chevron — rotates on expand, pushed to the entry's right
+     edge. Matches the row chevron. */
+  .hero-chevron {
+    --mdc-icon-size: 20px;
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--secondary-text-color);
+    transition: transform 0.24s ease;
+  }
+  .hero-entry-expandable.expanded .hero-chevron {
+    transform: rotate(180deg);
+  }
+  /* Hero-side collapsible panel — same 0fr→1fr grid-row trick as
+     .row-detail so the trail animates to its intrinsic height. Reuses
+     the .stops-ahead inner styling. */
+  .hero-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.24s ease;
+  }
+  .hero-detail-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .hero-detail.expanded {
+    grid-template-rows: 1fr;
+  }
+  /* Delay reason under the hero's badge + destination. flex-basis:100%
+     forces a wrap onto its own line inside the flex row, so a long
+     German hint never squeezes the destination into an ellipsis. */
+  .hero-hint {
+    flex-basis: 100%;
+    min-width: 0;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--linz-late);
+    overflow-wrap: anywhere;
   }
   .hero-direction {
     font-weight: 500;
@@ -264,6 +317,27 @@ export const cardStyles = css`
     gap: 8px;
     padding: 6px 2px;
     border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
+    border-radius: 6px;
+  }
+  /* Plain listitem wrapper. The interactive role and the grid both live
+     on the inner .row, so this element only exists to keep the <li>
+     semantics intact inside the role=list container. */
+  .row-wrap {
+    list-style: none;
+  }
+  /* The whole row is the toggle when there are onward stops. user-select
+     stops a click that lands on the destination text from painting a
+     selection instead of reading as a press. */
+  .row.row-expandable {
+    cursor: pointer;
+    user-select: none;
+  }
+  .row.row-expandable:hover {
+    background: color-mix(in srgb, var(--primary-text-color) 4%, transparent);
+  }
+  .row.row-expandable:focus-visible {
+    outline: 2px solid var(--primary-color, #03a9f4);
+    outline-offset: -2px;
   }
   .row-tail {
     display: inline-flex;
@@ -275,8 +349,24 @@ export const cardStyles = css`
     min-width: 3.6em;
     justify-content: flex-end;
   }
-  .row:last-child {
+  /* Drop the divider under the final row. .row is no longer a direct
+     child of the list — it sits inside a .row-wrap, so a plain
+     :last-child would match every row. Selecting the row-wrap that has
+     no row-wrap after it also survives the collapsed detail panels
+     interleaved between rows, which :last-child would trip over. */
+  .row-wrap:not(:has(~ .row-wrap)) > .row {
     border-bottom: none;
+  }
+  /* Middle column wrapper. Stacks the destination over an optional
+     delay-hint caption. min-width:0 has to repeat here rather than
+     only on .row-direction: without it this grid child refuses to
+     shrink below its content and the ellipsis never engages. */
+  .row-main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    gap: 1px;
   }
   .row-direction {
     min-width: 0;
@@ -284,6 +374,18 @@ export const cardStyles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--primary-text-color);
+  }
+  /* Operator's live delay reason. Muted and a size down so it reads as
+     an annotation on the destination rather than competing with it;
+     the warning tint ties it to the late-time colour on the same row. */
+  .row-hint {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    color: var(--linz-late);
   }
   .row-time {
     font-variant-numeric: tabular-nums;
@@ -305,6 +407,132 @@ export const cardStyles = css`
       var(--secondary-text-color) 12%,
       transparent
     );
+  }
+  /* Chevron toggle for the onward-stop panel. 40px square meets the
+     WCAG 2.5.8 target minimum even though the glyph is 20px, and the
+     negative margin keeps it from pushing the time column around. */
+  /* Decorative chevron. One icon that rotates on expand rather than
+     swapping mdi:chevron-down for mdi:chevron-up — a swap can't be
+     transitioned, and the rotation reads as the row opening. */
+  .row-chevron {
+    --mdc-icon-size: 20px;
+    flex-shrink: 0;
+    color: var(--secondary-text-color);
+    transition: transform 0.24s ease;
+  }
+  .row.row-expandable[aria-expanded="true"] .row-chevron {
+    transform: rotate(180deg);
+  }
+  /* Collapsible wrapper for the trail. The 0fr→1fr grid-row trick
+     animates to the panel's intrinsic height without hard-coding one —
+     max-height transitions would need a guess big enough for the
+     longest route and would ease wrongly for every shorter one. */
+  .row-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.24s ease;
+    list-style: none;
+  }
+  .row-detail-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .row-detail.expanded {
+    grid-template-rows: 1fr;
+  }
+
+  /* Route-line trail: a vertical line in the line's own colour with one
+     dot per remaining stop, the terminus ringed and bold to anchor
+     where the trip ends. The line is a pseudo-element behind the dot
+     column, inset top and bottom by half a dot so it starts and ends at
+     the first and last dot centres rather than overshooting. */
+  .stops-ahead {
+    --stops-ahead-line: var(--linz-accent);
+    --stops-ahead-dot-size: 9px;
+    --stops-ahead-line-width: 2px;
+    /* Indent so the trail descends from under the RIGHT side of the line
+       badge, with the stop names landing under the direction column —
+       matching the wiener-linien card. The badge is a fixed 3.6em at its
+       own 0.85rem font (= 3.06rem wide); pulling back ~10px puts the
+       connecting line just inside the badge's right edge rather than out
+       in the gap. Spelled in rem, not em, so it resolves against the
+       badge's size and not this list's 0.78rem. Narrow cards drop back to
+       flush-left (see the <360px container block) so long station names
+       keep their width. */
+    --stops-ahead-indent: calc(3.06rem - 10px);
+    position: relative;
+    list-style: none;
+    margin: 2px 0 6px 0;
+    padding: 6px 0 6px var(--stops-ahead-indent);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+  .stops-ahead::before {
+    content: "";
+    position: absolute;
+    left: calc(
+      var(--stops-ahead-indent) + var(--stops-ahead-dot-size) / 2 -
+        var(--stops-ahead-line-width) / 2
+    );
+    top: calc(6px + var(--stops-ahead-dot-size) / 2);
+    bottom: calc(6px + var(--stops-ahead-dot-size) / 2);
+    width: var(--stops-ahead-line-width);
+    background: var(--stops-ahead-line);
+    border-radius: 2px;
+  }
+  .stops-ahead-stop {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: calc(var(--stops-ahead-dot-size) + 12px);
+    min-height: var(--stops-ahead-dot-size);
+  }
+  .stops-ahead-dot {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--stops-ahead-dot-size);
+    height: var(--stops-ahead-dot-size);
+    border-radius: 50%;
+    background: var(--stops-ahead-line);
+    z-index: 1;
+    /* The dot is the only carrier of "this is a stop on the line", so
+       it must survive forced-colors mode rather than being flattened. */
+    forced-color-adjust: none;
+  }
+  .stops-ahead-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--secondary-text-color);
+  }
+  .stops-ahead-time {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--secondary-text-color);
+  }
+  .stops-ahead-time.late {
+    color: var(--linz-late);
+  }
+  .stops-ahead-time.early {
+    color: var(--linz-early);
+  }
+  .stops-ahead-stop.terminus .stops-ahead-name {
+    font-weight: 600;
+    color: var(--primary-text-color);
+  }
+  .stops-ahead-stop.terminus .stops-ahead-dot {
+    /* Hollow ring at the terminus — reads as "the line stops here". */
+    background: var(--card-background-color, var(--ha-card-background, #fff));
+    box-shadow: inset 0 0 0 var(--stops-ahead-line-width)
+      var(--stops-ahead-line);
   }
   .row-time.now {
     color: var(--linz-accent);
@@ -653,6 +881,11 @@ export const cardStyles = css`
     .row {
       gap: 8px;
       padding: 8px var(--ha-spacing-3, 12px);
+    }
+    /* Flush-left on narrow cards so long station names keep their width,
+       mirroring the wiener-linien narrow-card fallback. */
+    .stops-ahead {
+      --stops-ahead-indent: 0px;
     }
   }
 

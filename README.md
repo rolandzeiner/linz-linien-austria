@@ -64,11 +64,36 @@ them.
 - **gzip-compressed responses.** Every outbound call sends
   `Accept-Encoding: gzip`; the EFAController honours it (~7× saving
   on departure responses, similar on the alerts feed).
-- **`lines_at_stop` attribute.** The sensor accumulates the union of
-  every line label observed at the configured stop and exposes it
-  for templates and the bundled card. Persists across HA restarts
-  via a per-entry Store; reconfiguring to a different stop
-  invalidates the cache. *(0.6.0)*
+- **`lines_at_stop` attribute.** Every line the current timetable runs
+  through the stop — including rush-hour, seasonal and nightline routes
+  with nothing departing right now — exposed for templates and the
+  bundled card. Read from the upstream's own line roster, so it is
+  complete from the first refresh and correct immediately after a
+  reconfigure. *(0.6.0, rebuilt in 0.7.0)*
+- **Stop coordinates.** The sensor carries the stop's `latitude` and
+  `longitude`, so the card's map link opens the actual bay instead of
+  guessing from the stop name, and templates can compute distances.
+  *(0.7.0)*
+- **Live delay reasons.** When the operator publishes why a trip is
+  running late ("Behinderung! Verspätung! Bitte Geduld!"), it appears on
+  the departure as `delay_hint` and reads as a caption on the card.
+  *(0.7.0)*
+- **Named bays and operator.** Each departure carries `stop_bay`
+  (`Hauptbahnhof (Busterminal)` vs `(Kärntnerstraße)` vs
+  `(Tiefgeschoß)`) and `operator`. At a sprawling stop the bay name says
+  more than the platform digit — and it's the only location cue on the
+  lines where the upstream reports no platform at all. *(0.7.0)*
+- **Onward stops, opt-in.** Turn on *Show onward stops* and every
+  departure carries the rest of its trip — each remaining stop with a
+  live predicted arrival and the delay carried to it, so you can see
+  whether a late tram is expected to recover before your stop. Off by
+  default: it roughly triples the data fetched per refresh, so while it
+  is on the departure list is shortened to 10. *(0.7.0)*
+- **Stable line filter.** The optional line filter keys on the
+  upstream's direction code rather than the destination text. Lines with
+  a branching terminus publish a different destination per vehicle, so
+  the old text keys could drop a line from the filter at random.
+  Existing filters are migrated automatically. *(0.7.0)*
 
 ### Bundled Lovelace card (`linz-linien-austria-card`)
 
@@ -80,6 +105,20 @@ them.
 - **Realtime cue** — small green bullet leading the time on rows
   where realtime data was available (WCAG 1.4.1: redundant cue for
   colour-blind / sunlight-glare users).
+- **Onward-stop trail** — when *Show onward stops* is on, clicking a
+  departure row, or the next-departure hero, unfolds the rest of the trip
+  as a route-line diagram: a vertical line in the line's own colour, a dot
+  per remaining stop, and a hollow ring on the terminus. The trail lines
+  up under the line badge, so it reads as descending from that departure.
+  Each stop carries its predicted arrival, tinted when late, so a delay
+  that recovers further down the route is visible at a glance. Rows and
+  the hero are keyboard-operable — Tab to one, Enter or Space to open it.
+  *(0.7.0)*
+- **Delay reason caption** — when the operator says why a trip is late,
+  the reason appears under the destination on the row and under the
+  hero's line badge, in the same warning colour as a late time. Hidden
+  on cancelled trips, where "Entfällt" already tells the whole story.
+  *(0.7.0)*
 - **Trip cancellations** — strikethrough line + direction, "Entfällt"
   label, no platform shown.
 - **Line badge** — fixed-width pill, MoT-tinted, with mode icon
@@ -183,6 +222,12 @@ them.
 - Service-disruption alerts (`XML_ADDINFO_REQUEST`) refresh on an
   independent 5-min domain-wide cadence; the cache is shared across
   all entries.
+- With *Show onward stops* on, each poll also asks for every trip's
+  remaining stop list, which roughly triples the response. The upstream
+  fetch is clamped to 10 departures to bound that, and around half of
+  what the upstream sends back is the stops the vehicle has already
+  passed — there's no way to ask it not to, so those are discarded on
+  arrival.
 - Every outbound request carries a canonical `User-Agent` of the
   form `HomeAssistant/<ha_ver> linz_linien_austria/<int_ver>` so
   LINZ AG's log parser can identify this integration specifically,
@@ -200,7 +245,8 @@ them.
 | Stop name (search) | — | Partial match; LINZ AG returns up to 10 candidates. |
 | Polling interval | `60` s | Minimum 30 s; 15 s domain-wide cooldown still applies. |
 | Departures to fetch | `20` | The upstream fetch size. The integration also fetches some extra headroom so the realtime sort stays stable. The sensor exposes the full sorted result (capped at 45 for the HA recorder). **Raise this value if you use a tight card-side `lines` filter** so the card has enough pre-filter rows to pick from. |
-| Lines filter (options) | empty | List of `line:direction` keys. Empty = all. |
+| Lines filter (options) | empty | Pick from the dropdown, which lists every line at the stop by destination. Empty = all. |
+| Show onward stops | off | Adds each trip's remaining stops with live arrival times. Roughly triples the data fetched per refresh (~23 KB vs ~8 KB per poll at a busy stop), so the upstream fetch is clamped to 10 departures while it's on. |
 
 ### Card
 
@@ -301,6 +347,13 @@ narrowed away don't surface.
   Raise the integration's `Departures to fetch` so the card has more
   pre-filter rows to draw from. (Editor helper text spells this out
   in both the lines-filter and max-departures fields.)
+- **Line filter looks empty after updating to 0.7.0.** The filter's
+  storage format changed and is migrated on upgrade. If the upstream was
+  unreachable at that moment, the migration is finished on the next
+  successful refresh instead — the stop shows every line until then. A
+  line whose destination has changed since you selected it can't be
+  matched and is dropped, with the reason logged; re-select it in the
+  options flow.
 - **Card shows "No upcoming departures."** The stop has no scheduled
   service in the next ~2 hours (Linz at 03:00). Confirm via the
   LinzMobil app; if real departures exist there, file a bug with a

@@ -8,6 +8,7 @@ import type { TemplateResult, PropertyValues, CSSResultGroup } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { repeat } from "lit/directives/repeat.js";
+import { styleMap } from "lit/directives/style-map.js";
 
 import type {
   AlertInfo,
@@ -15,6 +16,7 @@ import type {
   HomeAssistant,
   LinzLinienAustriaCardConfig,
   LovelaceCardEditor,
+  StopAhead,
 } from "./types";
 import { translate } from "./localize/localize";
 import { motColor, motIcon } from "./mot";
@@ -37,6 +39,12 @@ interface WindowWithCustomCards extends Window {
     description: string;
     preview?: boolean;
     documentationURL?: string;
+    /** 2026.6 entity-first card picker. Additive — older HA ignores it.
+     *  Returns a card stub for an entity this integration owns, or null. */
+    getEntitySuggestion?: (
+      hass: HomeAssistant,
+      entityId: string,
+    ) => { config: Record<string, unknown> } | null;
   }>;
 }
 
@@ -48,6 +56,25 @@ interface WindowWithCustomCards extends Window {
   description: "Live LINZ AG LINIEN departure monitor.",
   preview: true,
   documentationURL: "https://github.com/rolandzeiner/linz-linien-austria",
+  // 2026.6 entity-first card picker: suggest this card only for sensors
+  // this integration owns (registry platform === domain). Additive key —
+  // older HA simply ignores it, so no version gating is needed.
+  getEntitySuggestion: (
+    hass: HomeAssistant,
+    entityId: string,
+  ): { config: Record<string, unknown> } | null => {
+    if (!entityId.startsWith("sensor.")) return null;
+    if (hass?.entities?.[entityId]?.platform !== "linz_linien_austria") {
+      return null;
+    }
+    return {
+      config: {
+        type: "custom:linz-linien-austria-card",
+        entity: entityId,
+        show_hero: true,
+      },
+    };
+  },
 });
 
 @customElement("linz-linien-austria-card")
@@ -94,6 +121,14 @@ export class LinzLinienAustriaCard extends LitElement {
   // hass-tick. Reset on entity change is unnecessary — version drift
   // is a process-wide property, not per-entity.
   private _versionCheckDone = false;
+
+  // Rows whose onward-stop list is expanded, keyed by `_depKey`. A Set
+  // rather than a single id so several rows can stay open at once, and
+  // keyed by departure identity rather than list index so a refresh
+  // that reorders or drops rows can't transfer an open state onto a
+  // different trip. Reassigned (never mutated in place) so Lit sees the
+  // change — `@state` compares by reference.
+  @state() private _expandedStops: ReadonlySet<string> = new Set();
 
   public setConfig(config: LinzLinienAustriaCardConfig): void {
     // Only validate the *shape* (must be an object). Missing `entity`
@@ -219,29 +254,33 @@ export class LinzLinienAustriaCard extends LitElement {
 
     const stopName =
       this.config.name ||
-      (stateObj.attributes.stop_name as string | undefined) ||
+      stateObj.attributes.stop_name ||
       stateObj.attributes.friendly_name ||
       "";
 
-    // Maps URL — uses the upstream-canonical stop name (which already
-    // carries the place suffix, e.g. "Linz/Donau, Hauptbahnhof") plus
-    // an explicit "Linz" so non-Linz stops can't collide with same-
-    // named stops elsewhere. EFA NAV5 coords ARE in
-    // `resolved_stop.coords_x/y` but they are projected (not WGS84)
-    // and would need a transform to be useful for Google Maps.
-    const resolvedStopName =
-      (stateObj.attributes.stop_name as string | undefined) ||
-      stopName;
-    const mapsQuery = resolvedStopName
-      ? encodeURIComponent(
-          /Linz/i.test(resolvedStopName)
-            ? resolvedStopName
-            : `${resolvedStopName}, Linz`,
-        )
-      : "";
+    // Maps URL — prefer the stop's WGS84 position, which the integration
+    // now gets straight from the EFA (`coordOutputFormat=WGS84`). A
+    // lat/lon query lands on the actual bay; the name query below can
+    // only land on whatever Google decides the name means. The name
+    // path stays as the fallback for entries whose first fetch hasn't
+    // resolved a position yet, and carries an explicit "Linz" so
+    // non-Linz stops can't collide with same-named stops elsewhere.
+    const lat = stateObj.attributes.latitude;
+    const lon = stateObj.attributes.longitude;
+    const resolvedStopName = stateObj.attributes.stop_name || stopName;
+    const mapsQuery =
+      typeof lat === "number" && typeof lon === "number"
+        ? `${lat},${lon}`
+        : resolvedStopName
+          ? encodeURIComponent(
+              /Linz/i.test(resolvedStopName)
+                ? resolvedStopName
+                : `${resolvedStopName}, Linz`,
+            )
+          : "";
     // Self-built URL — passed through `safeHttpsUri` defensively so a
     // future contributor can't wire an upstream attribute through this
-    // binding and silently bypass the allowlist (item 42).
+    // binding and silently bypass the allowlist.
     const mapsUrl = mapsQuery
       ? safeHttpsUri(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
       : null;
@@ -408,12 +447,21 @@ export class LinzLinienAustriaCard extends LitElement {
     `;
   }
 
+  /** EFA's priority vocabulary isn't fully documented and varies across
+   *  Mentz deployments — "high" and "veryHigh" both denote elevated
+   *  severity. Match any token containing "high" (case-insensitive) so a
+   *  "veryHigh" notice still sorts and styles as high-priority rather
+   *  than silently dropping to normal. */
+  private _isHighPriority(priority: string | undefined): boolean {
+    return typeof priority === "string" && /high/i.test(priority);
+  }
+
   private _renderAlerts(alerts: AlertInfo[]): TemplateResult {
     // Sort high-priority alerts first so the most actionable ones don't
     // get hidden behind the <details> fold.
     const sorted = [...alerts].sort((a, b) => {
-      const av = a.priority === "high" ? 0 : 1;
-      const bv = b.priority === "high" ? 0 : 1;
+      const av = this._isHighPriority(a.priority) ? 0 : 1;
+      const bv = this._isHighPriority(b.priority) ? 0 : 1;
       return av - bv;
     });
     const summary = this._t("card.alerts_summary", {
@@ -441,7 +489,7 @@ export class LinzLinienAustriaCard extends LitElement {
                 <li
                   class=${classMap({
                     alert: true,
-                    "alert-high": a.priority === "high",
+                    "alert-high": this._isHighPriority(a.priority),
                   })}
                 >
                   <div class="alert-title">${a.title}</div>
@@ -574,27 +622,62 @@ export class LinzLinienAustriaCard extends LitElement {
               >`
             : nothing}
         </div>
-        <div class="hero-meta">
-          ${repeat(
-            group,
-            (d) => this._depKey(d),
-            (d) => this._renderHeroEntry(d),
-          )}
-        </div>
+        ${
+          // Entries and their onward-stop panels are interleaved as direct
+          // grid children (no .hero-meta wrapper) so each panel auto-places
+          // in the row directly below its entry, while .hero-time stays
+          // pinned to column 1 / row 1 — matching the wiener-linien hero.
+          group.map(
+            (d) => html`${this._renderHeroEntry(d)}${this._renderHeroStops(d)}`,
+          )
+        }
       </section>
     `;
   }
 
-  /** One row inside the hero meta column — line badge, direction, and
-   *  per-departure flags (Live pill, Steig). One row when the group
-   *  has a single entry; stacks cleanly when two or more arrive at
-   *  the same minute. */
+  /** One row inside the hero — line badge, direction, and per-departure
+   *  flags (Live pill, Steig). One row when the group has a single entry;
+   *  stacks cleanly when two or more arrive at the same minute. When the
+   *  departure carries onward stops, the whole entry becomes the toggle
+   *  for its stops-ahead panel (chevron + role=button), mirroring both the
+   *  row list below and the wiener-linien hero. */
   private _renderHeroEntry(d: Departure): TemplateResult {
     const platform = this.config.show_platform
       ? this._platformText(d)
       : "";
+    const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
+    const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
+    const expandable = stopsAhead.length > 0;
+    const key = this._depKey(d);
+    const expanded = this._expandedStops.has(key);
+    const panelId = `hero-stops-${this._slugify(key)}`;
+    const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    }`;
+    const entryLabel = expandable
+      ? `${baseLabel}. ${this._t(
+          expanded ? "card.hide_stops" : "card.show_stops",
+          { line: d.line, direction: d.direction },
+        )}`
+      : baseLabel;
     return html`
-      <div class="hero-entry">
+      <div
+        class=${classMap({
+          "hero-entry": true,
+          "hero-entry-expandable": expandable,
+          expanded,
+        })}
+        role=${expandable ? "button" : nothing}
+        tabindex=${expandable ? "0" : nothing}
+        aria-expanded=${expandable ? (expanded ? "true" : "false") : nothing}
+        aria-controls=${expandable ? panelId : nothing}
+        aria-label=${expandable ? entryLabel : nothing}
+        @click=${() => expandable && this._toggleStops(key)}
+        @keydown=${(ev: KeyboardEvent) =>
+          this._onExpanderKeydown(ev, expandable, () =>
+            this._toggleStops(key),
+          )}
+      >
         ${this._renderLineBadge(d)}
         <span class="hero-direction">${d.direction || ""}</span>
         ${!d.is_cancelled && platform
@@ -607,11 +690,56 @@ export class LinzLinienAustriaCard extends LitElement {
               ${this._t("card.realtime")}
             </span>`
           : nothing}
+        ${expandable
+          ? html`<ha-icon
+              class="hero-chevron"
+              icon="mdi:chevron-down"
+              aria-hidden="true"
+            ></ha-icon>`
+          : nothing}
+        ${hint
+          ? // Full width via flex-basis so the caption wraps onto its own
+            // line under the badge/direction rather than fighting them
+            // for horizontal space. The hero de-dupes its departure out
+            // of the row list below, so without this the next departure
+            // would be the one row whose delay reason is never shown.
+            html`<span class="hero-hint">${hint}</span>`
+          : nothing}
       </div>
     `;
   }
 
-  private _renderRow(d: Departure): TemplateResult {
+  /** Collapsible onward-stop panel for a hero entry. Rendered as a sibling
+   *  grid child immediately after its entry (auto-placed in the next grid
+   *  row) so the trail animates open directly beneath it. Returns `nothing`
+   *  when the departure carries no onward stops. Shares `_expandedStops`
+   *  and `_renderStopsAheadTrail` with the row list, so a departure that
+   *  ever appears in both surfaces stays in sync. */
+  private _renderHeroStops(d: Departure): TemplateResult | typeof nothing {
+    const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
+    if (stopsAhead.length === 0) return nothing;
+    const key = this._depKey(d);
+    const expanded = this._expandedStops.has(key);
+    const panelId = `hero-stops-${this._slugify(key)}`;
+    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    }`;
+    return html`
+      <div class=${classMap({ "hero-detail": true, expanded })}>
+        <div
+          class="hero-detail-inner"
+          id=${panelId}
+          role="region"
+          aria-label=${regionLabel}
+          aria-hidden=${expanded ? "false" : "true"}
+        >
+          ${this._renderStopsAheadTrail(stopsAhead, d)}
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderRow(d: Departure): TemplateResult | TemplateResult[] {
     const minutes = this._countdownFor(d);
     const isLate =
       typeof d.delay_minutes === "number" && d.delay_minutes > 0;
@@ -623,22 +751,63 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes_short")}`;
+    // The operator's live reason for a delay. Suppressed on cancelled
+    // rows: "Entfällt" already says everything, and a "please be
+    // patient" caption under it reads as if the trip is merely late.
+    const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
+    // Onward stops only exist when the integration option is on, and are
+    // meaningless for a trip that isn't running.
+    const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
+    const key = this._depKey(d);
+    const expanded = this._expandedStops.has(key);
+    const panelId = `stops-${this._slugify(key)}`;
 
-    return html`
-      <li
+    const expandable = stopsAhead.length > 0;
+    const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
+      d.is_realtime ? ` ${this._t("card.realtime")}` : ""
+    }${hint ? `. ${hint}` : ""}`;
+    // With role=button the accessible name has to say what activating
+    // the row does, not just describe the departure.
+    const rowLabel = expandable
+      ? `${baseLabel}. ${this._t(
+          expanded ? "card.hide_stops" : "card.show_stops",
+          { line: d.line, direction: d.direction },
+        )}`
+      : baseLabel;
+
+    // The <li> stays a plain listitem and the interactive role lives on
+    // an inner wrapper. Putting role=button on the <li> itself — as the
+    // sibling wiener-linien card does — replaces its listitem role and
+    // breaks the semantics of the role=list container around it.
+    const rowTpl = html`
+      <li class="row-wrap">
+      <div
         class=${classMap({
           row: true,
           "row-rt": !!d.is_realtime,
           "row-cancelled": !!d.is_cancelled,
+          "row-expandable": expandable,
         })}
-        aria-label="${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
-          d.direction
-        } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
-          d.is_realtime ? ` ${this._t("card.realtime")}` : ""
-        }"
+        role=${expandable ? "button" : nothing}
+        tabindex=${expandable ? "0" : nothing}
+        aria-expanded=${expandable ? (expanded ? "true" : "false") : nothing}
+        aria-controls=${expandable ? panelId : nothing}
+        aria-label=${rowLabel}
+        @click=${() => expandable && this._toggleStops(key)}
+        @keydown=${(ev: KeyboardEvent) =>
+          this._onExpanderKeydown(ev, expandable, () =>
+            this._toggleStops(key),
+          )}
       >
         ${this._renderLineBadge(d)}
-        <span class="row-direction">${d.direction || ""}</span>
+        <span class="row-main">
+          <span class="row-direction">${d.direction || ""}</span>
+          ${hint
+            ? html`<span class="row-hint" title=${hint}>${hint}</span>`
+            : nothing}
+        </span>
         <span class="row-tail">
           ${this.config.show_platform &&
           !d.is_cancelled &&
@@ -661,9 +830,156 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
+          ${expandable
+            ? // Decorative only: the whole row carries role=button, and a
+              // real <button> nested inside it would be a second control
+              // in the same activation target. One chevron that rotates
+              // rather than two icons, so the transform can animate.
+              html`<ha-icon
+                class="row-chevron"
+                icon="mdi:chevron-down"
+                aria-hidden="true"
+              ></ha-icon>`
+            : nothing}
         </span>
+      </div>
       </li>
     `;
+
+    if (stopsAhead.length === 0) return rowTpl;
+    // The trail is a sibling <li>, not a child of the row. Nesting it
+    // would make it a fourth item in the row's three-column grid, and
+    // the open/close animation needs its own grid context — this keeps
+    // the row's own layout untouched whether the panel is open or not.
+    return [
+      rowTpl,
+      this._renderStopsAheadPanel(stopsAhead, panelId, expanded, d),
+    ];
+  }
+
+  /** Keyboard activation for the row's button role.
+   *
+   *  A native <button> would give this for free, but the row is a grid
+   *  container with its own children, so it carries role=button instead
+   *  and has to reimplement Enter/Space. `preventDefault` on Space stops
+   *  the page scrolling out from under the user.
+   */
+  private _onExpanderKeydown(
+    ev: KeyboardEvent,
+    expandable: boolean,
+    activate: () => void,
+  ): void {
+    if (!expandable) return;
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    ev.preventDefault();
+    activate();
+  }
+
+  /** Flip one row's onward-stop panel open or closed. */
+  private _toggleStops(key: string): void {
+    const next = new Set(this._expandedStops);
+    if (!next.delete(key)) next.add(key);
+    this._expandedStops = next;
+  }
+
+  /** Build a DOM-id-safe token from a departure key.
+   *
+   *  Keys embed stop names and timestamps, so they can carry umlauts,
+   *  spaces and colons — none of which are safe in the `aria-controls`
+   *  IDREF that ties the button to its panel. */
+  private _slugify(value: string): string {
+    return value.replace(/[^a-zA-Z0-9_-]+/g, "-");
+  }
+
+  /** The collapsible panel wrapping the onward-stop trail.
+   *
+   *  Always rendered, open or shut, so the 0fr→1fr grid transition has
+   *  something to animate — swapping the panel in and out on toggle
+   *  would snap instead. `aria-hidden` keeps the collapsed content out
+   *  of the accessibility tree, which `overflow: hidden` alone does not.
+   */
+  private _renderStopsAheadPanel(
+    stops: StopAhead[],
+    panelId: string,
+    expanded: boolean,
+    d: Departure,
+  ): TemplateResult {
+    // A `role="region"` landmark needs an accessible name or it's flagged
+    // by axe/WCAG. Name it after the trip it belongs to, mirroring the
+    // hero/row aria pattern, so AT users know which departure's onward
+    // stops they've expanded.
+    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
+      d.direction
+    }`;
+    return html`
+      <li class=${classMap({ "row-detail": true, expanded })}>
+        <div
+          class="row-detail-inner"
+          id=${panelId}
+          role="region"
+          aria-label=${regionLabel}
+          aria-hidden=${expanded ? "false" : "true"}
+        >
+          ${this._renderStopsAheadTrail(stops, d)}
+        </div>
+      </li>
+    `;
+  }
+
+  /** Remaining stops as a route-line diagram: a vertical line in the
+   *  line's colour with one dot per stop, terminus ringed and bold.
+   *
+   *  The colour resolves the same way the row badge does — user
+   *  override first, then the mode-of-transport default — so the trail
+   *  reads as belonging to the row it hangs off.
+   */
+  private _renderStopsAheadTrail(
+    stops: StopAhead[],
+    d: Departure,
+  ): TemplateResult {
+    const lineColor =
+      this._userLineColor(d.line) ?? motColor(d.mot) ?? "var(--linz-accent)";
+    return html`
+      <ol
+        class="stops-ahead"
+        style=${styleMap({ "--stops-ahead-line": lineColor })}
+      >
+        ${stops.map((s, idx) => {
+          const delay = s.delay_minutes;
+          // The upstream's onward list always ends at the trip's
+          // terminus (verified against every line at Hauptbahnhof), so
+          // the last entry is the destination — no server-side flag
+          // needed to mark it.
+          const isTerminus = idx === stops.length - 1;
+          return html`<li
+            class=${classMap({ "stops-ahead-stop": true, terminus: isTerminus })}
+          >
+            <span class="stops-ahead-dot" aria-hidden="true"></span>
+            <span class="stops-ahead-name">${s.name}</span>
+            <span
+              class=${classMap({
+                "stops-ahead-time": true,
+                late: typeof delay === "number" && delay > 0,
+                early: typeof delay === "number" && delay < 0,
+              })}
+              >${this._clockTime(s.arrival)}</span
+            >
+          </li>`;
+        })}
+      </ol>
+    `;
+  }
+
+  /** Render an ISO local timestamp as HH:MM.
+   *
+   *  The upstream emits these without a zone offset because they are
+   *  already Linz local time, so they are sliced rather than parsed —
+   *  `new Date()` would reinterpret them in the viewer's zone and shift
+   *  the whole list for anyone not on CET.
+   */
+  private _clockTime(iso: string | undefined): string {
+    if (!iso || iso.length < 16) return "";
+    return iso.slice(11, 16);
   }
 
   private _renderLineBadge(d: Departure): TemplateResult {
