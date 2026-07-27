@@ -50,7 +50,7 @@ def decode_html(html: str) -> str:
         if token.startswith("#"):
             try:
                 decoded = chr(int(token[1:]))
-            except ValueError, OverflowError:
+            except (ValueError, OverflowError):
                 return match.group(0)
             # Drop C0 control characters (a malformed `&#0;` etc.) —
             # they corrupt the recorder row and the card's text

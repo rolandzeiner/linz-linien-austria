@@ -89,7 +89,7 @@ def _iso_from_efa_dt(raw: Any) -> str | None:
         year = int(date.get("year") or 0)
         month = int(date.get("month") or 0)
         day = int(date.get("day") or 0)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
     if not (year and month and day):
         return None
@@ -98,7 +98,7 @@ def _iso_from_efa_dt(raw: Any) -> str | None:
         try:
             hour = int(time_block.get("hour") or 0)
             minute = int(time_block.get("minute") or 0)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             hour = minute = 0
     return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:00"
 

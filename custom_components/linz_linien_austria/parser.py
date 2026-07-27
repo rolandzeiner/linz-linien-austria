@@ -339,7 +339,7 @@ def _int_or_none(raw: Any) -> int | None:
         return None
     try:
         return int(raw)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 
@@ -595,7 +595,7 @@ def _iso_from_efa_datetime(raw: Any) -> str | None:
         day = int(raw.get("day") or 0)
         hour = int(raw.get("hour") or 0)
         minute = int(raw.get("minute") or 0)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
     if not (year and month and day):
         return None
