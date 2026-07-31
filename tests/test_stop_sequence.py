@@ -5,6 +5,7 @@ guarding are: it stays off unless asked for, the request carries the
 right flags, the clamp bounds the cost, and `prevStopSeq` — half the
 payload and useless here — never reaches the attributes.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -221,9 +222,7 @@ async def test_coordinator_clamps_upstream_limit_with_sequence(
     with patch(
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
         new_callable=AsyncMock,
-        return_value=_parse_dm(
-            EXAMPLE_DM_WITH_SEQUENCE, include_stop_sequence=True
-        ),
+        return_value=_parse_dm(EXAMPLE_DM_WITH_SEQUENCE, include_stop_sequence=True),
     ) as fetch:
         await coordinator.async_refresh()
     assert fetch.await_args.kwargs["include_stop_sequence"] is True
@@ -240,9 +239,7 @@ async def test_clamp_never_raises_a_smaller_limit(
     with patch(
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
         new_callable=AsyncMock,
-        return_value=_parse_dm(
-            EXAMPLE_DM_WITH_SEQUENCE, include_stop_sequence=True
-        ),
+        return_value=_parse_dm(EXAMPLE_DM_WITH_SEQUENCE, include_stop_sequence=True),
     ) as fetch:
         await coordinator.async_refresh()
     assert fetch.await_args.kwargs["limit"] < SEQUENCE_UPSTREAM_LIMIT
@@ -257,9 +254,7 @@ async def test_option_reaches_departures_end_to_end(
     with patch(
         "custom_components.linz_linien_austria.coordinator.fetch_departures",
         new_callable=AsyncMock,
-        return_value=_parse_dm(
-            EXAMPLE_DM_WITH_SEQUENCE, include_stop_sequence=True
-        ),
+        return_value=_parse_dm(EXAMPLE_DM_WITH_SEQUENCE, include_stop_sequence=True),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

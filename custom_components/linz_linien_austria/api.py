@@ -17,6 +17,7 @@ only; turning the raw JSON bodies into normalised shapes is
 
 Reference: https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/fahrplan/EFA_XML_Schnittstelle_20151217.pdf
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -96,9 +97,7 @@ async def _get_json(
         raise EfaPayloadError(f"invalid json: {err}") from err
 
     if not isinstance(data, dict):
-        raise EfaPayloadError(
-            f"expected dict, got {type(data).__name__}"
-        )
+        raise EfaPayloadError(f"expected dict, got {type(data).__name__}")
     return data
 
 

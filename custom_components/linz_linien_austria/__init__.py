@@ -1,4 +1,5 @@
 """Linz Linien Austria integration."""
+
 from __future__ import annotations
 
 import logging
@@ -42,9 +43,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
-@websocket_command(
-    {vol.Required("type"): "linz_linien_austria/card_version"}
-)
+@websocket_command({vol.Required("type"): "linz_linien_austria/card_version"})
 @async_response
 async def _websocket_card_version(
     hass: HomeAssistant,
@@ -126,9 +125,7 @@ async def async_migrate_entry(
     new_data = {**entry.data}
     new_options = {**entry.options}
     legacy_lines = [str(x) for x in (entry.data.get(CONF_LINES) or []) if x]
-    legacy_option_lines = [
-        str(x) for x in (entry.options.get(CONF_LINES) or []) if x
-    ]
+    legacy_option_lines = [str(x) for x in (entry.options.get(CONF_LINES) or []) if x]
 
     if legacy_lines or legacy_option_lines:
         roster = await _try_fetch_roster(hass, entry)

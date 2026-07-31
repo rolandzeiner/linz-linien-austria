@@ -6,6 +6,7 @@ v1 keyed the ``CONF_LINES`` filter on the destination *text*
 makes one DM request — which is also the thing most likely to fail in
 the field, hence the retry-path coverage below.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -107,14 +108,17 @@ async def test_migration_rewrites_data_and_option_keys(
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
-    ), patch(
-        "custom_components.linz_linien_austria.migration.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
+        patch(
+            "custom_components.linz_linien_austria.migration.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -137,14 +141,17 @@ async def test_migration_skips_fetch_when_no_filter_stored(
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
-    ), patch(
-        "custom_components.linz_linien_austria.migration.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=AssertionError("migration must not fetch without a filter"),
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
+        patch(
+            "custom_components.linz_linien_austria.migration.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=AssertionError("migration must not fetch without a filter"),
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -166,14 +173,17 @@ async def test_migration_survives_upstream_failure(
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.migration.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=EfaTimeoutError("upstream down"),
-    ), patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
+    with (
+        patch(
+            "custom_components.linz_linien_austria.migration.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=EfaTimeoutError("upstream down"),
+        ),
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -190,14 +200,17 @@ async def test_deferred_remap_completes_on_first_poll(
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.migration.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=EfaTimeoutError("upstream down"),
-    ), patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
+    with (
+        patch(
+            "custom_components.linz_linien_austria.migration.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=EfaTimeoutError("upstream down"),
+        ),
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -219,14 +232,17 @@ async def test_parked_keys_do_not_filter_everything_away(
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.migration.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=EfaTimeoutError("upstream down"),
-    ), patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
+    with (
+        patch(
+            "custom_components.linz_linien_austria.migration.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=EfaTimeoutError("upstream down"),
+        ),
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -242,14 +258,17 @@ async def test_migration_removes_legacy_store(hass: HomeAssistant) -> None:
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
-    ), patch(
-        "custom_components.linz_linien_austria.Store.async_remove",
-        new_callable=AsyncMock,
-    ) as store_remove:
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
+        patch(
+            "custom_components.linz_linien_austria.Store.async_remove",
+            new_callable=AsyncMock,
+        ) as store_remove,
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -272,14 +291,17 @@ async def test_migration_is_idempotent_on_current_version(
     entry.add_to_hass(hass)
 
     parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
-    with patch(
-        "custom_components.linz_linien_austria.coordinator.fetch_departures",
-        new_callable=AsyncMock,
-        return_value=parsed,
-    ), patch(
-        "custom_components.linz_linien_austria.migration.fetch_departures",
-        new_callable=AsyncMock,
-        side_effect=AssertionError("a v2 entry must not re-migrate"),
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=parsed,
+        ),
+        patch(
+            "custom_components.linz_linien_austria.migration.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=AssertionError("a v2 entry must not re-migrate"),
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

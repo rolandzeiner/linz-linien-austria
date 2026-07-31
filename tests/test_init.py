@@ -9,6 +9,7 @@ Covers:
 * `async_unload_entry` decrements the entry-count and stops the
   domain-wide alerts refresh on transition to zero
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -148,9 +149,7 @@ async def test_ws_card_version_returns_bundled_version(
     handler = _websocket_card_version.__wrapped__  # type: ignore[attr-defined]
     await handler(hass, connection, {"id": 7, "type": "x/card_version"})
 
-    connection.send_result.assert_called_once_with(
-        7, {"version": CARD_VERSION}
-    )
+    connection.send_result.assert_called_once_with(7, {"version": CARD_VERSION})
 
 
 async def test_failed_first_refresh_does_not_drift_entry_count(

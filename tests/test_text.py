@@ -4,6 +4,7 @@
 (departure delay hints come from the same editorial CMS as the alerts
 feed), so these tests moved with it.
 """
+
 from __future__ import annotations
 
 from custom_components.linz_linien_austria.text import decode_html, flatten_lines
@@ -15,8 +16,7 @@ from custom_components.linz_linien_austria.text import decode_html, flatten_line
 
 def test_decode_html_strips_tags_and_decodes_german_entities() -> None:
     text = decode_html(
-        "<p>Ab <strong>1.5.</strong></p><p>L191 wird "
-        "umgeleitet.&nbsp;Sch&ouml;n!</p>"
+        "<p>Ab <strong>1.5.</strong></p><p>L191 wird umgeleitet.&nbsp;Sch&ouml;n!</p>"
     )
     assert "<" not in text
     assert ">" not in text

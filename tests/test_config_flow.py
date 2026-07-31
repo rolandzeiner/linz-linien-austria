@@ -4,6 +4,7 @@ Covers the three-step flow (search → pick → settings), the duplicate-stop
 abort, the no-results / search-too-short error branches, and the
 reconfigure flow.
 """
+
 from unittest.mock import AsyncMock, patch
 
 from homeassistant import config_entries
@@ -262,7 +263,6 @@ async def test_pick_probe_failure_surfaces_cannot_connect(
     assert result["step_id"] == "pick"
     assert result["errors"]["base"] == "cannot_connect"
     assert not hass.config_entries.async_entries(DOMAIN)
-
 
 
 async def test_whitespace_only_query_is_too_short(hass: HomeAssistant) -> None:
@@ -533,7 +533,10 @@ async def test_stop_sequence_toggled_via_reconfigure(
     entry = await _bootstrap_entry(hass)
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],

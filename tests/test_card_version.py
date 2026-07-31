@@ -10,6 +10,7 @@ also trips this test. Python's ``CARD_VERSION`` is wired to
 ``INTEGRATION_VERSION`` in ``const.py``; the assertion below catches
 both halves of the chain in one go.
 """
+
 from __future__ import annotations
 
 import re
@@ -20,9 +21,7 @@ from custom_components.linz_linien_austria.const import (
     INTEGRATION_VERSION,
 )
 
-_SRC_CONST_TS = (
-    Path(__file__).resolve().parent.parent / "src" / "const.ts"
-)
+_SRC_CONST_TS = Path(__file__).resolve().parent.parent / "src" / "const.ts"
 # `\b` on both sides excludes accidental matches inside other identifiers
 # (e.g. RETRO_CARD_VERSION) — `_` is a word character so the literal
 # CARD_VERSION token stays unambiguous.
@@ -39,9 +38,7 @@ def test_card_version_matches_manifest_and_ts() -> None:
     """
     text = _SRC_CONST_TS.read_text(encoding="utf-8")
     match = _RX.search(text)
-    assert match, (
-        f"CARD_VERSION literal not found in {_SRC_CONST_TS} — regex stale?"
-    )
+    assert match, f"CARD_VERSION literal not found in {_SRC_CONST_TS} — regex stale?"
     assert CARD_VERSION == INTEGRATION_VERSION, (
         "Python CARD_VERSION should be aliased to INTEGRATION_VERSION; "
         f"got CARD_VERSION={CARD_VERSION!r}, "

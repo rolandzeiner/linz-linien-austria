@@ -6,6 +6,7 @@ Each config entry produces:
   to the next departure from the configured stop, with the full departure
   list surfaced via ``extra_state_attributes`` for the card/templates.
 """
+
 from __future__ import annotations
 
 from typing import Any

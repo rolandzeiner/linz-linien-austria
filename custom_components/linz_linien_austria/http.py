@@ -7,6 +7,7 @@ regression test in ``tests/test_user_agent.py`` (which also asserts the
 gzip header) so drift is caught at CI time, not at the next bandwidth
 audit.
 """
+
 from __future__ import annotations
 
 

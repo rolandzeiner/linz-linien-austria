@@ -10,6 +10,7 @@ request-parameter assembly) means the parsers can be unit-tested against
 captured fixtures with no aiohttp in the loop, and the transport layer
 stays free of EFA schema knowledge.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -228,7 +229,9 @@ def _parse_serving_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
             item["mot"] = mot
             item["mot_name"] = _mot_name(mot)
         out.append(item)
-    out.sort(key=lambda item: (_natural_line_key(item["line"]), item.get("dir_code", "")))
+    out.sort(
+        key=lambda item: (_natural_line_key(item["line"]), item.get("dir_code", ""))
+    )
     return out
 
 
@@ -307,7 +310,11 @@ def _departure_sort_key(dep: dict[str, Any]) -> tuple[int, int]:
 
 def _resolve_stop_meta(payload: dict[str, Any]) -> dict[str, Any]:
     """Pull the resolved stop info out of an itdOdv-shaped payload."""
-    odv = payload.get("dm", {}).get("points") if isinstance(payload.get("dm"), dict) else None
+    odv = (
+        payload.get("dm", {}).get("points")
+        if isinstance(payload.get("dm"), dict)
+        else None
+    )
     # The "points" structure can be a dict (single stop) or list (ambiguous).
     if isinstance(odv, dict):
         point = odv.get("point") if isinstance(odv.get("point"), dict) else odv
@@ -364,9 +371,7 @@ def _normalise_departure(
         return None
 
     line_info_raw = raw.get("servingLine")
-    line_info: dict[str, Any] = (
-        line_info_raw if isinstance(line_info_raw, dict) else {}
-    )
+    line_info: dict[str, Any] = line_info_raw if isinstance(line_info_raw, dict) else {}
     line = str(line_info.get("number") or line_info.get("symbol") or "").strip()
     direction = str(line_info.get("direction") or "").strip()
     origin = str(line_info.get("directionFrom") or "").strip()

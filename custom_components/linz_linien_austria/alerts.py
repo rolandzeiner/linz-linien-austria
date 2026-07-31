@@ -16,6 +16,7 @@ its own request, with a different cache lifetime than departures.
   when the last entry is removed (entry-count refcount in
   ``hass.data[DOMAIN][ENTRY_COUNT_KEY]``).
 """
+
 from __future__ import annotations
 
 import logging
@@ -114,10 +115,10 @@ def _parse_alert(raw: dict[str, Any]) -> TrafficInfo | None:
     if not info_id:
         return None
     info_link_raw = raw.get("infoLink")
-    info_link: dict[str, Any] = (
-        info_link_raw if isinstance(info_link_raw, dict) else {}
-    )
-    title = str(info_link.get("infoLinkText") or info_link.get("subtitle") or "").strip()
+    info_link: dict[str, Any] = info_link_raw if isinstance(info_link_raw, dict) else {}
+    title = str(
+        info_link.get("infoLinkText") or info_link.get("subtitle") or ""
+    ).strip()
     if not title:
         return None
     html_body = str(info_link.get("content") or "").strip()
@@ -259,9 +260,7 @@ def served_lines_from_data(
     return out
 
 
-def get_alerts_for_lines(
-    hass: HomeAssistant, lines: set[str]
-) -> list[dict[str, Any]]:
+def get_alerts_for_lines(hass: HomeAssistant, lines: set[str]) -> list[dict[str, Any]]:
     """Return the cached alerts whose ``affected_lines`` overlap ``lines``.
 
     A `system-wide notice (no `affected_lines`)` falls through unfiltered

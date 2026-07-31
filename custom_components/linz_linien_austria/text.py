@@ -7,6 +7,7 @@ small HTML vocabulary. Keeping the decoder here means `alerts.py` and
 `api.py` share one entity table instead of drifting apart, without
 `api.py` (the lowest layer) having to import from `alerts.py`.
 """
+
 from __future__ import annotations
 
 import re

@@ -14,6 +14,7 @@ coordinator import :func:`_remap_line_keys` at module scope instead of
 the function-local ``from . import _remap_line_keys`` circular-import
 dodge it used before.
 """
+
 from __future__ import annotations
 
 import logging

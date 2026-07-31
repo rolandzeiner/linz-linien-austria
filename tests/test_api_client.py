@@ -5,6 +5,7 @@ The coordinator's whole translated-``UpdateFailed`` matrix depends on
 ``Efa*Error`` hierarchy. These tests pin that mapping directly, driving a
 fake session so no real socket is opened.
 """
+
 from __future__ import annotations
 
 from types import TracebackType
@@ -76,9 +77,7 @@ class _FakeSession:
 
 
 def _client_response_error(status: int, message: str) -> aiohttp.ClientResponseError:
-    return aiohttp.ClientResponseError(
-        MagicMock(), (), status=status, message=message
-    )
+    return aiohttp.ClientResponseError(MagicMock(), (), status=status, message=message)
 
 
 async def test_timeout_maps_to_efa_timeout() -> None:

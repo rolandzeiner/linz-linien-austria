@@ -20,13 +20,16 @@ type-only import + ``cast`` below narrow it for the storage-only
 mutation calls without a runtime dependency on the typed class
 existing on every HA version.
 """
+
 from __future__ import annotations
 
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http import (  # type: ignore[attr-defined,unused-ignore]
+    StaticPathConfig,
+)
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers.event import async_call_later
 
@@ -116,9 +119,7 @@ class JSModuleRegistration:
         # component does not bootstrap `http` automatically). Skip instead of
         # crashing when absent — production installs always have it loaded.
         if getattr(self.hass, "http", None) is None:
-            _LOGGER.debug(
-                "http component not available; skipping card registration"
-            )
+            _LOGGER.debug("http component not available; skipping card registration")
             return
         await self._async_register_path()
         if self.lovelace is not None and self._is_storage_mode():
@@ -286,8 +287,6 @@ class JSModuleRegistration:
         resources = cast("ResourceStorageCollection", self.lovelace.resources)
         for module in JSMODULES:
             url = f"{URL_BASE}/{module['filename']}"
-            existing = [
-                r for r in resources.async_items() if r["url"].startswith(url)
-            ]
+            existing = [r for r in resources.async_items() if r["url"].startswith(url)]
             for resource in existing:
                 await resources.async_delete_item(resource["id"])
