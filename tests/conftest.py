@@ -7,8 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.const import CONF_SCAN_INTERVAL
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+)
 from syrupy.assertion import SnapshotAssertion
 
+from custom_components.linz_linien_austria import rate_limit
 from custom_components.linz_linien_austria.const import (
     CONF_LIMIT,
     CONF_STOP_ID,
@@ -19,27 +23,28 @@ pytest_plugins = "pytest_homeassistant_custom_component"
 
 
 @pytest.fixture(autouse=True)
-def _collapse_domain_cooldown_sleep() -> Generator[None]:
-    """Make the domain cooldown instant for every test.
+def _collapse_domain_cooldown(request: pytest.FixtureRequest) -> Generator[None]:
+    """Zero the domain cooldown so tests don't pay it in wall clock.
 
-    `rate_limit.async_enforce_domain_cooldown` sleeps for real —
-    `DOMAIN_COOLDOWN_SECONDS` is 15 — so any test that fetches twice paid
-    that in wall-clock. Before this fixture the suite took 62s, of which
-    60s was four tests sitting in that sleep. Every push and every
-    nightly cron paid it.
-
+    `rate_limit.async_enforce_domain_cooldown` sleeps for real, so any
+    test that fetches twice would sit out `DOMAIN_COOLDOWN_SECONDS`.
     Autouse rather than per-test because the cost is invisible at the
-    call site: a test looks fast, and only shows up in `--durations`.
+    call site: a test looks fast and only shows up in `--durations`.
 
-    If a test ever needs to assert the cooldown ARITHMETIC, patch the
-    same target inside the test with a `with` block — it nests inside
-    this fixture and wins, so the real calculation is still exercised.
-    That is how wiener-linien-austria's `test_domain_cooldown_*` do it.
+    Patches the constant, not `asyncio.sleep`: patching
+    `rate_limit.asyncio.sleep` resolves the singleton asyncio module and
+    silences every sleep in the process, HA core's included.
+
+    Zeroing it makes the `0 < elapsed < DOMAIN_COOLDOWN_SECONDS` guard
+    false for any elapsed, so the sleep branch is never entered.
+
+    Opt out with `@pytest.mark.real_domain_cooldown` when asserting the
+    cooldown arithmetic.
     """
-    with patch(
-        "custom_components.linz_linien_austria.rate_limit.asyncio.sleep",
-        new_callable=AsyncMock,
-    ):
+    if "real_domain_cooldown" in request.keywords:
+        yield
+        return
+    with patch.object(rate_limit, "DOMAIN_COOLDOWN_SECONDS", 0):
         yield
 
 
@@ -83,62 +88,28 @@ def auto_enable_custom_integrations(
     return
 
 
-def make_session_mock() -> MagicMock:
-    """Build a session mock whose response mirrors aiohttp's sync/async split.
-
-    `ClientResponse.raise_for_status()` is SYNC; `.json()` is async. That
-    distinction is not decoration — a bare `patch()` makes the whole chain
-    auto-mocked, and `MagicMock.__aenter__` resolves to an AsyncMock whose
-    return value is itself an AsyncMock, so *every* attribute of the
-    response becomes async. `resp.raise_for_status()` then returns a
-    coroutine nobody awaits.
-
-    Two consequences, one cosmetic and one not:
-
-    - RuntimeWarning "coroutine ... was never awaited", attributed to
-      whichever test happens to be running when the GC collects it. That
-      is why the count wandered between runs.
-    - A `side_effect` set on `raise_for_status` would never raise — it
-      would return a coroutine carrying the exception. Any test written
-      to exercise the HTTP-error path that way would silently assert
-      against the success path instead.
-
-    Keeping `resp` an AsyncMock preserves the async `.json()` the callers
-    await; only `raise_for_status` is pinned back to sync.
-    """
-    resp = AsyncMock()
-    resp.raise_for_status = MagicMock()
-    session = MagicMock()
-    session.get = MagicMock(return_value=make_response_cm(resp))
-    return session
-
-
 @pytest.fixture(autouse=True)
-def mock_aiohttp_session() -> Generator[None]:
-    """Mock every clientsession so pycares' DNS thread never starts AND
-    every outbound network attempt during setup is a no-op.
+def mock_aiohttp_session(aioclient_mock: AiohttpClientMocker) -> Generator[None]:
+    """Guarantee no test reaches the network, and stub the alerts refresh.
 
-    pytest-homeassistant-custom-component's verify_cleanup fixture
-    asserts no stray threads at teardown — the resolver thread violates
-    that. Also patch the alerts refresh helpers so config-entry setup
-    doesn't try to fetch the live ADDINFO endpoint.
+    `aioclient_mock` is PHACC's own HTTP mock (`plugins.py` ->
+    `AiohttpClientMocker`). Depending on it patches
+    `homeassistant.helpers.aiohttp_client._async_create_clientsession`, so
+    no real ClientSession is ever built and pycares' DNS-resolver thread —
+    which pytest-HACC's `verify_cleanup` fails the run over — never starts.
+    It also raises `AssertionError: No mock registered for ...` on any
+    unmatched request, so a test that forgets to stub a fetch fails loudly
+    instead of quietly hitting the live EFA endpoint.
 
-    Each site gets its OWN session mock: sharing one would let call
-    assertions in one module see traffic generated by another.
+    Preferred over a hand-rolled session mock: `AiohttpClientMocker`
+    already models aiohttp's sync `raise_for_status` / async `json()`
+    split correctly, which is easy to get wrong by hand.
+
+    The alerts patches are a separate concern — function-level, not
+    HTTP-level — so that config-entry setup doesn't schedule the
+    domain-wide ADDINFO refresh during unrelated tests.
     """
     with (
-        patch(
-            "custom_components.linz_linien_austria.coordinator.async_get_clientsession",
-            return_value=make_session_mock(),
-        ),
-        patch(
-            "custom_components.linz_linien_austria.config_flow.async_get_clientsession",
-            return_value=make_session_mock(),
-        ),
-        patch(
-            "custom_components.linz_linien_austria.alerts.async_get_clientsession",
-            return_value=make_session_mock(),
-        ),
         patch(
             "custom_components.linz_linien_austria.async_refresh_alerts",
             new_callable=AsyncMock,

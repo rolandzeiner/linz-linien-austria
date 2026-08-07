@@ -10,7 +10,6 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/rolandzeiner/linz-linien-austria/issues",
   "loggers": ["custom_components.linz_linien_austria"],
-  "quality_scale": "platinum",
   "requirements": [],
   "version": "0.7.2"
 }
