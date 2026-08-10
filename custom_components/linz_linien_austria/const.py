@@ -153,23 +153,23 @@ ALERTS_KEY: Final = "alerts"
 ALERTS_REFRESH_UNSUB_KEY: Final = "alerts_refresh_unsub"
 ENTRY_COUNT_KEY: Final = "entry_count"
 
-# Cap on how many departures we surface in sensor attributes. Sized
-# against HA's 16 KB recorder attribute limit: each normalised
-# departure averages ~310 bytes (line + direction + mot + countdowns +
-# scheduled/realtime ISO + flags), so 45 entries take ~14 KB and
-# leave ~2 KB margin for the variable `alerts` attribute and the
-# stop-metadata block. Raise carefully — once you pass ~50, the
-# recorder starts logging "State attributes ... exceed maximum size"
-# warnings on busy stops with active disruptions.
+# Cap on how many departures we surface in sensor attributes. Each
+# normalised departure averages ~310 bytes (line + direction + mot +
+# countdowns + scheduled/realtime ISO + flags), so 45 entries is ~14 KB
+# pushed on every state write.
 #
-# Why 45 (and not, say, 60): big multi-line stops like Hauptbahnhof
-# fit ~3-4 minutes of upcoming departures into 30 entries, so 45 buys
-# the user a meaningful 5-7 minute window for filtered views (per-line
-# Fußweg, line filter at narrow scope) without flirting with the
-# recorder cap. Users who need more rendered rows should pair
+# Not a recorder budget: `departures` and `alerts` are both in
+# sensor.py's `_unrecorded_attributes`, so HA's 16 KB attribute cap does
+# not apply. (It used to, and is why they were excluded.) The ~14 KB is
+# what goes to the frontend, WebSocket subscribers, and `/api/states`
+# each poll — that is the cost to weigh when changing this.
+#
+# Why 45: big multi-line stops like Hauptbahnhof fit only ~3-4 minutes
+# of upcoming departures into 30 entries, so 45 buys a meaningful 5-7
+# minute window for filtered views (per-line Fußweg, line filter at
+# narrow scope). Users who need more rendered rows should pair
 # `max_departures` (display cap on the card) with the integration's
-# `limit` (upstream fetch size) — they don't both have to track this
-# attribute cap.
+# `limit` (upstream fetch size).
 MAX_DEPARTURES_IN_ATTRS: Final = 45
 DEFAULT_LIMIT: Final = 20
 

@@ -7,8 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.const import CONF_SCAN_INTERVAL
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+)
 from syrupy.assertion import SnapshotAssertion
 
+from custom_components.linz_linien_austria import rate_limit
 from custom_components.linz_linien_austria.const import (
     CONF_LIMIT,
     CONF_STOP_ID,
@@ -16,6 +20,32 @@ from custom_components.linz_linien_austria.const import (
 )
 
 pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+@pytest.fixture(autouse=True)
+def _collapse_domain_cooldown(request: pytest.FixtureRequest) -> Generator[None]:
+    """Zero the domain cooldown so tests don't pay it in wall clock.
+
+    `rate_limit.async_enforce_domain_cooldown` sleeps for real, so any
+    test that fetches twice would sit out `DOMAIN_COOLDOWN_SECONDS`.
+    Autouse rather than per-test because the cost is invisible at the
+    call site: a test looks fast and only shows up in `--durations`.
+
+    Patches the constant, not `asyncio.sleep`: patching
+    `rate_limit.asyncio.sleep` resolves the singleton asyncio module and
+    silences every sleep in the process, HA core's included.
+
+    Zeroing it makes the `0 < elapsed < DOMAIN_COOLDOWN_SECONDS` guard
+    false for any elapsed, so the sleep branch is never entered.
+
+    Opt out with `@pytest.mark.real_domain_cooldown` when asserting the
+    cooldown arithmetic.
+    """
+    if "real_domain_cooldown" in request.keywords:
+        yield
+        return
+    with patch.object(rate_limit, "DOMAIN_COOLDOWN_SECONDS", 0):
+        yield
 
 
 def make_response_cm(resp: Any) -> MagicMock:
@@ -59,25 +89,27 @@ def auto_enable_custom_integrations(
 
 
 @pytest.fixture(autouse=True)
-def mock_aiohttp_session() -> Generator[None]:
-    """Mock every clientsession so pycares' DNS thread never starts AND
-    every outbound network attempt during setup is a no-op.
+def mock_aiohttp_session(aioclient_mock: AiohttpClientMocker) -> Generator[None]:
+    """Guarantee no test reaches the network, and stub the alerts refresh.
 
-    pytest-homeassistant-custom-component's verify_cleanup fixture
-    asserts no stray threads at teardown — the resolver thread violates
-    that. Also patch the alerts refresh helpers so config-entry setup
-    doesn't try to fetch the live ADDINFO endpoint.
+    `aioclient_mock` is PHACC's own HTTP mock (`plugins.py` ->
+    `AiohttpClientMocker`). Depending on it patches
+    `homeassistant.helpers.aiohttp_client._async_create_clientsession`, so
+    no real ClientSession is ever built and pycares' DNS-resolver thread —
+    which pytest-HACC's `verify_cleanup` fails the run over — never starts.
+    It also raises `AssertionError: No mock registered for ...` on any
+    unmatched request, so a test that forgets to stub a fetch fails loudly
+    instead of quietly hitting the live EFA endpoint.
+
+    Preferred over a hand-rolled session mock: `AiohttpClientMocker`
+    already models aiohttp's sync `raise_for_status` / async `json()`
+    split correctly, which is easy to get wrong by hand.
+
+    The alerts patches are a separate concern — function-level, not
+    HTTP-level — so that config-entry setup doesn't schedule the
+    domain-wide ADDINFO refresh during unrelated tests.
     """
     with (
-        patch(
-            "custom_components.linz_linien_austria.coordinator.async_get_clientsession",
-        ),
-        patch(
-            "custom_components.linz_linien_austria.config_flow.async_get_clientsession",
-        ),
-        patch(
-            "custom_components.linz_linien_austria.alerts.async_get_clientsession",
-        ),
         patch(
             "custom_components.linz_linien_austria.async_refresh_alerts",
             new_callable=AsyncMock,

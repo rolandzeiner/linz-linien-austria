@@ -855,3 +855,39 @@ async def test_coordinator_keeps_last_known_position_when_absent(
 # Quiet timedelta import — avoids "imported but unused" if the test
 # module is later trimmed.
 assert timedelta is not None
+
+
+@pytest.mark.real_domain_cooldown
+async def test_domain_cooldown_waits_out_remaining_slice(hass: HomeAssistant) -> None:
+    """A recent domain call makes the next one sleep the remaining slice.
+
+    Runs against the real `DOMAIN_COOLDOWN_SECONDS` (the autouse
+    `_collapse_domain_cooldown` fixture zeroes it for every other test),
+    but seeds the last-call timestamp so the remaining slice is a few
+    milliseconds. That exercises the real arithmetic and the real
+    `asyncio.sleep` without patching the singleton asyncio module and
+    without paying 15s in wall clock.
+    """
+    import time
+
+    from custom_components.linz_linien_austria.const import (
+        DOMAIN_COOLDOWN_SECONDS,
+        DOMAIN_LAST_CALL_KEY,
+    )
+    from custom_components.linz_linien_austria.rate_limit import (
+        async_enforce_domain_cooldown,
+    )
+
+    remaining = 0.05
+    hass.data.setdefault(DOMAIN, {})[DOMAIN_LAST_CALL_KEY] = time.monotonic() - (
+        DOMAIN_COOLDOWN_SECONDS - remaining
+    )
+
+    started = time.monotonic()
+    await async_enforce_domain_cooldown(hass)
+    slept = time.monotonic() - started
+
+    # Slept the computed remainder, not the full cooldown.
+    assert remaining * 0.5 <= slept < DOMAIN_COOLDOWN_SECONDS
+    # And restamped, so the next caller starts a fresh slice.
+    assert hass.data[DOMAIN][DOMAIN_LAST_CALL_KEY] >= started

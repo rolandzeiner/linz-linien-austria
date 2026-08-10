@@ -25,6 +25,14 @@ from .coordinator import LinzLinienAustriaConfigEntry
 # field additions and to scrub anything the upstream might surface in
 # the resolved-stop block (street-level coordinates of the configured
 # stop are still PII for a single-user dashboard).
+#
+# `entry.title` is deliberately NOT redacted, even though the stop name it
+# carries is coarse location data of the same kind as the coordinates
+# below. The two are not inconsistent: coordinates pin a household to a
+# few metres, whereas the title is a user-chosen label that is what makes
+# a shared dump readable at all — "which entry is this?" is the first
+# question every triage starts with. Redacting it buys little and costs
+# the dump most of its usefulness. Ratified 2026-08-07.
 TO_REDACT = {
     "api_key",
     "password",

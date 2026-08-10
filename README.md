@@ -218,7 +218,7 @@ them.
 - A successful poll updates the `next_departure` sensor's state (the
   realtime-corrected countdown in minutes) and refreshes the
   `departures` attribute (full upcoming list, capped at 45 entries
-  for HA recorder safety).
+  to bound the payload sent on every update).
 - Service-disruption alerts (`XML_ADDINFO_REQUEST`) refresh on an
   independent 5-min domain-wide cadence; the cache is shared across
   all entries.
@@ -244,7 +244,7 @@ them.
 |---|---|---|
 | Stop name (search) | — | Partial match; LINZ AG returns up to 10 candidates. |
 | Polling interval | `60` s | Minimum 30 s; 15 s domain-wide cooldown still applies. |
-| Departures to fetch | `20` | The upstream fetch size. The integration also fetches some extra headroom so the realtime sort stays stable. The sensor exposes the full sorted result (capped at 45 for the HA recorder). **Raise this value if you use a tight card-side `lines` filter** so the card has enough pre-filter rows to pick from. |
+| Departures to fetch | `20` | The upstream fetch size. The integration also fetches some extra headroom so the realtime sort stays stable. The sensor exposes the full sorted result (capped at 45). **Raise this value if you use a tight card-side `lines` filter** so the card has enough pre-filter rows to pick from. |
 | Lines filter (options) | empty | Pick from the dropdown, which lists every line at the stop by destination. Empty = all. |
 | Show onward stops | off | Adds each trip's remaining stops with live arrival times. Roughly triples the data fetched per refresh (~23 KB vs ~8 KB per poll at a busy stop), so the upstream fetch is clamped to 10 departures while it's on. |
 

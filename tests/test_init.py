@@ -12,8 +12,10 @@ Covers:
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -186,3 +188,31 @@ async def test_failed_first_refresh_does_not_drift_entry_count(
     # Counter must be 0 (or absent) — the bump is gated on a
     # successful first refresh now.
     assert (domain_data.get(ENTRY_COUNT_KEY) or 0) == 0
+
+
+async def test_setup_uses_no_deprecated_ha_api(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """HA reports deprecated API use to the logger, not via warnings.
+
+    `frame.report_usage` logs through `_LOGGER.warning`
+    (homeassistant/helpers/frame.py:393) and never calls `warnings.warn`,
+    so pytest.ini's `error::DeprecationWarning` cannot see it. This is the
+    check that covers that channel.
+    """
+    caplog.set_level(logging.WARNING)
+    entry = _make_entry()
+    parsed = _parse_dm(EXAMPLE_DM_RESPONSE)
+
+    with patch(
+        "custom_components.linz_linien_austria.coordinator.fetch_departures",
+        new_callable=AsyncMock,
+        return_value=parsed,
+    ):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+
+    assert "Detected that custom integration" not in caplog.text
