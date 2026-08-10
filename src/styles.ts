@@ -33,10 +33,30 @@ export const cardStyles = css`
        so the card moves with HA when tokens evolve. Values match
        wiener-linien-austria so a stacked dashboard reads as one
        family. */
-    --linz-radius-md: var(--ha-radius-md, 10px);
-    --linz-pad-x:     var(--ha-spacing-4, 16px);
-    --linz-pad-y:     var(--ha-spacing-3, 14px);
-    --linz-row-gap:   var(--ha-spacing-3, 12px);
+    /* These names were wrong until v0.7.2 and nothing complained: var()
+       on a token HA does not define is not an error, it just resolves to
+       the fallback. So the card ran entirely on its own literals while
+       looking theme-aware — which is how --ha-spacing-3 came to mean
+       14px on one line and 12px on the next, and --ha-spacing-2 meant
+       8px in one place and 10px in another.
+
+       Verified against the frontend's src/resources/theme/core.globals.ts:
+         --ha-space-N          4px grid, 1…14   (was --ha-spacing-N)
+         --ha-border-radius-*  sm 4 / md 8 / lg 12 / xl 16 / pill / circle
+                                                (was --ha-radius-*)
+         --ha-animation-duration-*  none 1 / instant 75 / fast 150 /
+                                    normal 250 / slow 350ms
+                                                (was --ha-transition-duration-*)
+       There is no easing token — --ha-transition-easing-standard never
+       existed either, so easings are now named directly.
+
+       Fallbacks are kept and now match the token they stand in for.
+       Adopting a new --ha-* token means checking core.globals.ts first;
+       a typo here is invisible. */
+    --linz-radius-md: var(--ha-border-radius-md, 8px);
+    --linz-pad-x:     var(--ha-space-4, 16px);
+    --linz-pad-y:     var(--ha-space-3, 12px);
+    --linz-row-gap:   var(--ha-space-3, 12px);
     --linz-tile-size: 40px;
     /* Hero countdown size — bumped at wide widths, scaled down at
        cramped widths via the container queries at the bottom of this
@@ -71,7 +91,7 @@ export const cardStyles = css`
     justify-content: center;
     flex-shrink: 0;
     forced-color-adjust: none;
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease), color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, color var(--ha-animation-duration-fast, 150ms) ease;
   }
   .icon-tile ha-icon {
     --mdc-icon-size: 22px;
@@ -122,7 +142,7 @@ export const cardStyles = css`
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease), color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, color var(--ha-animation-duration-fast, 150ms) ease;
   }
   .icon-action:hover {
     background: color-mix(
@@ -148,12 +168,12 @@ export const cardStyles = css`
   .hero {
     display: grid;
     grid-template-columns: auto 1fr;
-    column-gap: var(--ha-spacing-3, 12px);
+    column-gap: var(--ha-space-3, 12px);
     row-gap: 6px;
     align-items: center;
-    padding: var(--ha-spacing-3, 12px) var(--linz-pad-x);
-    margin: var(--ha-spacing-3, 12px) var(--linz-pad-x) 0;
-    border-radius: var(--ha-radius-lg, 12px);
+    padding: var(--ha-space-3, 12px) var(--linz-pad-x);
+    margin: var(--ha-space-3, 12px) var(--linz-pad-x) 0;
+    border-radius: var(--ha-border-radius-lg, 12px);
     --hero-color: var(--linz-accent);
     background: color-mix(in srgb, var(--hero-color) 12%, transparent);
   }
@@ -299,7 +319,7 @@ export const cardStyles = css`
      header so badges align with the icon-tile. */
   .departures {
     list-style: none;
-    margin: var(--ha-spacing-2, 8px) 0 0;
+    margin: var(--ha-space-2, 8px) 0 0;
     padding: 0 var(--linz-pad-x);
     display: flex;
     flex-direction: column;
@@ -612,18 +632,18 @@ export const cardStyles = css`
   ha-card.with-animations .line-badge,
   ha-card.with-animations .line-icon,
   ha-card.with-animations .row-time {
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease), color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease),
-      box-shadow var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, color var(--ha-animation-duration-fast, 150ms) ease,
+      box-shadow var(--ha-animation-duration-fast, 150ms) ease;
   }
 
   /* Hero block recolour transition runs on background-color too. */
   ha-card.with-animations .hero {
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease;
   }
 
   /* Row hover tint — focus-visible outline stays instant. */
   ha-card.with-animations .row {
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease;
   }
   ha-card.with-animations .row:hover {
     background: color-mix(
@@ -749,7 +769,7 @@ export const cardStyles = css`
     margin-left: auto;
     --mdc-icon-size: 20px;
     color: var(--secondary-text-color);
-    transition: transform var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: transform var(--ha-animation-duration-fast, 150ms) ease;
     flex-shrink: 0;
   }
   .alerts details[open] .alerts-chevron,
@@ -844,7 +864,7 @@ export const cardStyles = css`
 
   .empty-state,
   .empty {
-    padding: var(--ha-spacing-5, 20px) var(--ha-spacing-4, 16px);
+    padding: var(--ha-space-5, 20px) var(--ha-space-4, 16px);
     text-align: center;
     color: var(--secondary-text-color);
     font-style: italic;
@@ -876,11 +896,11 @@ export const cardStyles = css`
     }
     .hero {
       grid-template-columns: auto 1fr;
-      padding: var(--ha-spacing-2, 10px) var(--ha-spacing-3, 12px);
+      padding: var(--ha-space-2, 8px) var(--ha-space-3, 12px);
     }
     .row {
       gap: 8px;
-      padding: 8px var(--ha-spacing-3, 12px);
+      padding: 8px var(--ha-space-3, 12px);
     }
     /* Flush-left on narrow cards so long station names keep their width,
        mirroring the wiener-linien narrow-card fallback. */
@@ -944,19 +964,19 @@ export const editorStyles = css`
     display: block;
   }
   .editor {
-    padding: var(--ha-spacing-4, 16px);
+    padding: var(--ha-space-4, 16px);
     display: flex;
     flex-direction: column;
-    gap: var(--ha-spacing-3, 12px);
+    gap: var(--ha-space-3, 12px);
   }
 
   .editor-section {
     background: var(--secondary-background-color, rgba(0, 0, 0, 0.04));
-    border-radius: var(--ha-radius-lg, 12px);
-    padding: var(--ha-spacing-3, 14px) var(--ha-spacing-4, 16px);
+    border-radius: var(--ha-border-radius-lg, 12px);
+    padding: var(--ha-space-3, 12px) var(--ha-space-4, 16px);
     display: flex;
     flex-direction: column;
-    gap: var(--ha-spacing-2, 10px);
+    gap: var(--ha-space-2, 8px);
   }
   .section-header {
     font-size: var(--ha-font-size-xs, 11px);
@@ -996,14 +1016,14 @@ export const editorStyles = css`
     font-variant-numeric: tabular-nums;
     font-size: 0.85rem;
     cursor: pointer;
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease), color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, color var(--ha-animation-duration-fast, 150ms) ease;
     forced-color-adjust: none;
   }
   .line-chip ha-icon {
     --mdc-icon-size: 16px;
     color: var(--chip-color);
     flex-shrink: 0;
-    transition: color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: color var(--ha-animation-duration-fast, 150ms) ease;
   }
   .line-chip:hover {
     background: color-mix(in srgb, var(--chip-color) 16%, transparent);
@@ -1132,7 +1152,7 @@ export const editorStyles = css`
     font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease), transform var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, transform var(--ha-animation-duration-fast, 150ms) ease;
     min-width: 0;
     height: 28px;
     box-sizing: border-box;
@@ -1190,7 +1210,7 @@ export const editorStyles = css`
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease), color var(--ha-transition-duration-fast, 160ms) var(--ha-transition-easing-standard, ease);
+    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, color var(--ha-animation-duration-fast, 150ms) ease;
   }
   .per-line-clear.is-hidden {
     visibility: hidden;
