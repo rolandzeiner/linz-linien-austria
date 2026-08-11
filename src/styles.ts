@@ -198,7 +198,7 @@ export const cardStyles = css`
   }
   .hero-min {
     font-size: var(--linz-metric-size);
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     font-variant-numeric: tabular-nums;
     line-height: 1;
   }
@@ -294,7 +294,7 @@ export const cardStyles = css`
   }
   .hero-cancelled .hero-min {
     font-size: 1.25rem;
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -712,7 +712,7 @@ export const cardStyles = css`
   }
   .row-cancelled .row-time {
     color: var(--linz-late);
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 0.04em;
@@ -820,7 +820,7 @@ export const cardStyles = css`
     justify-content: center;
     gap: 4px;
     text-align: center;
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     font-variant-numeric: tabular-nums;
     color: #fff;
     background: var(--linz-accent);
@@ -1084,7 +1084,7 @@ export const editorStyles = css`
     background: color-mix(in srgb, var(--primary-text-color) 12%, transparent);
     border-radius: 6px;
     padding: 3px 8px;
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     font-variant-numeric: tabular-nums;
     color: var(--primary-text-color);
     font-size: 0.85rem;
