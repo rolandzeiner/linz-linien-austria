@@ -49,7 +49,11 @@ function e(e,t,i,r){var n,o=arguments.length,a=o<3?t:null===r?r=Object.getOwnPro
        8px in one place and 10px in another.
 
        Verified against the frontend's src/resources/theme/core.globals.ts:
-         --ha-space-N          4px grid, 1…14   (was --ha-spacing-N)
+         --ha-space-N          4px grid, 1…20   (was --ha-spacing-N)
+         --ha-font-size-*      xs 10 / s 12 / m 14 / l 16 / xl 20px.
+                               typography.globals.ts sets the root to
+                               font-size:14px, so -m is 1rem, NOT 0.875 —
+                               do the rem maths at 14px or just write px.
          --ha-border-radius-*  sm 4 / md 8 / lg 12 / xl 16 / pill / circle
                                                 (was --ha-radius-*)
          --ha-animation-duration-*  none 1 / instant 75 / fast 150 /
@@ -112,7 +116,7 @@ function e(e,t,i,r){var n,o=arguments.length,a=o<3?t:null===r?r=Object.getOwnPro
   }
   .title {
     margin: 0;
-    font-size: var(--ha-font-size-m, 0.9375rem);
+    font-size: var(--ha-font-size-m, 14px);
     font-weight: 600;
     color: var(--primary-text-color);
     line-height: 1.2;
@@ -983,7 +987,7 @@ function e(e,t,i,r){var n,o=arguments.length,a=o<3?t:null===r?r=Object.getOwnPro
     gap: var(--ha-space-2, 8px);
   }
   .section-header {
-    font-size: var(--ha-font-size-xs, 11px);
+    font-size: var(--ha-font-size-xs, 10px);
     font-weight: 600;
     letter-spacing: 0.6px;
     text-transform: uppercase;
