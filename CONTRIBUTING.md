@@ -56,6 +56,8 @@ pytest tests/ --cov-report=term-missing
 - `pytest tests/ -v`
 - `mypy --strict --ignore-missing-imports custom_components/linz_linien_austria`
 - `ruff check .`
+- `ruff format --check .` (separate from `ruff check`, which never inspects formatting — CI runs both, so skipping this one turns the job red on style alone)
+- `uv run --python 3.12 --no-project python -m compileall -q custom_components/linz_linien_austria` (mirrors the `compile-floor-python` CI job; the local venv is on 3.14, so this is the only local check that would catch syntax our oldest supported users cannot parse — see `target-version` above)
 - `npx tsc --noEmit` (Rollup's TS plugin is more permissive than tsc strict; this surfaces TS regressions before the bundle hides them)
 - `npm run build` (rebuilds the card bundle from `src/`; `npm run dev` for watch mode)
 - `node -c custom_components/linz_linien_austria/www/linz-linien-austria-card.js`
