@@ -41,7 +41,11 @@ export const cardStyles = css`
        8px in one place and 10px in another.
 
        Verified against the frontend's src/resources/theme/core.globals.ts:
-         --ha-space-N          4px grid, 1…14   (was --ha-spacing-N)
+         --ha-space-N          4px grid, 1…20   (was --ha-spacing-N)
+         --ha-font-size-*      xs 10 / s 12 / m 14 / l 16 / xl 20px.
+                               typography.globals.ts sets the root to
+                               font-size:14px, so -m is 1rem, NOT 0.875 —
+                               do the rem maths at 14px or just write px.
          --ha-border-radius-*  sm 4 / md 8 / lg 12 / xl 16 / pill / circle
                                                 (was --ha-radius-*)
          --ha-animation-duration-*  none 1 / instant 75 / fast 150 /
@@ -104,7 +108,7 @@ export const cardStyles = css`
   }
   .title {
     margin: 0;
-    font-size: var(--ha-font-size-m, 0.9375rem);
+    font-size: var(--ha-font-size-m, 14px);
     font-weight: 600;
     color: var(--primary-text-color);
     line-height: 1.2;
@@ -198,7 +202,7 @@ export const cardStyles = css`
   }
   .hero-min {
     font-size: var(--linz-metric-size);
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     font-variant-numeric: tabular-nums;
     line-height: 1;
   }
@@ -294,7 +298,7 @@ export const cardStyles = css`
   }
   .hero-cancelled .hero-min {
     font-size: 1.25rem;
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -351,6 +355,13 @@ export const cardStyles = css`
   .row.row-expandable {
     cursor: pointer;
     user-select: none;
+    /* Divider moves to the trailing .row-detail (which an expandable row
+       always emits, expanded or not) so the rule falls BELOW the trail:
+       the trail reads as part of this departure and the line separates
+       it from the next one. Keeping it here drew the line between the
+       row and its own trail, which read as the trail belonging to the
+       departure underneath. */
+    border-bottom: none;
   }
   .row.row-expandable:hover {
     background: color-mix(in srgb, var(--primary-text-color) 4%, transparent);
@@ -452,6 +463,19 @@ export const cardStyles = css`
     grid-template-rows: 0fr;
     transition: grid-template-rows 0.24s ease;
     list-style: none;
+    /* Carries the divider on behalf of its .row (see above). Applied in
+       both states rather than only on .expanded: collapsed the panel is
+       zero-height, so the rule lands exactly where the row's own border
+       used to sit, and it then travels smoothly with the panel instead
+       of snapping between two positions mid-animation. */
+    border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
+  }
+  /* An expandable last departure ends the list on its panel, not on its
+     row, so the final-row rule above cannot reach it. .row-detail is a
+     direct child of .departures (unlike .row), so :last-child is exact
+     here. */
+  .row-detail:last-child {
+    border-bottom: none;
   }
   .row-detail-inner {
     overflow: hidden;
@@ -712,7 +736,7 @@ export const cardStyles = css`
   }
   .row-cancelled .row-time {
     color: var(--linz-late);
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 0.04em;
@@ -820,7 +844,7 @@ export const cardStyles = css`
     justify-content: center;
     gap: 4px;
     text-align: center;
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     font-variant-numeric: tabular-nums;
     color: #fff;
     background: var(--linz-accent);
@@ -979,7 +1003,7 @@ export const editorStyles = css`
     gap: var(--ha-space-2, 8px);
   }
   .section-header {
-    font-size: var(--ha-font-size-xs, 11px);
+    font-size: var(--ha-font-size-xs, 10px);
     font-weight: 600;
     letter-spacing: 0.6px;
     text-transform: uppercase;
@@ -1084,7 +1108,7 @@ export const editorStyles = css`
     background: color-mix(in srgb, var(--primary-text-color) 12%, transparent);
     border-radius: 6px;
     padding: 3px 8px;
-    font-weight: var(--ha-font-weight-bold, 600);
+    font-weight: var(--ha-font-weight-bold, 700);
     font-variant-numeric: tabular-nums;
     color: var(--primary-text-color);
     font-size: 0.85rem;
