@@ -152,7 +152,7 @@ class NextDepartureSensor(
             attrs["next_direction"] = first.get("direction")
             attrs["next_mot"] = first.get("mot_name")
             # Departures are sorted active-first, cancelled last
-            # (api.py::_departure_sort_key), so the first row is only
+            # (parser.py::_departure_sort_key), so the first row is only
             # cancelled when *every* upcoming departure is. Surface a
             # plain bool so templates/automations don't treat the
             # countdown as a catchable trip.

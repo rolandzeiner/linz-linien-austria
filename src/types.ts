@@ -163,7 +163,7 @@ export type HaFormSchema =
   | HaFormExpandableSchema;
 
 /** One stop still ahead on a departure's trip, as normalised by
- *  api.py::_parse_onward_stops. Nearest first. */
+ *  parser.py::_parse_onward_stops. Nearest first. */
 export interface StopAhead {
   /** Short stop name, no place prefix ("Waldeggstraße"). */
   name: string;
@@ -178,7 +178,7 @@ export interface StopAhead {
 
 /** A single normalised departure as surfaced in sensor attributes by the
  *  Python coordinator. Optional fields are dropped when not present in
- *  the upstream payload — see api.py::_normalise_departure. */
+ *  the upstream payload — see parser.py::_normalise_departure. */
 export interface Departure {
   line: string;
   /** Headsign text for this trip. Display only — it is unstable for

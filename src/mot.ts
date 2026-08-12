@@ -1,7 +1,7 @@
 // Single source of truth for the Mentz EFA mode-of-transport tables
 // the card and the editor both consume. Numbers match the spec page 52
 // of the Mentz EFA documentation that the Python side mirrors in
-// `custom_components/linz_linien_austria/api.py::_MOT_NAMES`.
+// `custom_components/linz_linien_austria/parser.py::_MOT_NAMES`.
 //
 // Kept deliberately small — these are lookup tables, not classes.
 // The card's CSS in `styles.ts` declares the same hex values via

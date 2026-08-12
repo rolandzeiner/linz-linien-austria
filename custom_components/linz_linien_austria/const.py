@@ -32,6 +32,27 @@ USER_AGENT: Final = (
     f"(+https://github.com/rolandzeiner/linz-linien-austria)"
 )
 
+# Headers sent on every outbound request — DM_REQUEST, STOPFINDER_REQUEST,
+# ADDINFO_REQUEST. Every call site must pass this rather than assembling
+# its own dict, so a future caller can't silently drop one of the two
+# guarantees below; `tests/test_user_agent.py` asserts both at every call
+# site so the drift is caught at CI time, not at the next bandwidth audit.
+#
+# * ``User-Agent`` — identifies this integration to LINZ AG's log parsers
+#   so they can rate-limit / contact us specifically rather than blanket-
+#   blocking every HA install. Format documented in the
+#   ``ha-integration-platinum`` skill.
+# * ``Accept`` — every endpoint here is queried via ``outputFormat=JSON``.
+# * ``Accept-Encoding: gzip`` — the EFAController honours it and compresses
+#   bodies ~7×. ``aiohttp`` decompresses transparently on the response
+#   side, so no parsing change is needed. Without this header the server
+#   defaults to identity encoding.
+BASE_REQUEST_HEADERS: Final[dict[str, str]] = {
+    "User-Agent": USER_AGENT,
+    "Accept": "application/json",
+    "Accept-Encoding": "gzip",
+}
+
 # Config entry / options keys
 CONF_STOP_ID: Final = "stop_id"
 CONF_STOP_NAME: Final = "stop_name"
@@ -181,7 +202,7 @@ ATTRIBUTION: Final = "Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0"
 # 1=S-Bahn, 2=U-Bahn, 3=Stadtbahn, 4=Straßen-/Trambahn, 5=Stadtbus,
 # 6=Regionalbus, 7=Schnellbus, 8=Seil-/Zahnradbahn, 9=Schiff,
 # 10=AST/Rufbus, 11=Sonstige). The integration consumes these as raw
-# ints (api.py::_MOT_NAMES) and the card maps them via its own table —
+# ints (parser.py::_MOT_NAMES) and the card maps them via its own table —
 # no Python constant is needed.
 
 # Lovelace card — pinned to ``INTEGRATION_VERSION`` so the manifest is
@@ -197,7 +218,7 @@ CARD_FILENAME: Final = "linz-linien-austria-card.js"
 # every line label it had ever observed at the stop into this Store,
 # because there was no known way to ask the upstream for the stop's full
 # roster. There is: every DM response carries a `servingLines` block with
-# the complete timetable roster (api.py::_parse_serving_lines), which is
+# the complete timetable roster (parser.py::_parse_serving_lines), which is
 # both immediately complete and correct after a reconfigure. The Store is
 # no longer written or read — these constants survive only so
 # `async_migrate_entry` can delete the orphaned file. Remove both once

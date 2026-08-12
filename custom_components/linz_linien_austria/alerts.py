@@ -35,10 +35,10 @@ from .const import (
     ALERTS_REFRESH_SECONDS,
     ALERTS_REFRESH_UNSUB_KEY,
     API_BASE_URL,
+    BASE_REQUEST_HEADERS,
     DOMAIN,
-    USER_AGENT,
 )
-from .http import base_request_headers
+from .parser import _iso_local
 from .rate_limit import async_enforce_domain_cooldown
 from .text import decode_html
 
@@ -78,7 +78,13 @@ class TrafficInfo:
 
 
 def _iso_from_efa_dt(raw: Any) -> str | None:
-    """Parse an EFA itdDateTime / nested date+time pair to ISO local."""
+    """Parse an EFA itdDateTime / nested date+time pair to ISO local.
+
+    A malformed *time* block degrades to midnight rather than dropping
+    the stamp — an alert's validity window is meaningful at day
+    resolution. An incomplete *date* is unusable, so `_iso_local`
+    returns None for it.
+    """
     if not isinstance(raw, dict):
         return None
     date = raw.get("itdDate")
@@ -91,8 +97,6 @@ def _iso_from_efa_dt(raw: Any) -> str | None:
         day = int(date.get("day") or 0)
     except (TypeError, ValueError):
         return None
-    if not (year and month and day):
-        return None
     hour = minute = 0
     if isinstance(time_block, dict):
         try:
@@ -100,7 +104,7 @@ def _iso_from_efa_dt(raw: Any) -> str | None:
             minute = int(time_block.get("minute") or 0)
         except (TypeError, ValueError):
             hour = minute = 0
-    return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:00"
+    return _iso_local(year, month, day, hour, minute)
 
 
 def _parse_alert(raw: dict[str, Any]) -> TrafficInfo | None:
@@ -194,14 +198,13 @@ async def async_fetch_alerts(
         "outputFormat": "JSON",
         "filterPublicationStatus": "current",
     }
-    headers = base_request_headers(USER_AGENT)
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
     try:
         # `async with` pairs the response with deterministic release of
         # the underlying connection slot. See api.py::_get_json for the
         # detailed rationale; same pool-management concern applies here.
         async with session.get(
-            url, params=params, headers=headers, timeout=timeout
+            url, params=params, headers=BASE_REQUEST_HEADERS, timeout=timeout
         ) as resp:
             resp.raise_for_status()
             data = await resp.json(content_type=None)

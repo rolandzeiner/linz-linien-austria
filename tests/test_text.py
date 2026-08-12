@@ -34,10 +34,17 @@ def test_decode_html_leaves_unknown_entity_intact() -> None:
     assert "&unknownEntity;" in out
 
 
-def test_decode_html_leaves_overflow_numeric_entity_intact() -> None:
-    """An out-of-range numeric entity is rejected by `chr()` — pass through."""
+def test_decode_html_drops_overflow_numeric_entity() -> None:
+    """An out-of-range numeric entity is dropped, not shown to the user.
+
+    `html.unescape` follows the HTML5 rule for invalid character
+    references and yields U+FFFD, which `_JUNK_STRIP` then removes. The
+    hand-rolled decoder this replaced left the literal `&#…;` text in
+    the alert prose instead; dropping it is the better failure, since
+    the reference carries no meaning a reader could act on.
+    """
     out = decode_html("a&#9999999999999;b")
-    assert "&#9999999999999;" in out
+    assert out == "ab"
 
 
 def test_decode_html_drops_control_character_numeric_entity() -> None:
