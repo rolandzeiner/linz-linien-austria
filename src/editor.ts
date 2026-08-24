@@ -241,7 +241,9 @@ export class LinzLinienAustriaCardEditor
         name: "entity",
         required: true,
         selector: {
-          entity: { domain: "sensor", integration: "linz_linien_austria" },
+          entity: {
+            filter: { domain: "sensor", integration: "linz_linien_austria" },
+          },
         },
       },
       { name: "name", selector: { text: {} } },
