@@ -13,8 +13,8 @@ pytest-timeout>=2.4,<3
 # syrupy floor intentionally omitted: PHACC pins syrupy with `==`, so any
 # floor here either matches PHACC (redundant) or contradicts it (unresolvable).
 # Let PHACC's transitive pin govern; dependabot bumps of syrupy can't apply.
-mypy==2.3.0
-ruff==0.16.0
+mypy==2.3.1
+ruff==0.16.4
 # pycares cap not needed: HA 2026.5+ pins aiodns 4.x which speaks the
 # pycares 5 API natively, so the resolver picks pycares 5 transitively
 # without us having to cap it.
