@@ -26,12 +26,11 @@ import aiohttp
 
 from .const import (
     API_BASE_URL,
+    BASE_REQUEST_HEADERS,
     COORD_OUTPUT_FORMAT,
     DM_ENDPOINT,
     STOPFINDER_ENDPOINT,
-    USER_AGENT,
 )
-from .http import base_request_headers
 from .parser import _parse_dm, _parse_stopfinder
 
 REQUEST_TIMEOUT_SEC = 30
@@ -70,7 +69,6 @@ async def _get_json(
     ``UpdateFailed`` raises don't have to know about aiohttp internals.
     """
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
-    headers = base_request_headers(USER_AGENT)
     try:
         # `async with session.get(...)` releases the connection slot to
         # aiohttp's pool deterministically on every exit branch (success,
@@ -79,7 +77,7 @@ async def _get_json(
         # collection picks the response up — which under load means the
         # connection limiter throttles needlessly.
         async with session.get(
-            url, params=params, headers=headers, timeout=timeout
+            url, params=params, headers=BASE_REQUEST_HEADERS, timeout=timeout
         ) as resp:
             resp.raise_for_status()
             data = await resp.json(content_type=None)

@@ -526,6 +526,23 @@ def _parse_onward_stops(raw: Any) -> list[dict[str, Any]]:
     return out
 
 
+def _iso_local(year: int, month: int, day: int, hour: int, minute: int) -> str | None:
+    """Format EFA date/time components as an ISO-8601 local string.
+
+    The shared tail of the three timestamp shapes the upstream emits —
+    the departure rows' nested ``{year, month, …}`` dict, the
+    stop-sequence block's compact ``"YYYYMMDD HH:MM"`` string, and the
+    alerts feed's ``{itdDate, itdTime}`` pair. Callers keep their own
+    int coercion because they disagree on what a malformed *time* means
+    (see each), but they agree that an incomplete date is unusable.
+
+    No timezone suffix — every stamp here is Linz local time.
+    """
+    if not (year and month and day):
+        return None
+    return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:00"
+
+
 def _iso_from_efa_compact(raw: Any) -> str | None:
     """Parse EFA's compact ``"YYYYMMDD HH:MM"`` stamp to ISO-8601 local.
 
@@ -542,9 +559,8 @@ def _iso_from_efa_compact(raw: Any) -> str | None:
     date, time = parts
     hour, _, minute = time.partition(":")
     try:
-        return (
-            f"{int(date[0:4]):04d}-{int(date[4:6]):02d}-{int(date[6:8]):02d}"
-            f"T{int(hour):02d}:{int(minute):02d}:00"
+        return _iso_local(
+            int(date[0:4]), int(date[4:6]), int(date[6:8]), int(hour), int(minute)
         )
     except ValueError:
         return None
@@ -590,16 +606,15 @@ def _iso_from_efa_datetime(raw: Any) -> str | None:
     if not isinstance(raw, dict):
         return None
     try:
-        year = int(raw.get("year") or 0)
-        month = int(raw.get("month") or 0)
-        day = int(raw.get("day") or 0)
-        hour = int(raw.get("hour") or 0)
-        minute = int(raw.get("minute") or 0)
+        return _iso_local(
+            int(raw.get("year") or 0),
+            int(raw.get("month") or 0),
+            int(raw.get("day") or 0),
+            int(raw.get("hour") or 0),
+            int(raw.get("minute") or 0),
+        )
     except (TypeError, ValueError):
         return None
-    if not (year and month and day):
-        return None
-    return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:00"
 
 
 _MOT_NAMES: dict[int, str] = {

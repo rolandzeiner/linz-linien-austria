@@ -105,6 +105,12 @@ them.
 - **Realtime cue** — small green bullet leading the time on rows
   where realtime data was available (WCAG 1.4.1: redundant cue for
   colour-blind / sunlight-glare users).
+- **Readable in both themes** — line colours are chosen to sit behind
+  white badge text, and several of them turn unreadable once they paint
+  the text itself. The card lightens or deepens each colour to suit your
+  Home Assistant theme, so a countdown keeps its line's identity instead
+  of washing out into plain white. Every combination clears WCAG AA.
+  *(0.7.4)*
 - **Onward-stop trail** — when *Show onward stops* is on, clicking a
   departure row, or the next-departure hero, unfolds the rest of the trip
   as a route-line diagram: a vertical line in the line's own colour, a dot
@@ -142,8 +148,8 @@ them.
   editor; each line's walk time is independent.
 - **Per-line colour override** — pill-style colour picker per line in
   the editor; the chosen colour replaces the MoT default on the
-  badge, in the hero accent, and in the header tile when that line
-  is the next departure.
+  badge, in the hero accent, in the header tile when that line is the
+  next departure, and on a row's own countdown once it reads Jetzt.
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.

@@ -12,7 +12,7 @@ Two header guarantees the integration relies on:
    wastes bandwidth.
 
 Every outbound call site gets a parametrised test that asserts BOTH
-headers are present. ``http.py::base_request_headers`` is the
+headers are present. ``const.py::BASE_REQUEST_HEADERS`` is the
 single source of truth; if a future call site reaches for ``session.get``
 directly without going through it, this test will catch the drift.
 """
@@ -32,11 +32,11 @@ from custom_components.linz_linien_austria.api import (
     search_stops,
 )
 from custom_components.linz_linien_austria.const import (
+    BASE_REQUEST_HEADERS,
     DOMAIN,
     INTEGRATION_VERSION,
     USER_AGENT,
 )
-from custom_components.linz_linien_austria.http import base_request_headers
 
 from .conftest import make_response_cm
 
@@ -62,10 +62,9 @@ def test_user_agent_follows_canonical_format() -> None:
 
 def test_base_headers_carry_both_guards() -> None:
     """Single source of truth for outbound headers."""
-    headers = base_request_headers(USER_AGENT)
-    assert headers["User-Agent"] == USER_AGENT
-    assert headers["Accept-Encoding"] == "gzip"
-    assert headers["Accept"] == "application/json"
+    assert BASE_REQUEST_HEADERS["User-Agent"] == USER_AGENT
+    assert BASE_REQUEST_HEADERS["Accept-Encoding"] == "gzip"
+    assert BASE_REQUEST_HEADERS["Accept"] == "application/json"
 
 
 # --- Per-call-site assertion helpers -----------------------------------------

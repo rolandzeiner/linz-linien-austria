@@ -348,7 +348,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._longitude = longitude
 
         # The stop's full line roster, straight from the timetable — see
-        # api.py::_parse_serving_lines. Complete on the first fetch, so
+        # parser.py::_parse_serving_lines. Complete on the first fetch, so
         # unlike the label-accumulation it replaced it needs no
         # persistence and is never stale after a reconfigure. Read from
         # the FULL payload, before the user's line filter narrows it:
@@ -423,7 +423,7 @@ def _line_dir_key(dep: dict[str, Any]) -> str:
     """Build the canonical key used in CONF_LINES filter entries.
 
     Keyed on the stable Hin/Rück code, not the destination text — see
-    api.py::_direction_code for why the text form was a bug. A departure
+    parser.py::_direction_code for why the text form was a bug. A departure
     with no resolvable code (replacement service) yields "<line>:", which
     matches nothing in a v2 filter and so is dropped when a filter is
     active; that is the safe direction to fail, since the alternative
