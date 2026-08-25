@@ -19,7 +19,8 @@ import type {
   StopAhead,
 } from "./types";
 import { translate } from "./localize/localize";
-import { motColor, motIcon } from "./mot";
+import { motColor, motColorOrDefault, motIcon } from "./mot";
+import { accentTextColor, NEUTRAL_ACCENT_TEXT } from "./color";
 import {
   checkCardVersionWS,
   renderVersionBanner,
@@ -340,7 +341,16 @@ export class LinzLinienAustriaCard extends LitElement {
     const headerIcon = motIcon(next?.mot);
     const headerColor =
       this._userLineColor(next?.line) ?? motColor(next?.mot);
-    const headerStyle = headerColor ? `--header-color: ${headerColor};` : "";
+    // The text half resolves the tram default explicitly rather than
+    // letting CSS fall back to --linz-accent: #f08000 as a glyph is
+    // 2.26:1 on a light card, so the fallback branch is exactly the one
+    // that needs clamping.
+    const headerText = this._accentText(
+      this._userLineColor(next?.line) ?? motColorOrDefault(next?.mot),
+    );
+    const headerStyle =
+      (headerColor ? `--header-color: ${headerColor};` : "") +
+      (headerText ? `--header-text: ${headerText};` : "");
 
     // Alerts pre-filter: only show notices whose `affected_lines` overlap
     // a line we are *actually about to display* (i.e. survived the
@@ -596,13 +606,23 @@ export class LinzLinienAustriaCard extends LitElement {
       ariaSep,
     )}, ${minutesText}${lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
 
-    // Header colour comes from the lead — user override beats MoT
+    // Hero colour comes from the lead — user override beats MoT
     // default; both fall back to --linz-accent (the tram default).
-    const heroColor =
-      this._userLineColor(lead.line) ?? motColor(lead.mot);
-    const heroStyle = heroColor
-      ? `--hero-color: ${heroColor};`
-      : "";
+    //
+    // A cancelled lead withholds both halves: .hero-cancelled recolours
+    // the whole block to the late/cancel red, and an inline token would
+    // outrank it and leave the line's own colour on a red plate.
+    const heroColor = lead.is_cancelled
+      ? null
+      : (this._userLineColor(lead.line) ?? motColor(lead.mot));
+    const heroText = lead.is_cancelled
+      ? null
+      : this._accentText(
+          this._userLineColor(lead.line) ?? motColorOrDefault(lead.mot),
+        );
+    const heroStyle =
+      (heroColor ? `--hero-color: ${heroColor};` : "") +
+      (heroText ? `--hero-text: ${heroText};` : "");
 
     return html`
       <section
@@ -763,6 +783,20 @@ export class LinzLinienAustriaCard extends LitElement {
     const panelId = `stops-${this._slugify(key)}`;
 
     const expandable = stopsAhead.length > 0;
+
+    // Only .row-time.now reads --linz-accent-text inside a row, so only
+    // that state needs the override — late/early carry their own
+    // semantic tokens. Same ladder as the badge beside it (user override,
+    // then MoT, then the tram default), so the countdown and the badge
+    // can never disagree about which line this row is. Without it the
+    // row painted the card accent regardless of its own line.
+    const isNow = minutes !== null && minutes <= 0 && !d.is_cancelled;
+    const rowAccentText = isNow
+      ? this._accentText(
+          this._userLineColor(d.line) ?? motColorOrDefault(d.mot),
+        )
+      : null;
+
     const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
       d.direction
     } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
@@ -795,6 +829,9 @@ export class LinzLinienAustriaCard extends LitElement {
         aria-expanded=${expandable ? (expanded ? "true" : "false") : nothing}
         aria-controls=${expandable ? panelId : nothing}
         aria-label=${rowLabel}
+        style=${rowAccentText
+          ? `--linz-accent-text: ${rowAccentText};`
+          : nothing}
         @click=${() => expandable && this._toggleStops(key)}
         @keydown=${(ev: KeyboardEvent) =>
           this._onExpanderKeydown(ev, expandable, () =>
@@ -825,7 +862,7 @@ export class LinzLinienAustriaCard extends LitElement {
               "row-time": true,
               late: isLate && !d.is_cancelled,
               early: isEarly && !d.is_cancelled,
-              now: minutes !== null && minutes <= 0 && !d.is_cancelled,
+              now: isNow,
             })}
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
@@ -1015,6 +1052,34 @@ export class LinzLinienAustriaCard extends LitElement {
     if (!line) return null;
     const overrides = this.config.line_colors ?? {};
     return overrides[line] ?? overrides[line.toUpperCase()] ?? null;
+  }
+
+  /** Scheme polarity for the accent-as-text tokens (see color.ts).
+   *
+   *  Follows HA's own theme rather than light-dark() or
+   *  prefers-color-scheme, both of which read the OS and would pick the
+   *  wrong branch for a dark HA theme on a light-mode desktop. Tri-state
+   *  on purpose: `undefined` before themes have loaded yields no token,
+   *  so the hueless :host fallback stands instead of us guessing a
+   *  polarity and flashing the wrong colour on first paint. */
+  private _colorScheme(): "dark" | "light" | undefined {
+    if (this.hass?.themes?.darkMode === true) return "dark";
+    if (this.hass?.themes?.darkMode === false) return "light";
+    return undefined;
+  }
+
+  /** Accent-as-text colour for one concrete accent, or null when the
+   *  caller should leave the token unset.
+   *
+   *  Null only when the polarity isn't known yet — there every surface
+   *  leaves the token unset too, so the hueless :host default already
+   *  stands. An accent the clamp can't resolve (a hand-written var()
+   *  override) falls back to that default explicitly: "unset" would mean
+   *  inheriting an ancestor's line colour, which is the bug. */
+  private _accentText(accent: string): string | null {
+    const scheme = this._colorScheme();
+    if (scheme === undefined) return null;
+    return accentTextColor(accent, scheme) ?? NEUTRAL_ACCENT_TEXT;
   }
 
   /** Stable identity for a departure across consecutive refreshes.

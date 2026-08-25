@@ -19,6 +19,22 @@ export const cardStyles = css`
     /* Brand accent — domain-specific, no HA equivalent. */
     --linz-accent: #f08000;
 
+    /* Text-safe companion to --linz-accent. The MoT table in mot.ts
+       ships *background* colours; painted as glyphs they run from
+       1.70:1 (bus purple on HA's dark card) to 2.26:1 (the tram
+       default on the light one). Anything colouring glyphs reads from
+       this token; backgrounds keep using --linz-accent directly.
+
+       The lightness-clamped value lands inline alongside the surface
+       colour, computed in accentTextColor() (color.ts) — not in CSS,
+       because the relative-colour declaration that would do the clamp
+       mis-resolves on older embedded WebViews and @supports cannot
+       probe it (wiener-linien-austria issue #95). This declaration is
+       the fallback for the cases the helper declines: no theme
+       polarity yet, or an accent it can't resolve (a hand-written
+       var() override). Legible but hueless, never invisible. */
+    --linz-accent-text: var(--primary-text-color);
+
     /* Semantic state tokens layered over HA's official flat
        palette (--success-color / --error-color / --info-color,
        defined in HA frontend's color.globals.ts and used by
@@ -83,13 +99,14 @@ export const cardStyles = css`
     gap: 12px;
     padding: var(--linz-pad-y) var(--linz-pad-x) 0;
     --header-color: var(--linz-accent);
+    --header-text: var(--linz-accent-text);
   }
   .icon-tile {
     width: var(--linz-tile-size);
     height: var(--linz-tile-size);
     border-radius: var(--linz-radius-md);
     background: color-mix(in srgb, var(--header-color) 18%, transparent);
-    color: var(--header-color);
+    color: var(--header-text);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -179,6 +196,7 @@ export const cardStyles = css`
     margin: var(--ha-space-3, 12px) var(--linz-pad-x) 0;
     border-radius: var(--ha-border-radius-lg, 12px);
     --hero-color: var(--linz-accent);
+    --hero-text: var(--linz-accent-text);
     background: color-mix(in srgb, var(--hero-color) 12%, transparent);
   }
   /* The big countdown pins to column 1 / row 1 and stays centred against
@@ -198,7 +216,7 @@ export const cardStyles = css`
     display: flex;
     align-items: baseline;
     gap: 4px;
-    color: var(--hero-color);
+    color: var(--hero-text);
   }
   .hero-min {
     font-size: var(--linz-metric-size);
@@ -294,6 +312,10 @@ export const cardStyles = css`
      numeric countdown. */
   .hero-cancelled {
     --hero-color: var(--linz-late);
+    /* Both halves of the split, or the countdown would keep the line's
+       own colour on a red plate. The card withholds its inline hero
+       tokens entirely on a cancelled lead so these two win. */
+    --hero-text: var(--linz-late);
     background: color-mix(in srgb, var(--linz-late) 12%, transparent);
   }
   .hero-cancelled .hero-min {
@@ -578,8 +600,12 @@ export const cardStyles = css`
     box-shadow: inset 0 0 0 var(--stops-ahead-line-width)
       var(--stops-ahead-line);
   }
+  /* The row's own line colour, not the card accent: the card sets
+     --linz-accent-text inline per row from that departure's MoT, the
+     same ladder the badge beside it uses, so the countdown and the
+     badge can never disagree about which line this row is. */
   .row-time.now {
-    color: var(--linz-accent);
+    color: var(--linz-accent-text);
   }
   .row-time.late {
     color: var(--linz-late);
