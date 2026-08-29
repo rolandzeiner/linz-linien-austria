@@ -341,7 +341,9 @@ async def test_device_registered_with_expected_identity(
 ) -> None:
     """The device row carries the operator branding the README documents."""
     entry = await _setup(hass, _parse_dm(EXAMPLE_DM_RESPONSE))
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
     assert device is not None
     assert device.manufacturer == "LINZ AG LINIEN"
     assert device.model == "EFA Echtzeit"
