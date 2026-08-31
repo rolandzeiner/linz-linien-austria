@@ -5,4 +5,4 @@
 // Bump both in the same commit. Every version marker in the repo carries the
 // same clean version — pre-releases reuse the eventual release's number and are
 // distinguished by the GitHub --prerelease flag, not by a suffix here.
-export const CARD_VERSION = "0.7.4";
+export const CARD_VERSION = "1.0.0";
