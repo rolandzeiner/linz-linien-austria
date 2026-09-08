@@ -697,21 +697,22 @@ export class LinzLinienAustriaCard extends LitElement {
                 >${this._t("card.minutes_short")}</span
               >`
             : nothing}
-          ${heroClock
-            ? // aria-hidden: the section's aria-label already carries the
-              // clock time, so this would otherwise be announced twice.
-              html`<span class="hero-clock" aria-hidden="true"
-                >${heroClock}</span
-              >`
-            : nothing}
         </div>
         ${
           // Entries and their onward-stop panels are interleaved as direct
           // grid children (no .hero-meta wrapper) so each panel auto-places
           // in the row directly below its entry, while .hero-time stays
           // pinned to column 1 / row 1 — matching the wiener-linien hero.
+          // heroClock rides with the entry rather than the countdown: in
+          // column 1 it widened the auto-sized track and pushed the badge
+          // and destination ~44px right, away from the number they belong
+          // to. Beside the destination it costs nothing — the hero
+          // measures exactly as it does with the option off. Only ever
+          // set for a single-entry group, so the map passes it to the one
+          // entry that owns it.
           group.map(
-            (d) => html`${this._renderHeroEntry(d)}${this._renderHeroStops(d)}`,
+            (d) =>
+              html`${this._renderHeroEntry(d, heroClock)}${this._renderHeroStops(d)}`,
           )
         }
       </section>
@@ -724,7 +725,10 @@ export class LinzLinienAustriaCard extends LitElement {
    *  departure carries onward stops, the whole entry becomes the toggle
    *  for its stops-ahead panel (chevron + role=button), mirroring both the
    *  row list below and the wiener-linien hero. */
-  private _renderHeroEntry(d: Departure): TemplateResult {
+  private _renderHeroEntry(
+    d: Departure,
+    clock: string | null = null,
+  ): TemplateResult {
     const platform = this.config.show_platform
       ? this._platformText(d)
       : "";
@@ -762,7 +766,21 @@ export class LinzLinienAustriaCard extends LitElement {
           )}
       >
         ${this._renderLineBadge(d)}
-        <span class="hero-direction">${d.direction || ""}</span>
+        ${clock
+          ? // Destination and clock share a group so the clock sits
+            // against the destination's right edge: .hero-direction grows
+            // to absorb the row's slack, so a bare sibling after it would
+            // be shoved across to the platform chip. Inside the group the
+            // destination stops growing and truncates as before, while the
+            // group itself takes over the growing.
+            //
+            // aria-hidden: the section's aria-label already carries the
+            // clock time, so this would otherwise be announced twice.
+            html`<span class="hero-dest-group">
+              <span class="hero-direction">${d.direction || ""}</span>
+              <span class="hero-clock" aria-hidden="true">${clock}</span>
+            </span>`
+          : html`<span class="hero-direction">${d.direction || ""}</span>`}
         ${!d.is_cancelled && platform
           ? html`<span class="hero-platform"
               >${this._platformLabel(d, true)} ${platform}</span

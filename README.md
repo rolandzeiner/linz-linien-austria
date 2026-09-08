@@ -160,8 +160,9 @@ them.
   the editor; the chosen colour replaces the MoT default on the
   badge, in the hero accent, in the header tile when that line is the
   next departure, and on a row's own countdown once it reads Jetzt.
-- **Optional departure time** — show the wall-clock time beside the
-  countdown ("4 Min · 15:44"). The countdown answers "can I still make
+- **Optional departure time** — show the wall-clock time as well as the
+  countdown: after it on a row ("4 Min · 15:44"), beside the destination
+  in the next-departure block. The countdown answers "can I still make
   it?"; the clock answers "which departure is this?" — the question you
   have when you're still at home deciding whether to leave. It follows
   the countdown's own source, so the two never disagree. Toggle *Show
@@ -282,7 +283,7 @@ them.
 | `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
-| `show_absolute_time` | `false` | Append the wall-clock departure time after the countdown (`4 Min · 15:44`) and on the hero baseline after the countdown. Suppressed on a hero that groups several departures sharing one countdown, since they do not share a departure time. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise, so the two never disagree. |
+| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — after the countdown on a row (`4 Min · 15:44`), and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. Suppressed on a hero that groups several departures sharing one countdown, since they do not share a departure time. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise, so the two never disagree. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |

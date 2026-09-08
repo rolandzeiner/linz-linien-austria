@@ -286,19 +286,30 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
   }
-  /* Clock time on the hero baseline, after the unit. Same muted
-     treatment as the row variant so both readings of "when" look
-     like the same kind of information. */
+  /* Destination + clock. The group takes over the growing that
+     .hero-direction used to do alone, so the clock sits against the
+     destination's right edge instead of being pushed across to the
+     platform chip. */
+  .hero-dest-group {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .hero-dest-group .hero-direction {
+    flex: 0 1 auto;
+  }
+  /* Clock time beside the destination. Sized and muted to match
+     .row-clock so both readings of "when" look like the same kind of
+     information wherever they appear. No "·" separator: the group's
+     8px gap already does that work, and the dot only existed to
+     divide it from the unit back when it followed the countdown. */
   .hero-clock {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.8rem;
     font-variant-numeric: tabular-nums;
     color: var(--secondary-text-color);
     white-space: nowrap;
-  }
-  .hero-clock::before {
-    content: "·";
-    margin-right: 4px;
   }
   .hero-entry {
     display: flex;
