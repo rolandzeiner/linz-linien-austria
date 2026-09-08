@@ -98,6 +98,59 @@ export class LinzLinienAustriaCardEditor
     return this._allKnownLines();
   }
 
+  /** Options for the direction picker. The stored *value* is always the
+   *  stable ``dir_code``; the *label* is whichever headsign(s) this stop
+   *  currently shows for that code, because "Sennweg" tells the user
+   *  something and "H" does not.
+   *
+   *  Headsigns are display-only — the upstream rewrites them for
+   *  short-turning runs, which is precisely why they must not be the
+   *  filter key — but that does not stop them from being the clearest
+   *  available label. Both codes are always offered, even when the
+   *  live snapshot only contains one of them: the missing direction is
+   *  usually just outside the current departure window, and dropping
+   *  the option would make it unselectable until a vehicle happens to
+   *  be due. With no sensor loaded at all, both fall back to plain
+   *  Hin/Rück wording so the field stays usable on a cold card. */
+  private _directionOptions(): ReadonlyArray<{ value: string; label: string }> {
+    const headsigns = new Map<string, string[]>();
+    const entityId = this._config.entity;
+    const deps = entityId
+      ? (this.hass?.states[entityId]?.attributes?.departures as
+          | Departure[]
+          | undefined)
+      : undefined;
+    if (Array.isArray(deps)) {
+      for (const d of deps) {
+        const code = d.dir_code;
+        if (code !== "H" && code !== "R") continue;
+        const head = (d.direction ?? "").trim();
+        if (!head) continue;
+        const seen = headsigns.get(code) ?? [];
+        if (!seen.includes(head)) seen.push(head);
+        headsigns.set(code, seen);
+      }
+    }
+    return (["H", "R"] as const).map((code) => {
+      const generic = this._t(
+        code === "H" ? "editor.direction_h" : "editor.direction_r",
+      );
+      // Sorted, then capped at two. A hub like Hauptbahnhof serves a
+      // dozen headsigns per direction code, and joining them all makes
+      // a checkbox label that wraps over several lines — worse, the
+      // raw departure order changes between polls, so an uncapped
+      // label reshuffles under the user mid-edit.
+      const heads = [...(headsigns.get(code) ?? [])].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      );
+      const shown = heads.slice(0, 2).join(", ");
+      const label = heads.length
+        ? `${shown}${heads.length > 2 ? " …" : ""} (${generic})`
+        : generic;
+      return { value: code, label };
+    });
+  }
+
   private _sortLines(lines: string[]): string[] {
     return Array.from(new Set(lines)).sort((a, b) => {
       const an = parseInt(a, 10);
@@ -248,10 +301,25 @@ export class LinzLinienAustriaCardEditor
       },
       { name: "name", selector: { text: {} } },
       // Order by salience: header first, then hero, then per-row
-      // decorations, then alerts banner, then animation toggles.
+      // decorations, then the direction filter, then alerts banner,
+      // then animation toggles.
       { name: "hide_header", selector: { boolean: {} } },
       { name: "show_hero", selector: { boolean: {} } },
       { name: "show_platform", selector: { boolean: {} } },
+      { name: "show_absolute_time", selector: { boolean: {} } },
+      {
+        // Values are dir_codes; labels are the live headsigns. Left
+        // empty the card shows both directions, so nothing here is
+        // required.
+        name: "directions",
+        selector: {
+          select: {
+            mode: "list",
+            multiple: true,
+            options: this._directionOptions(),
+          },
+        },
+      },
       { name: "show_alerts", selector: { boolean: {} } },
       { name: "pulse_live", selector: { boolean: {} } },
       { name: "enable_animations", selector: { boolean: {} } },

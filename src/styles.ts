@@ -229,6 +229,20 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
   }
+  /* Clock time on the hero baseline, after the unit. Same muted
+     treatment as the row variant so both readings of "when" look
+     like the same kind of information. */
+  .hero-clock {
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+  }
+  .hero-clock::before {
+    content: "·";
+    margin-right: 4px;
+  }
   .hero-entry {
     display: flex;
     flex-wrap: wrap;
@@ -402,6 +416,25 @@ export const cardStyles = css`
     min-width: 3.6em;
     justify-content: flex-end;
   }
+  /* The clock adds a second value to the tail, so the reserved slot has
+     to grow with it — otherwise the countdown column stops aligning
+     across rows the moment the option is switched on. Scoped with
+     :has() so cards without the option keep the narrow tail. */
+  .row-tail:has(.row-clock) {
+    min-width: 7.4em;
+  }
+  /* The tail centres its children, which is right for the platform chip
+     and the chevron but wrong for two runs of text set at different
+     sizes: centring equalises the boxes, leaving the smaller clock's
+     baseline about 2px above the countdown's, so the pair reads as
+     misaligned. Opt just those two into baseline alignment — the same
+     thing .hero-time does for the same pairing. Gated on :has() so a
+     card without the clock keeps the previous centred countdown
+     exactly as it was. */
+  .row-tail:has(.row-clock) .row-time,
+  .row-tail:has(.row-clock) .row-clock {
+    align-self: baseline;
+  }
   /* Drop the divider under the final row. .row is no longer a direct
      child of the list — it sits inside a .row-wrap, so a plain
      :last-child would match every row. Selecting the row-wrap that has
@@ -445,6 +478,42 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
     white-space: nowrap;
+  }
+  /* Wall-clock departure time trailing the countdown. Deliberately
+     lighter than .row-time: the countdown is the value the eye should
+     land on first, the clock is the confirmation beside it. It also
+     never takes the late/early/now colouring — those states describe
+     the countdown's relationship to the schedule, and tinting an
+     absolute time red would imply the clock itself is wrong. */
+  .row-clock {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+  }
+  /* Separator lives in CSS rather than in the template so it stays out
+     of the DOM text — the span is aria-hidden either way, and the prose
+     form of the time is emitted separately for assistive tech.
+     The negative left margin cancels the 8px .row-tail flex gap so the
+     dot sits symmetrically between the countdown and the clock, the
+     same 4px on each side the hero uses. */
+  .row-clock::before {
+    content: "·";
+    margin: 0 4px 0 -4px;
+  }
+  /* Screen-reader-only prose. The clipped-rect idiom rather than
+     display:none or visibility:hidden, both of which would take the
+     text out of the accessibility tree along with the pixels. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
   /* Trailing platform marker — small, muted, monospace digits so
      "Steig 7" / "Steig 12" line up visually across rows. */

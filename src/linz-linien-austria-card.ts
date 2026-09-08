@@ -299,6 +299,23 @@ export class LinzLinienAustriaCard extends LitElement {
     const lineFilter = new Set(
       (this.config.lines ?? []).map((l) => l.trim()).filter(Boolean),
     );
+    // Direction filter — keyed on the stable `dir_code`, never on the
+    // headsign. The upstream rewrites `direction` for branching termini
+    // (a short-turning line 2 reads "Simonystraße", not "Universität"),
+    // so filtering on it would drop trips that do serve the direction
+    // the user asked for. Empty set means "no filter, pass through".
+    // Normalised the same way as the line filter above, because YAML is
+    // hand-written: "h" and "H " should behave like "H". Anything that
+    // is not a known code is dropped, so a typo degrades to "no filter"
+    // rather than to "filter everything out". The Array.isArray guard
+    // keeps a scalar (`directions: true`) from throwing inside render()
+    // and blanking the whole card.
+    const rawDirections = this.config.directions;
+    const dirFilter = new Set(
+      (Array.isArray(rawDirections) ? rawDirections : [])
+        .map((c) => String(c).trim().toUpperCase())
+        .filter((c) => c === "H" || c === "R"),
+    );
     // Walk-time (Fußweg) filter — drop any departure whose effective
     // countdown is less than the configured walk time for that line.
     // Keyed by the bare line number; a missing or non-positive entry
@@ -306,6 +323,13 @@ export class LinzLinienAustriaCard extends LitElement {
     const walkTimes = this.config.walk_times ?? {};
     const filtered = allDepartures.filter((d) => {
       if (lineFilter.size > 0 && !lineFilter.has(d.line)) return false;
+      // A row without a `dir_code` passes regardless of the filter:
+      // the upstream omits the code on replacement services, and
+      // hiding a Schienenersatzverkehr is a worse failure than showing
+      // one surplus row of the opposite direction.
+      if (dirFilter.size > 0 && d.dir_code && !dirFilter.has(d.dir_code)) {
+        return false;
+      }
       const walk = walkTimes[d.line];
       if (typeof walk === "number" && walk > 0) {
         const cd = this._countdownFor(d);
@@ -440,7 +464,8 @@ export class LinzLinienAustriaCard extends LitElement {
             : html`<ul class="departures" role="list">
                 ${departures.length === 0
                   ? html`<li class="empty">
-                      ${lineFilter.size > 0 && allDepartures.length > 0
+                      ${(lineFilter.size > 0 || dirFilter.size > 0) &&
+                        allDepartures.length > 0
                         ? this._t("card.no_matches_for_filter")
                         : this._t("card.no_departures")}
                     </li>`
@@ -601,10 +626,21 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes")}`;
+    // Same rule as the list rows: no clock time on a cancelled trip.
+    // Suppressed for a grouped hero as well — the group exists because
+    // two or more departures share the same countdown, but they do not
+    // share a departure time, and a single clock would silently claim
+    // the lead's time for all of them.
+    const heroClock =
+      this.config.show_absolute_time && !lead.is_cancelled && group.length === 1
+        ? this._clockTimeFor(lead)
+        : null;
     const ariaSep = ` ${this._t("card.and_separator")} `;
     const ariaLabel = `${this._t("card.next_departure_label")}: ${ariaParts.join(
       ariaSep,
-    )}, ${minutesText}${lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
+    )}, ${minutesText}${
+      heroClock ? `, ${this._t("card.at_time", { time: heroClock })}` : ""
+    }${lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
 
     // Hero colour comes from the lead — user override beats MoT
     // default; both fall back to --linz-accent (the tram default).
@@ -639,6 +675,13 @@ export class LinzLinienAustriaCard extends LitElement {
           ${!lead.is_cancelled && minutes !== null && minutes > 0
             ? html`<span class="hero-unit"
                 >${this._t("card.minutes_short")}</span
+              >`
+            : nothing}
+          ${heroClock
+            ? // aria-hidden: the section's aria-label already carries the
+              // clock time, so this would otherwise be announced twice.
+              html`<span class="hero-clock" aria-hidden="true"
+                >${heroClock}</span
               >`
             : nothing}
         </div>
@@ -771,6 +814,13 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes_short")}`;
+    // Wall-clock time trailing the countdown. Withheld on cancelled
+    // rows — "Entfällt" is the whole story there, and a departure time
+    // beside it reads as if the trip is still running.
+    const clock =
+      this.config.show_absolute_time && !d.is_cancelled
+        ? this._clockTimeFor(d)
+        : null;
     // The operator's live reason for a delay. Suppressed on cancelled
     // rows: "Entfällt" already says everything, and a "please be
     // patient" caption under it reads as if the trip is merely late.
@@ -800,8 +850,10 @@ export class LinzLinienAustriaCard extends LitElement {
     const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
       d.direction
     } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
-      d.is_realtime ? ` ${this._t("card.realtime")}` : ""
-    }${hint ? `. ${hint}` : ""}`;
+      clock ? `, ${this._t("card.at_time", { time: clock })}` : ""
+    }${d.is_realtime ? ` ${this._t("card.realtime")}` : ""}${
+      hint ? `. ${hint}` : ""
+    }`;
     // With role=button the accessible name has to say what activating
     // the row does, not just describe the departure.
     const rowLabel = expandable
@@ -867,6 +919,24 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
+          ${clock
+            ? // The visible chip is always aria-hidden — bare "15:44"
+              // read out mid-row says nothing about what it refers to.
+              // The prose form reaches assistive tech one of two ways,
+              // never both: an expandable row carries role=button and
+              // its aria-label (which already includes the time) is
+              // therefore honoured; a plain row is role=generic, where
+              // aria-label is discarded, so it gets a visually-hidden
+              // sibling instead. Emitting both would announce the
+              // departure time twice on expandable rows.
+              html`<span class="row-clock" aria-hidden="true"
+                  >${clock}</span
+                >${expandable
+                  ? nothing
+                  : html`<span class="visually-hidden"
+                      >${this._t("card.at_time", { time: clock })}</span
+                    >`}`
+            : nothing}
           ${expandable
             ? // Decorative only: the whole row carries role=button, and a
               // real <button> nested inside it would be a second control
@@ -1123,6 +1193,17 @@ export class LinzLinienAustriaCard extends LitElement {
       ? short ? "card.platform_rail_short" : "card.platform_rail"
       : short ? "card.platform_short" : "card.platform";
     return this._t(key);
+  }
+
+  /** Wall-clock "HH:MM" for a departure: the realtime prediction where
+   *  the upstream published one, else the scheduled time, so the clock
+   *  agrees with the countdown rendered beside it.
+   *
+   *  Formatting (and the reason these timestamps are sliced rather than
+   *  parsed) lives in `_clockTime`. Null rather than the empty string
+   *  here so the call sites can gate on it directly. */
+  private _clockTimeFor(d: Departure): string | null {
+    return this._clockTime(d.realtime ?? d.scheduled) || null;
   }
 
   private _countdownFor(d: Departure): number | null {

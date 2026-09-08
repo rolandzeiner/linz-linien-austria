@@ -293,11 +293,32 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  upstream payload, this one trims what the card displays from
    *  whatever the sensor publishes. */
   lines?: string[];
+  /** Card-side filter: only render departures whose ``dir_code`` is in
+   *  this set. Keyed on the stable Hin/Rück code rather than on
+   *  ``direction`` — the headsign is rewritten for branching termini
+   *  (a line 2 run terminating short shows "Simonystraße" instead of
+   *  "Universität"), so a headsign filter silently drops trips that do
+   *  serve the user's direction. Empty / missing means "show every
+   *  direction".
+   *
+   *  Departures carrying no ``dir_code`` always pass. The upstream
+   *  omits the code on replacement-service rows, and a
+   *  Schienenersatzverkehr vanishing from the board is a worse failure
+   *  than one surplus row of the opposite direction — the replacement
+   *  is precisely what the user needs to see. */
+  directions?: Array<"H" | "R">;
   /** When true, surface the platform / bay number in the header
    *  subtitle and at the trailing edge of each departure row. Useful
    *  at multi-platform stops (Hauptbahnhof, Bulgariplatz). Defaults
    *  off so single-platform stops stay clutter-free. */
   show_platform?: boolean;
+  /** Append the wall-clock departure time after the countdown
+   *  ("4 Min · 15:44") and on the hero baseline after the
+   *  countdown. Defaults off:
+   *  the countdown alone is the faster read when you are already at
+   *  the stop, while the clock time is what you want when deciding
+   *  whether to leave the house. */
+  show_absolute_time?: boolean;
   /** When false, hide the collapsible service-disruption banner
    *  (XML_ADDINFO_REQUEST data) above the departure list. Defaults
    *  true — alerts are user-facing operational info and disabling
