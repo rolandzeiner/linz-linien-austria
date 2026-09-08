@@ -293,20 +293,30 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  upstream payload, this one trims what the card displays from
    *  whatever the sensor publishes. */
   lines?: string[];
-  /** Card-side filter: only render departures whose ``dir_code`` is in
-   *  this set. Keyed on the stable Hin/Rück code rather than on
-   *  ``direction`` — the headsign is rewritten for branching termini
-   *  (a line 2 run terminating short shows "Simonystraße" instead of
-   *  "Universität"), so a headsign filter silently drops trips that do
-   *  serve the user's direction. Empty / missing means "show every
-   *  direction".
+  /** Card-side direction filter, keyed by line number string ("2",
+   *  "45"). A line present here renders only departures whose
+   *  ``dir_code`` matches; a line absent from the map shows both
+   *  directions. Same shape as `walk_times` and `line_colors`.
+   *
+   *  Per line, not card-wide, because ``dir_code`` is defined per line
+   *  by the operator: "H" on line 2 and "H" on line 46 are unrelated
+   *  directions of travel. The integration already models this — its
+   *  `served_lines` roster is keyed on (line, dir_code) — so a single
+   *  card-wide code would flatten four different directions into one
+   *  control at a hub like Hauptbahnhof.
+   *
+   *  Keyed on the stable Hin/Rück code rather than on ``direction`` —
+   *  the headsign is rewritten for branching termini (a line 2 run
+   *  terminating short shows "Simonystraße" instead of "Universität"),
+   *  so a headsign filter silently drops trips that do serve the
+   *  user's direction.
    *
    *  Departures carrying no ``dir_code`` always pass. The upstream
    *  omits the code on replacement-service rows, and a
    *  Schienenersatzverkehr vanishing from the board is a worse failure
    *  than one surplus row of the opposite direction — the replacement
    *  is precisely what the user needs to see. */
-  directions?: Array<"H" | "R">;
+  line_directions?: Record<string, "H" | "R">;
   /** When true, surface the platform / bay number in the header
    *  subtitle and at the trailing edge of each departure row. Useful
    *  at multi-platform stops (Hauptbahnhof, Bulgariplatz). Defaults

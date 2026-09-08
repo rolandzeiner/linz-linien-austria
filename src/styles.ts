@@ -1259,6 +1259,10 @@ export const editorStyles = css`
      to a small × that doesn't dominate the row. */
   .per-line-row {
     display: grid;
+    /* badge | walk | direction | colour | clear. The direction group
+       takes the flexible column and pins itself left, which keeps the
+       colour swatch and its clear button in one predictable column down
+       the whole list however wide the editor pane gets. */
     grid-template-columns: 3.6em auto 1fr auto 24px;
     align-items: center;
     gap: 10px;
@@ -1323,29 +1327,85 @@ export const editorStyles = css`
     border-left: 1px solid var(--divider-color);
   }
 
-  /* Colour pill — tinted pill with icon + hex text. The actual
+  /* Direction trio — Hinfahrt / Rückfahrt / both. Deliberately built
+     from the same parts as .per-line-walk-group (28px tall, 1px
+     divider-coloured border, 4px radius) so the row reads as one
+     instrument rather than three widgets that happen to be adjacent.
+     A dir_code is per line, so this control has to be per line too. */
+  .per-line-dirs {
+    justify-self: start;
+    display: inline-flex;
+    align-items: stretch;
+    height: 28px;
+    border: 1px solid var(--divider-color);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--card-background-color, transparent);
+  }
+  .per-line-dir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    padding: 0 6px;
+    border: 0;
+    border-left: 1px solid var(--divider-color);
+    background: transparent;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: var(--ha-font-weight-bold, 700);
+    cursor: pointer;
+    transition:
+      background-color var(--ha-animation-duration-fast, 150ms) ease,
+      color var(--ha-animation-duration-fast, 150ms) ease;
+  }
+  .per-line-dir:first-child {
+    border-left: 0;
+  }
+  .per-line-dir ha-icon {
+    --mdc-icon-size: 16px;
+  }
+  .per-line-dir:hover {
+    background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+    color: var(--primary-text-color);
+  }
+  /* The selected state carries real weight: it is the one thing in the
+     row that changes what departures the card shows. */
+  .per-line-dir.is-active {
+    background: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+  }
+  .per-line-dir:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  /* Colour swatch — the control IS the colour. It previously spelled
+     its own hex out in monospace beside a palette icon, which cost
+     about seven characters of row width and told the user something the
+     swatch already shows; the exact value is one click away in the OS
+     picker. The actual
      <input type="color"> sits invisibly on top so the OS picker opens
      on click anywhere on the chip. */
   .per-line-color-chip {
     --swatch-color: var(--linz-accent, #f08000);
     position: relative;
     display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--swatch-color) 22%, transparent);
-    color: var(--primary-text-color);
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, transform var(--ha-animation-duration-fast, 150ms) ease;
-    min-width: 0;
+    width: 28px;
     height: 28px;
+    border-radius: 999px;
+    background: var(--swatch-color);
+    /* Hairline ring rather than a border: a pale override on a light
+       card would otherwise vanish into the background entirely. */
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--primary-text-color) 24%, transparent);
+    cursor: pointer;
+    transition: transform var(--ha-animation-duration-fast, 150ms) ease;
     box-sizing: border-box;
   }
   .per-line-color-chip:hover {
-    background: color-mix(in srgb, var(--swatch-color) 30%, transparent);
+    transform: scale(1.08);
   }
   .per-line-color-chip:active {
     transform: translateY(1px);
@@ -1353,16 +1413,6 @@ export const editorStyles = css`
   .per-line-color-chip:focus-within {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
-  }
-  .per-line-color-chip ha-icon {
-    --mdc-icon-size: 16px;
-    color: var(--swatch-color);
-    flex-shrink: 0;
-  }
-  .per-line-color-hex {
-    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
   }
   /* The actual <input type="color"> covers the chip at opacity 0 so
      clicking anywhere on the chip opens the OS picker. */

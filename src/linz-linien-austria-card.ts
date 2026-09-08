@@ -299,23 +299,31 @@ export class LinzLinienAustriaCard extends LitElement {
     const lineFilter = new Set(
       (this.config.lines ?? []).map((l) => l.trim()).filter(Boolean),
     );
-    // Direction filter — keyed on the stable `dir_code`, never on the
-    // headsign. The upstream rewrites `direction` for branching termini
-    // (a short-turning line 2 reads "Simonystraße", not "Universität"),
-    // so filtering on it would drop trips that do serve the direction
-    // the user asked for. Empty set means "no filter, pass through".
-    // Normalised the same way as the line filter above, because YAML is
-    // hand-written: "h" and "H " should behave like "H". Anything that
-    // is not a known code is dropped, so a typo degrades to "no filter"
-    // rather than to "filter everything out". The Array.isArray guard
-    // keeps a scalar (`directions: true`) from throwing inside render()
-    // and blanking the whole card.
-    const rawDirections = this.config.directions;
-    const dirFilter = new Set(
-      (Array.isArray(rawDirections) ? rawDirections : [])
-        .map((c) => String(c).trim().toUpperCase())
-        .filter((c) => c === "H" || c === "R"),
-    );
+    // Direction filter, per line — keyed on the stable `dir_code`, never
+    // on the headsign. The upstream rewrites `direction` for branching
+    // termini (a short-turning line 2 reads "Simonystraße", not
+    // "Universität"), so filtering on it would drop trips that do serve
+    // the direction the user asked for.
+    //
+    // Per line rather than card-wide because `dir_code` is scoped to a
+    // line's own route: "H" on line 2 and "H" on line 46 point in
+    // unrelated directions, so one card-wide code cannot express "only
+    // the way I travel" at a multi-line stop.
+    //
+    // Normalised because YAML is hand-written: "h" and "H " behave like
+    // "H". Anything that is not a known code is dropped, so a typo
+    // degrades to "no filter for that line" rather than to "filter
+    // everything out". The typeof guard keeps a non-string value
+    // (`line_directions: {"2": true}`) from throwing inside render() and
+    // blanking the whole card.
+    const rawLineDirections = this.config.line_directions;
+    const dirFilter = new Map<string, "H" | "R">();
+    if (rawLineDirections && typeof rawLineDirections === "object") {
+      for (const [line, code] of Object.entries(rawLineDirections)) {
+        const norm = typeof code === "string" ? code.trim().toUpperCase() : "";
+        if (norm === "H" || norm === "R") dirFilter.set(line.trim(), norm);
+      }
+    }
     // Walk-time (Fußweg) filter — drop any departure whose effective
     // countdown is less than the configured walk time for that line.
     // Keyed by the bare line number; a missing or non-positive entry
@@ -326,10 +334,10 @@ export class LinzLinienAustriaCard extends LitElement {
       // A row without a `dir_code` passes regardless of the filter:
       // the upstream omits the code on replacement services, and
       // hiding a Schienenersatzverkehr is a worse failure than showing
-      // one surplus row of the opposite direction.
-      if (dirFilter.size > 0 && d.dir_code && !dirFilter.has(d.dir_code)) {
-        return false;
-      }
+      // one surplus row of the opposite direction. A line with no entry
+      // in the map shows both directions.
+      const wantDir = dirFilter.get(d.line);
+      if (wantDir && d.dir_code && d.dir_code !== wantDir) return false;
       const walk = walkTimes[d.line];
       if (typeof walk === "number" && walk > 0) {
         const cd = this._countdownFor(d);
