@@ -266,7 +266,7 @@ them.
 | `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
-| `show_absolute_time` | `false` | Append the wall-clock departure time after the countdown (`4 Min · 15:44`) and on the hero baseline after the countdown. Suppressed on a hero that groups several departures sharing one countdown, since they do not share a departure time. Uses the realtime prediction where one exists, the scheduled time otherwise. |
+| `show_absolute_time` | `false` | Append the wall-clock departure time after the countdown (`4 Min · 15:44`) and on the hero baseline after the countdown. Suppressed on a hero that groups several departures sharing one countdown, since they do not share a departure time. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise, so the two never disagree. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |

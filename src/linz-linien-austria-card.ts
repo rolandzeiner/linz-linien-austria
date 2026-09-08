@@ -1195,15 +1195,26 @@ export class LinzLinienAustriaCard extends LitElement {
     return this._t(key);
   }
 
-  /** Wall-clock "HH:MM" for a departure: the realtime prediction where
-   *  the upstream published one, else the scheduled time, so the clock
-   *  agrees with the countdown rendered beside it.
+  /** Wall-clock "HH:MM" for a departure, read off whichever timestamp
+   *  the countdown beside it was derived from.
+   *
+   *  `realtime` and `countdown_rt` are populated independently upstream:
+   *  the timestamp only needs `realDateTime`, while the countdown also
+   *  needs a usable `delay` (`-9999` is the unknown-sentinel and gets
+   *  dropped). So a row can carry `realDateTime` with no usable delay,
+   *  leaving `_countdownFor` on the scheduled value — and reading the
+   *  clock off `realtime` there would render "4 Min · 15:47" against a
+   *  15:44 schedule, the two halves of one readout disagreeing by
+   *  exactly the delay. Gating on `countdown_rt` keeps both describing
+   *  the same estimate.
    *
    *  Formatting (and the reason these timestamps are sliced rather than
    *  parsed) lives in `_clockTime`. Null rather than the empty string
    *  here so the call sites can gate on it directly. */
   private _clockTimeFor(d: Departure): string | null {
-    return this._clockTime(d.realtime ?? d.scheduled) || null;
+    const useRealtime =
+      typeof d.countdown_rt === "number" && d.realtime !== undefined;
+    return this._clockTime(useRealtime ? d.realtime : d.scheduled) || null;
   }
 
   private _countdownFor(d: Departure): number | null {
