@@ -211,7 +211,23 @@ export const cardStyles = css`
     display: grid;
     grid-template-columns: auto 1fr;
     column-gap: var(--ha-space-3, 12px);
-    row-gap: 6px;
+    /* Named so the item margins below reuse the one value. */
+    --linz-hero-row-gap: 6px;
+    /* Spacing lives on the items, NOT on the track gap. An entry that
+       carries onward stops always emits its .hero-detail panel;
+       collapsed, that panel is a zero-height grid row, so a row-gap
+       applied above AND below it and left the two entries it separates
+       a full two gaps apart — while an entry with no stops_ahead emits
+       no panel at all and got one. The same hero then measured
+       differently depending on whether the integration's
+       show_stop_sequence is on.
+
+       A negative margin on the panel does not fix this: a margin
+       changes an item's contribution to its own track, never the fixed
+       space the grid inserts between tracks. Only removing the gap
+       does. Same reason .departures spaces its rows with padding and
+       borders rather than a gap. */
+    row-gap: 0;
     align-items: center;
     padding: var(--ha-space-3, 12px) var(--linz-pad-x);
     margin: var(--ha-space-3, 12px) var(--linz-pad-x) 0;
@@ -227,11 +243,31 @@ export const cardStyles = css`
   .hero > .hero-time {
     grid-column: 1;
     grid-row: 1;
+    /* The metric is taller than an entry, so pinned to row 1 it sized
+       that row: the first entry sat centred in the leftover slack and
+       read about 10px further from the second entry than every later
+       pair read from each other. Cancel its contribution to row sizing
+       with symmetric negative margins and the row falls back to entry
+       height. The glyphs overflow up into .hero's own padding and down
+       into column 1, which is empty on every row below; only ha-card
+       sets overflow: hidden and this stays well inside it.
+
+       Negative margins rather than height: 0 — .hero-time is a
+       baseline flex line, so collapsing it would make the content hang
+       below the box instead of staying centred on it. */
+    align-self: center;
+    margin-block: calc(var(--linz-metric-size) / -2);
   }
   .hero > .hero-entry,
   .hero > .hero-detail {
     grid-column: 2;
     min-width: 0;
+  }
+  /* Every entry but the first carries the gap above it. A collapsed
+     panel between two entries now costs nothing, so the spacing reads
+     identically whether or not the stop has onward-stop data. */
+  .hero > .hero-entry ~ .hero-entry {
+    margin-top: var(--linz-hero-row-gap);
   }
   .hero-time {
     display: flex;
@@ -299,7 +335,15 @@ export const cardStyles = css`
   .hero-detail {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 0.24s ease;
+    /* Closed, this panel is a zero-height row that must cost nothing —
+       .hero carries no row-gap (see there), so it doesn't. Open, it
+       buys its own gap below the entry it belongs to; the entry after
+       it already carries one. margin-top transitions alongside the
+       rows so the gap grows with the panel instead of snapping open at
+       frame one. */
+    transition:
+      grid-template-rows 0.24s ease,
+      margin-top 0.24s ease;
   }
   .hero-detail-inner {
     overflow: hidden;
@@ -307,6 +351,7 @@ export const cardStyles = css`
   }
   .hero-detail.expanded {
     grid-template-rows: 1fr;
+    margin-top: var(--linz-hero-row-gap);
   }
   /* Delay reason under the hero's badge + destination. flex-basis:100%
      forces a wrap onto its own line inside the flex row, so a long
@@ -1031,10 +1076,12 @@ export const cardStyles = css`
 
   /* Container queries — narrow column layouts. */
   @container linzcard (inline-size < 360px) {
-    .hero-min {
-      font-size: 2.25rem;
-    }
     .hero {
+      /* Scale the metric through the token rather than overriding
+         .hero-min's font-size: .hero-time's negative margin is derived
+         from it, so changing only the rendered size would leave the
+         two out of step and the cancellation incomplete. */
+      --linz-metric-size: 2.25rem;
       grid-template-columns: auto 1fr;
       padding: var(--ha-space-2, 8px) var(--ha-space-3, 12px);
     }
