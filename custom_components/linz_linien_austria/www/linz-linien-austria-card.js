@@ -1,20 +1,91 @@
-// Linz Linien Austria Card — bundled by Rollup. Edit sources in src/, then `npm run build`.
-const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,i=Symbol(),n=new WeakMap;let r=class{constructor(e,t,n){if(this._$cssResult$=!0,n!==i)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const i=this.t;if(t&&void 0===e){const t=void 0!==i&&1===i.length;t&&(e=n.get(i)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),t&&n.set(i,e))}return e}toString(){return this.cssText}};const o=(e,...t)=>{const n=1===e.length?e[0]:t.reduce((t,i,n)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[n+1],e[0]);return new r(n,e,i)},a=t?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return(e=>new r("string"==typeof e?e:e+"",void 0,i))(t)})(e):e,{is:s,defineProperty:l,getOwnPropertyDescriptor:c,getOwnPropertyNames:h,getOwnPropertySymbols:d,getPrototypeOf:p}=Object,u=globalThis,m=u.trustedTypes,f=m?m.emptyScript:"",g=u.reactiveElementPolyfillSupport,_=(e,t)=>e,w={toAttribute(e,t){switch(t){case Boolean:e=e?f:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},v=(e,t)=>!s(e,t),b={attribute:!0,type:String,converter:w,reflect:!1,useDefault:!1,hasChanged:v};Symbol.metadata??=Symbol("metadata"),u.litPropertyMetadata??=new WeakMap;let y=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=b){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),n=this.getPropertyDescriptor(e,i,t);void 0!==n&&l(this.prototype,e,n)}}static getPropertyDescriptor(e,t,i){const{get:n,set:r}=c(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:n,set(t){const o=n?.call(this);r?.call(this,t),this.requestUpdate(e,o,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??b}static _$Ei(){if(this.hasOwnProperty(_("elementProperties")))return;const e=p(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(_("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(_("properties"))){const e=this.properties,t=[...h(e),...d(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(a(e))}else void 0!==e&&t.push(a(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const i=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((i,n)=>{if(t)i.adoptedStyleSheets=n.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const t of n){const n=document.createElement("style"),r=e.litNonce;void 0!==r&&n.setAttribute("nonce",r),n.textContent=t.cssText,i.appendChild(n)}})(i,this.constructor.elementStyles),i}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),n=this.constructor._$Eu(e,i);if(void 0!==n&&!0===i.reflect){const r=(void 0!==i.converter?.toAttribute?i.converter:w).toAttribute(t,i.type);this._$Em=e,null==r?this.removeAttribute(n):this.setAttribute(n,r),this._$Em=null}}_$AK(e,t){const i=this.constructor,n=i._$Eh.get(e);if(void 0!==n&&this._$Em!==n){const e=i.getPropertyOptions(n),r="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:w;this._$Em=n;const o=r.fromAttribute(t,e.type);this[n]=o??this._$Ej?.get(n)??o,this._$Em=null}}requestUpdate(e,t,i,n=!1,r){if(void 0!==e){const o=this.constructor;if(!1===n&&(r=this[e]),i??=o.getPropertyOptions(e),!((i.hasChanged??v)(r,t)||i.useDefault&&i.reflect&&r===this._$Ej?.get(e)&&!this.hasAttribute(o._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:n,wrapped:r},o){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,o??t??this[e]),!0!==r||void 0!==o)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===n&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,n=this[t];!0!==e||this._$AL.has(t)||void 0===n||this.C(t,void 0,i,n)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};y.elementStyles=[],y.shadowRootOptions={mode:"open"},y[_("elementProperties")]=new Map,y[_("finalized")]=new Map,g?.({ReactiveElement:y}),(u.reactiveElementVersions??=[]).push("2.1.2");const x=globalThis,$=e=>e,k=x.trustedTypes,A=k?k.createPolicy("lit-html",{createHTML:e=>e}):void 0,z="$lit$",S=`lit$${Math.random().toFixed(9).slice(2)}$`,C="?"+S,E=`<${C}>`,L=document,T=()=>L.createComment(""),M=e=>null===e||"object"!=typeof e&&"function"!=typeof e,H=Array.isArray,P="[ \t\n\f\r]",N=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,R=/-->/g,O=/>/g,I=RegExp(`>|${P}(?:([^\\s"'>=/]+)(${P}*=${P}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),U=/'/g,j=/"/g,F=/^(?:script|style|textarea|title)$/i,B=(e=>(t,...i)=>({_$litType$:e,strings:t,values:i}))(1),D=Symbol.for("lit-noChange"),W=Symbol.for("lit-nothing"),K=new WeakMap,V=L.createTreeWalker(L,129);function G(e,t){if(!H(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==A?A.createHTML(t):t}class q{constructor({strings:e,_$litType$:t},i){let n;this.parts=[];let r=0,o=0;const a=e.length-1,s=this.parts,[l,c]=((e,t)=>{const i=e.length-1,n=[];let r,o=2===t?"<svg>":3===t?"<math>":"",a=N;for(let t=0;t<i;t++){const i=e[t];let s,l,c=-1,h=0;for(;h<i.length&&(a.lastIndex=h,l=a.exec(i),null!==l);)h=a.lastIndex,a===N?"!--"===l[1]?a=R:void 0!==l[1]?a=O:void 0!==l[2]?(F.test(l[2])&&(r=RegExp("</"+l[2],"g")),a=I):void 0!==l[3]&&(a=I):a===I?">"===l[0]?(a=r??N,c=-1):void 0===l[1]?c=-2:(c=a.lastIndex-l[2].length,s=l[1],a=void 0===l[3]?I:'"'===l[3]?j:U):a===j||a===U?a=I:a===R||a===O?a=N:(a=I,r=void 0);const d=a===I&&e[t+1].startsWith("/>")?" ":"";o+=a===N?i+E:c>=0?(n.push(s),i.slice(0,c)+z+i.slice(c)+S+d):i+S+(-2===c?t:d)}return[G(e,o+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),n]})(e,t);if(this.el=q.createElement(l,i),V.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(n=V.nextNode())&&s.length<a;){if(1===n.nodeType){if(n.hasAttributes())for(const e of n.getAttributeNames())if(e.endsWith(z)){const t=c[o++],i=n.getAttribute(e).split(S),a=/([.?@])?(.*)/.exec(t);s.push({type:1,index:r,name:a[2],strings:i,ctor:"."===a[1]?Q:"?"===a[1]?ee:"@"===a[1]?te:X}),n.removeAttribute(e)}else e.startsWith(S)&&(s.push({type:6,index:r}),n.removeAttribute(e));if(F.test(n.tagName)){const e=n.textContent.split(S),t=e.length-1;if(t>0){n.textContent=k?k.emptyScript:"";for(let i=0;i<t;i++)n.append(e[i],T()),V.nextNode(),s.push({type:2,index:++r});n.append(e[t],T())}}}else if(8===n.nodeType)if(n.data===C)s.push({type:2,index:r});else{let e=-1;for(;-1!==(e=n.data.indexOf(S,e+1));)s.push({type:7,index:r}),e+=S.length-1}r++}}static createElement(e,t){const i=L.createElement("template");return i.innerHTML=e,i}}function Z(e,t,i=e,n){if(t===D)return t;let r=void 0!==n?i._$Co?.[n]:i._$Cl;const o=M(t)?void 0:t._$litDirective$;return r?.constructor!==o&&(r?._$AO?.(!1),void 0===o?r=void 0:(r=new o(e),r._$AT(e,i,n)),void 0!==n?(i._$Co??=[])[n]=r:i._$Cl=r),void 0!==r&&(t=Z(e,r._$AS(e,t.values),r,n)),t}class Y{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,n=(e?.creationScope??L).importNode(t,!0);V.currentNode=n;let r=V.nextNode(),o=0,a=0,s=i[0];for(;void 0!==s;){if(o===s.index){let t;2===s.type?t=new J(r,r.nextSibling,this,e):1===s.type?t=new s.ctor(r,s.name,s.strings,this,e):6===s.type&&(t=new ie(r,this,e)),this._$AV.push(t),s=i[++a]}o!==s?.index&&(r=V.nextNode(),o++)}return V.currentNode=L,n}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class J{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,n){this.type=2,this._$AH=W,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=n,this._$Cv=n?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=Z(this,e,t),M(e)?e===W||null==e||""===e?(this._$AH!==W&&this._$AR(),this._$AH=W):e!==this._$AH&&e!==D&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>H(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==W&&M(this._$AH)?this._$AA.nextSibling.data=e:this.T(L.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,n="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=q.createElement(G(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===n)this._$AH.p(t);else{const e=new Y(n,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=K.get(e.strings);return void 0===t&&K.set(e.strings,t=new q(e)),t}k(e){H(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,n=0;for(const r of e)n===t.length?t.push(i=new J(this.O(T()),this.O(T()),this,this.options)):i=t[n],i._$AI(r),n++;n<t.length&&(this._$AR(i&&i._$AB.nextSibling,n),t.length=n)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=$(e).nextSibling;$(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class X{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,n,r){this.type=1,this._$AH=W,this._$AN=void 0,this.element=e,this.name=t,this._$AM=n,this.options=r,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=W}_$AI(e,t=this,i,n){const r=this.strings;let o=!1;if(void 0===r)e=Z(this,e,t,0),o=!M(e)||e!==this._$AH&&e!==D,o&&(this._$AH=e);else{const n=e;let a,s;for(e=r[0],a=0;a<r.length-1;a++)s=Z(this,n[i+a],t,a),s===D&&(s=this._$AH[a]),o||=!M(s)||s!==this._$AH[a],s===W?e=W:e!==W&&(e+=(s??"")+r[a+1]),this._$AH[a]=s}o&&!n&&this.j(e)}j(e){e===W?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class Q extends X{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===W?void 0:e}}class ee extends X{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==W)}}class te extends X{constructor(e,t,i,n,r){super(e,t,i,n,r),this.type=5}_$AI(e,t=this){if((e=Z(this,e,t,0)??W)===D)return;const i=this._$AH,n=e===W&&i!==W||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,r=e!==W&&(i===W||n);n&&this.element.removeEventListener(this.name,this,i),r&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class ie{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){Z(this,e)}}const ne={I:J},re=x.litHtmlPolyfillSupport;re?.(q,J),(x.litHtmlVersions??=[]).push("3.3.3");const oe=globalThis;let ae=class extends y{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const n=i?.renderBefore??t;let r=n._$litPart$;if(void 0===r){const e=i?.renderBefore??null;n._$litPart$=r=new J(t.insertBefore(T(),e),e,void 0,i??{})}return r._$AI(e),r})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return D}};ae._$litElement$=!0,ae.finalized=!0,oe.litElementHydrateSupport?.({LitElement:ae});const se=oe.litElementPolyfillSupport;se?.({LitElement:ae}),(oe.litElementVersions??=[]).push("4.2.2");const le=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}):customElements.define(e,t)},ce={attribute:!0,type:String,converter:w,reflect:!1,hasChanged:v},he=(e=ce,t,i)=>{const{kind:n,metadata:r}=i;let o=globalThis.litPropertyMetadata.get(r);if(void 0===o&&globalThis.litPropertyMetadata.set(r,o=new Map),"setter"===n&&((e=Object.create(e)).wrapped=!0),o.set(i.name,e),"accessor"===n){const{name:n}=i;return{set(i){const r=t.get.call(this);t.set.call(this,i),this.requestUpdate(n,r,e,!0,i)},init(t){return void 0!==t&&this.C(n,void 0,e,t),t}}}if("setter"===n){const{name:n}=i;return function(i){const r=this[n];t.call(this,i),this.requestUpdate(n,r,e,!0,i)}}throw Error("Unsupported decorator location: "+n)};function de(e){return(t,i)=>"object"==typeof i?he(e,t,i):((e,t,i)=>{const n=t.hasOwnProperty(i);return t.constructor.createProperty(i,e),n?Object.getOwnPropertyDescriptor(t,i):void 0})(e,t,i)}function pe(e){return de({...e,state:!0,attribute:!1})}const ue=1,me=2,fe=e=>(...t)=>({_$litDirective$:e,values:t});let ge=class{constructor(e){}get _$AU(){return this._$AM._$AU}_$AT(e,t,i){this._$Ct=e,this._$AM=t,this._$Ci=i}_$AS(e,t){return this.update(e,t)}update(e,t){return this.render(...t)}};const _e=fe(class extends ge{constructor(e){if(super(e),e.type!==ue||"class"!==e.name||e.strings?.length>2)throw Error("`classMap()` can only be used in the `class` attribute and must be the only part in the attribute.")}render(e){return" "+Object.keys(e).filter(t=>e[t]).join(" ")+" "}update(e,[t]){if(void 0===this.st){this.st=new Set,void 0!==e.strings&&(this.nt=new Set(e.strings.join(" ").split(/\s/).filter(e=>""!==e)));for(const e in t)t[e]&&!this.nt?.has(e)&&this.st.add(e);return this.render(t)}const i=e.element.classList;for(const e of this.st)e in t||(i.remove(e),this.st.delete(e));for(const e in t){const n=!!t[e];n===this.st.has(e)||this.nt?.has(e)||(n?(i.add(e),this.st.add(e)):(i.remove(e),this.st.delete(e)))}return D}}),{I:we}=ne,ve=e=>e,be=()=>document.createComment(""),ye=(e,t,i)=>{const n=e._$AA.parentNode,r=void 0===t?e._$AB:t._$AA;if(void 0===i){const t=n.insertBefore(be(),r),o=n.insertBefore(be(),r);i=new we(t,o,e,e.options)}else{const t=i._$AB.nextSibling,o=i._$AM,a=o!==e;if(a){let t;i._$AQ?.(e),i._$AM=e,void 0!==i._$AP&&(t=e._$AU)!==o._$AU&&i._$AP(t)}if(t!==r||a){let e=i._$AA;for(;e!==t;){const t=ve(e).nextSibling;ve(n).insertBefore(e,r),e=t}}}return i},xe=(e,t,i=e)=>(e._$AI(t,i),e),$e={},ke=(e,t=$e)=>e._$AH=t,Ae=e=>{e._$AR(),e._$AA.remove()},ze=(e,t,i)=>{const n=new Map;for(let r=t;r<=i;r++)n.set(e[r],r);return n},Se=fe(class extends ge{constructor(e){if(super(e),e.type!==me)throw Error("repeat() can only be used in text expressions")}dt(e,t,i){let n;void 0===i?i=t:void 0!==t&&(n=t);const r=[],o=[];let a=0;for(const t of e)r[a]=n?n(t,a):a,o[a]=i(t,a),a++;return{values:o,keys:r}}render(e,t,i){return this.dt(e,t,i).values}update(e,[t,i,n]){const r=(e=>e._$AH)(e),{values:o,keys:a}=this.dt(t,i,n);if(!Array.isArray(r))return this.ut=a,o;const s=this.ut??=[],l=[];let c,h,d=0,p=r.length-1,u=0,m=o.length-1;for(;d<=p&&u<=m;)if(null===r[d])d++;else if(null===r[p])p--;else if(s[d]===a[u])l[u]=xe(r[d],o[u]),d++,u++;else if(s[p]===a[m])l[m]=xe(r[p],o[m]),p--,m--;else if(s[d]===a[m])l[m]=xe(r[d],o[m]),ye(e,l[m+1],r[d]),d++,m--;else if(s[p]===a[u])l[u]=xe(r[p],o[u]),ye(e,r[d],r[p]),p--,u++;else if(void 0===c&&(c=ze(a,u,m),h=ze(s,d,p)),c.has(s[d]))if(c.has(s[p])){const t=h.get(a[u]),i=void 0!==t?r[t]:null;if(null===i){const t=ye(e,r[d]);xe(t,o[u]),l[u]=t}else l[u]=xe(i,o[u]),ye(e,r[d],i),r[t]=null;u++}else Ae(r[p]),p--;else Ae(r[d]),d++;for(;u<=m;){const t=ye(e,l[m+1]);xe(t,o[u]),l[u++]=t}for(;d<=p;){const e=r[d++];null!==e&&Ae(e)}return this.ut=a,ke(e,l),D}}),Ce="important",Ee=" !"+Ce,Le=fe(class extends ge{constructor(e){if(super(e),e.type!==ue||"style"!==e.name||e.strings?.length>2)throw Error("The `styleMap` directive must be used in the `style` attribute and must be the only part in the attribute.")}render(e){return Object.keys(e).reduce((t,i)=>{const n=e[i];return null==n?t:t+`${i=i.includes("-")?i:i.replace(/(?:^(webkit|moz|ms|o)|)(?=[A-Z])/g,"-$&").toLowerCase()}:${n};`},"")}update(e,[t]){const{style:i}=e.element;if(void 0===this.ft)return this.ft=new Set(Object.keys(t)),this.render(t);for(const e of this.ft)null==t[e]&&(this.ft.delete(e),e.includes("-")?i.removeProperty(e):i[e]=null);for(const e in t){const n=t[e];if(null!=n){this.ft.add(e);const t="string"==typeof n&&n.endsWith(Ee);e.includes("-")||t?i.setProperty(e,t?n.slice(0,-11):n,t?Ce:""):i[e]=n}}return D}});var Te={no_entity_picked:"Keine Entität ausgewählt. Visuellen Editor öffnen und einen Linz Linien Sensor wählen.",entity_unavailable:"Die ausgewählte Entität ist derzeit nicht verfügbar.",version_update:"Eine neuere Kartenversion ({v}) ist verfügbar. Bitte neu laden.",version_reload:"Jetzt neu laden",version_reload_stuck:"Neu laden hat die neue Version nicht übernommen. Schließen Sie diesen Browser-Tab und öffnen Sie das Dashboard erneut, oder löschen Sie die Website-Daten für Home Assistant in den Browser-Einstellungen."},Me={no_departures:"Keine kommenden Abfahrten.",no_matches_for_filter:"Keine kommenden Abfahrten passen zum Linienfilter.",platform:"Steig",platform_short:"Steig",platform_rail:"Gleis",platform_rail_short:"Gleis",open_in_maps:"In Google Maps öffnen",next_departure_label:"Nächste Abfahrt",and_separator:"und",minutes:"Minuten",minutes_short:"Min",now:"Jetzt",unknown:"—",realtime:"Live",cancelled:"Entfällt",alerts_summary:"{count} Verkehrshinweis(e)",affected_lines:"Betroffene Linien",attribution:"Datenquelle: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0",show_stops:"Folgehaltestellen der Linie {line} Richtung {direction} anzeigen",hide_stops:"Folgehaltestellen der Linie {line} Richtung {direction} ausblenden"},He={entity:"Sensor",entity_helper:"Einen sensor.*_next_departure Sensor dieser Integration wählen.",entity_missing:"Sensor {entity} existiert nicht mehr. Wählen Sie oben einen anderen Sensor.",name:"Titel",name_helper:"Optionaler Überschreib-Titel für die Karte.",hide_header:"Kopfzeile ausblenden",hide_header_helper:"Blendet das Symbol, den Haltestellennamen, die Untertitelzeile und den Karten-Link aus. Hero und Abfahrtsliste bleiben sichtbar.",show_hero:"Hauptbereich anzeigen",show_hero_helper:"Großer Countdown zur nächsten Abfahrt.",max_departures:"Max. Abfahrten",max_departures_helper:"Begrenzt die Liste. Karten-Filter (Linien + Fußweg) entfernen Zeilen VOR diesem Limit — 10 hier bedeutet also nicht zwingend 10 sichtbare Zeilen. Falls weniger als erwartet erscheinen, in der Integration die ‚Anzahl der Abfahrten' erhöhen (Einstellungen → Geräte & Dienste → Linz Linien Austria → Konfigurieren) — das ist der Pool, aus dem die Karte filtert. 0 zeigt nur den Nächste-Abfahrt-Block ohne Zeilen.",lines:"Linien filtern",lines_helper:"Leer (keine Chips ausgewählt) = alle Linien anzeigen. Chips antippen, um Linien ein- oder auszuschließen. Bei engem Filter an stark frequentierten Haltestellen (Hauptbahnhof) ggf. in der Integration die ‚Anzahl der Abfahrten' erhöhen, damit die Karte genügend Zeilen zum Filtern hat.",lines_custom_placeholder:"Linie hinzufügen, die oben nicht angezeigt wird (Enter)",show_platform:"Steig anzeigen",show_platform_helper:"Steig in der Untertitelzeile (nächste Abfahrt) und am Ende jeder Zeile einblenden.",show_alerts:"Verkehrsinfo anzeigen",show_alerts_helper:"Aufklappbares Verkehrsinfo-Banner über der Abfahrtsliste anzeigen, wenn LINZ AG aktuelle Hinweise veröffentlicht.",pulse_live:"Live-Indikator pulsiert",pulse_live_helper:'Der grüne Punkt vor Echtzeit-Minutenangaben pulsiert dezent. Standard: an. Bei aktivierter Systemeinstellung "Bewegung reduzieren" erscheint der Punkt unabhängig von diesem Schalter statisch.',enable_animations:"CSS-Animationen",enable_animations_helper:'Sanftes Einblenden beim Laden der Karte plus weichere Farbübergänge (Linienbadge bei wechselndem Verkehrsmittel, Hero-Akzent, Hover-Tönung, Verkehrsinfo-Banner). Standard: aus, ruhiger statischer Look. Die Systemeinstellung "Bewegung reduzieren" hat weiterhin Vorrang.',section_per_line:"Fußweg & Farbe pro Linie",per_line_hint:"Fußweg: Abfahrten, deren Countdown unter dieser Minutenzahl liegt, werden ausgeblendet — sie sind ohnehin nicht erreichbar. Farbe: überschreibt die Linienbadge-Tönung. Bei längerem Fußweg gegebenenfalls in der Integration die ‚Anzahl der Abfahrten' erhöhen.",per_line_no_data:"Oben einen Sensor wählen, dann erscheinen hier die Linien.",walk_time:"Fußweg",walk_time_placeholder:"Min",minutes_short:"Min",line_color:"Linienfarbe",line_color_clear:"Standardfarbe wiederherstellen"},Pe={common:Te,card:Me,editor:He},Ne={no_entity_picked:"No entity selected. Open the visual editor and pick a Linz Linien sensor.",entity_unavailable:"The selected entity is not available right now.",version_update:"A newer card version ({v}) is available. Reload to refresh.",version_reload:"Reload now",version_reload_stuck:"Reload didn't pick up the new version. Close this browser tab and reopen the dashboard, or clear your browser's site data for Home Assistant."},Re={no_departures:"No upcoming departures.",no_matches_for_filter:"No upcoming departures match the line filter.",platform:"Platform",platform_short:"Pl.",platform_rail:"Track",platform_rail_short:"Tr.",open_in_maps:"Open in Google Maps",next_departure_label:"Next departure",and_separator:"and",minutes:"minutes",minutes_short:"min",now:"Now",unknown:"—",realtime:"Live",cancelled:"Cancelled",alerts_summary:"{count} service notice(s)",affected_lines:"Affected lines",attribution:"Source: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0",show_stops:"Show remaining stops for line {line} to {direction}",hide_stops:"Hide remaining stops for line {line} to {direction}"},Oe={entity:"Sensor",entity_helper:"Pick a sensor.*_next_departure produced by this integration.",entity_missing:"Sensor {entity} no longer exists. Pick a different sensor in the entity selector above.",name:"Title",name_helper:"Optional override for the card heading.",hide_header:"Hide header",hide_header_helper:"Hides the icon tile, stop name, subtitle and maps link. Hero and departure list remain visible.",show_hero:"Show hero block",show_hero_helper:"Big countdown for the next departure.",max_departures:"Max departures",max_departures_helper:"Cap the rendered list. Card-side filters (lines + Fußweg) trim rows BEFORE this cap, so setting it to 10 doesn't guarantee 10 rows. If you see fewer than expected, raise the integration's 'Departures to fetch' under Settings → Devices & Services → Linz Linien Austria → Configure — that's the pool the card filters from. Set 0 to render only the next-departure block above without any rows.",lines:"Filter by lines",lines_helper:"Empty (no chips selected) = show every line. Tap chips to toggle which lines to keep. Tight filters at busy stops (Hauptbahnhof) may need the integration's 'Departures to fetch' raised so the card has enough pre-filter rows to find matches.",lines_custom_placeholder:"Add a line not shown above (press Enter)",show_platform:"Show platform",show_platform_helper:"Show the platform / bay (Steig) on the next-departure subtitle and at the trailing edge of each row.",show_alerts:"Show traffic info",show_alerts_helper:"Show the collapsible traffic-info banner above the departure list when LINZ AG has active service notices.",pulse_live:"Pulse live indicator",pulse_live_helper:"Animate the green dot in front of realtime-corrected minute counts. Defaults on. Users with the OS prefers-reduced-motion preference get a static dot regardless of this toggle.",enable_animations:"CSS animations",enable_animations_helper:"Add a one-shot card-mount fade-in plus longer-duration colour transitions (line badge recolour as the next departure changes mode-of-transport, hero accent shift, row hover tint, alerts banner fade). Defaults off for a calm static look. Honoured prefers-reduced-motion still wins.",section_per_line:"Per-line walk time & colour",per_line_hint:"Walk time (Fußweg): drop a departure when its countdown is below this many minutes — you couldn't catch it anyway. Colour: override the line badge tint. Raise the integration's `Departures to fetch` if a long walk leaves too few rows visible.",per_line_no_data:"Pick an entity above to see its lines here.",walk_time:"Walk time",walk_time_placeholder:"min",minutes_short:"min",line_color:"Line colour",line_color_clear:"Reset to default colour"},Ie={common:Ne,card:Re,editor:Oe};const Ue={de:Object.freeze({__proto__:null,card:Me,common:Te,default:Pe,editor:He}),en:Object.freeze({__proto__:null,card:Re,common:Ne,default:Ie,editor:Oe})};function je(e,t){const i=function(e,t){return e.split(".").reduce((e,t)=>{if(e&&"object"==typeof e&&t in e)return e[t]},t)}(e,t);return"string"==typeof i?i:void 0}const Fe=Ue.en??{};function Be(e,t,i){const n=function(e){return"de"===(e.configLanguage||e.hassLanguage||"en").replace("-","_").split("_")[0]?"de":"en"}(t);let r=je(e,Ue[n]??Fe);if(void 0===r&&(r=je(e,Fe)),void 0===r)return e;if(i)for(const[e,t]of Object.entries(i))r=r.replace(`{${e}}`,String(t));return r}const De={0:"mdi:train",1:"mdi:train",2:"mdi:subway-variant",3:"mdi:tram",4:"mdi:tram",5:"mdi:bus",6:"mdi:bus-side",7:"mdi:bus-clock",8:"mdi:gondola",9:"mdi:ferry",10:"mdi:bus-multiple",11:"mdi:dots-horizontal"},We={0:"#455a64",1:"#455a64",2:"#1565c0",5:"#6a1b9a",6:"#6a1b9a",7:"#6a1b9a"};function Ke(e,t="mdi:tram"){return void 0===e?t:De[e]??t}function Ve(e){return void 0===e?null:We[e]??null}function Ge(e){return Ve(e)??"#f08000"}const qe=e=>Math.min(1,Math.max(0,e)),Ze=e=>e<=.04045?e/12.92:((e+.055)/1.055)**2.4;const Ye=([e,t,i])=>"#"+[e,t,i].map(e=>Math.round(255*qe((e=>e<=.0031308?12.92*e:1.055*e**(1/2.4)-.055)(e))).toString(16).padStart(2,"0")).join("");function Je(e,t){if(void 0===t)return null;const i=function(e){const t=e.trim();if(!t||t.includes("var("))return null;let i=/^#[0-9a-f]{3,8}$/i.test(t)?t.slice(1):"";if(!i){let e="";try{const i=document.createElement("span").style;i.color=t,e=i.color.trim()}catch{return null}const i=/^rgba?\(([^)]+)\)$/.exec(e);if(!i?.[1])return null;const n=i[1].split(/[,\s/]+/).filter(Boolean).map(Number),[r,o,a]=n;return void 0===r||void 0===o||void 0===a?null:[r,o,a].every(Number.isFinite)?[Ze(r/255),Ze(o/255),Ze(a/255)]:null}if(3!==i.length&&4!==i.length||(i=[...i.slice(0,3)].map(e=>e+e).join("")),6!==i.length&&8!==i.length)return null;const n=Number.parseInt(i.slice(0,6),16);return Number.isFinite(n)?[Ze((n>>16&255)/255),Ze((n>>8&255)/255),Ze((255&n)/255)]:null}(e);if(!i)return null;const[n,r,o]=function([e,t,i]){const n=Math.cbrt(.4122214708*e+.5363325363*t+.0514459929*i),r=Math.cbrt(.2119034982*e+.6806995451*t+.1073969566*i),o=Math.cbrt(.0883024619*e+.2817188376*t+.6299787005*i);return[.2104542553*n+.793617785*r-.0040720468*o,1.9779984951*n-2.428592205*r+.4505937099*o,.0259040371*n+.7827717662*r-.808675766*o]}(i),a="dark"===t?Math.max(.72,n):Math.min(.45,n);if(a===n)return Ye(i);const s=Math.hypot(r,o),l=Math.atan2(o,r),c=function([e,t,i]){const n=(e+.3963377774*t+.2158037573*i)**3,r=(e-.1055613458*t-.0638541728*i)**3,o=(e-.0894841775*t-1.291485548*i)**3;return[4.0767416621*n-3.3077115913*r+.2309699292*o,-1.2684380046*n+2.6097574011*r-.3413193965*o,-.0041960863*n-.7034186147*r+1.707614701*o]}([a,s*Math.cos(l),s*Math.sin(l)]);return Ye([qe(c[0]),qe(c[1]),qe(c[2])])}function Xe(e,t){return e?function(e){if(!e)return!1;try{return"1"===window.sessionStorage?.getItem(`linz-reload-attempted-${e}`)}catch{return!1}}(e)?B`
+/*! Linz Linien Austria Card — bundled by Rolldown. Edit sources in src/, then `npm run build`. */
+var e=Object.defineProperty,t=(t,n)=>{let r={};for(var i in t)e(r,i,{get:t[i],enumerable:!0});return n||e(r,Symbol.toStringTag,{value:`Module`}),r};
+/**
+* @license
+* Copyright 2019 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+const n=globalThis,r=n.ShadowRoot&&(n.ShadyCSS===void 0||n.ShadyCSS.nativeShadow)&&`adoptedStyleSheets`in Document.prototype&&`replace`in CSSStyleSheet.prototype,i=Symbol(),a=new WeakMap;var o=class{constructor(e,t,n){if(this._$cssResult$=!0,n!==i)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o,t=this.t;if(r&&e===void 0){let n=t!==void 0&&t.length===1;n&&(e=a.get(t)),e===void 0&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),n&&a.set(t,e))}return e}toString(){return this.cssText}};const s=e=>new o(typeof e==`string`?e:e+``,void 0,i),c=(e,...t)=>new o(e.length===1?e[0]:t.reduce((t,n,r)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if(typeof e==`number`)return e;throw Error(`Value passed to 'css' function must be a 'css' function result: `+e+`. Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.`)})(n)+e[r+1],e[0]),e,i),l=(e,t)=>{if(r)e.adoptedStyleSheets=t.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let r of t){let t=document.createElement(`style`),i=n.litNonce;i!==void 0&&t.setAttribute(`nonce`,i),t.textContent=r.cssText,e.appendChild(t)}},u=r?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t=``;for(let n of e.cssRules)t+=n.cssText;return s(t)})(e):e,{is:d,defineProperty:f,getOwnPropertyDescriptor:p,getOwnPropertyNames:m,getOwnPropertySymbols:h,getPrototypeOf:ee}=Object,g=globalThis,_=g.trustedTypes,te=_?_.emptyScript:``,ne=g.reactiveElementPolyfillSupport,v=(e,t)=>e,y={toAttribute(e,t){
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+switch(t){case Boolean:e=e?te:null;break;case Object:case Array:e=e==null?e:JSON.stringify(e)}return e},fromAttribute(e,t){let n=e;switch(t){case Boolean:n=e!==null;break;case Number:n=e===null?null:Number(e);break;case Object:case Array:try{n=JSON.parse(e)}catch{n=null}}return n}},b=(e,t)=>!d(e,t),x={attribute:!0,type:String,converter:y,reflect:!1,useDefault:!1,hasChanged:b};Symbol.metadata??=Symbol(`metadata`),g.litPropertyMetadata??=new WeakMap;var S=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=x){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){let n=Symbol(),r=this.getPropertyDescriptor(e,n,t);r!==void 0&&f(this.prototype,e,r)}}static getPropertyDescriptor(e,t,n){let{get:r,set:i}=p(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:r,set(t){let a=r?.call(this);i?.call(this,t),this.requestUpdate(e,a,n)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??x}static _$Ei(){if(this.hasOwnProperty(v(`elementProperties`)))return;let e=ee(this);e.finalize(),e.l!==void 0&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(v(`finalized`)))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(v(`properties`))){let e=this.properties,t=[...m(e),...h(e)];for(let n of t)this.createProperty(n,e[n])}let e=this[Symbol.metadata];if(e!==null){let t=litPropertyMetadata.get(e);if(t!==void 0)for(let[e,n]of t)this.elementProperties.set(e,n)}this._$Eh=new Map;for(let[e,t]of this.elementProperties){let n=this._$Eu(e,t);n!==void 0&&this._$Eh.set(n,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){let t=[];if(Array.isArray(e)){let n=new Set(e.flat(1/0).reverse());for(let e of n)t.unshift(u(e))}else e!==void 0&&t.push(u(e));return t}static _$Eu(e,t){let n=t.attribute;return!1===n?void 0:typeof n==`string`?n:typeof e==`string`?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),this.renderRoot!==void 0&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){let e=new Map,t=this.constructor.elementProperties;for(let n of t.keys())this.hasOwnProperty(n)&&(e.set(n,this[n]),delete this[n]);e.size>0&&(this._$Ep=e)}createRenderRoot(){let e=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return l(e,this.constructor.elementStyles),e}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,n){this._$AK(e,n)}_$ET(e,t){let n=this.constructor.elementProperties.get(e),r=this.constructor._$Eu(e,n);if(r!==void 0&&!0===n.reflect){let i=(n.converter?.toAttribute===void 0?y:n.converter).toAttribute(t,n.type);this._$Em=e,i==null?this.removeAttribute(r):this.setAttribute(r,i),this._$Em=null}}_$AK(e,t){let n=this.constructor,r=n._$Eh.get(e);if(r!==void 0&&this._$Em!==r){let e=n.getPropertyOptions(r),i=typeof e.converter==`function`?{fromAttribute:e.converter}:e.converter?.fromAttribute===void 0?y:e.converter;this._$Em=r;let a=i.fromAttribute(t,e.type);this[r]=a??this._$Ej?.get(r)??a,this._$Em=null}}requestUpdate(e,t,n,r=!1,i){if(e!==void 0){let a=this.constructor;if(!1===r&&(i=this[e]),n??=a.getPropertyOptions(e),!((n.hasChanged??b)(i,t)||n.useDefault&&n.reflect&&i===this._$Ej?.get(e)&&!this.hasAttribute(a._$Eu(e,n))))return;this.C(e,t,n)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:n,reflect:r,wrapped:i},a){n&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,a??t??this[e]),!0!==i||a!==void 0)||(this._$AL.has(e)||(this.hasUpdated||n||(t=void 0),this._$AL.set(e,t)),!0===r&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let e=this.scheduleUpdate();return e!=null&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}let e=this.constructor.elementProperties;if(e.size>0)for(let[t,n]of e){let{wrapped:e}=n,r=this[t];!0!==e||this._$AL.has(t)||r===void 0||this.C(t,void 0,n,r)}}let e=!1,t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};S.elementStyles=[],S.shadowRootOptions={mode:`open`},S[v(`elementProperties`)]=new Map,S[v(`finalized`)]=new Map,ne?.({ReactiveElement:S}),(g.reactiveElementVersions??=[]).push(`2.1.2`);
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+const C=globalThis,w=e=>e,T=C.trustedTypes,re=T?T.createPolicy(`lit-html`,{createHTML:e=>e}):void 0,ie=`$lit$`,E=`lit$${Math.random().toFixed(9).slice(2)}$`,ae=`?`+E,oe=`<${ae}>`,D=document,O=()=>D.createComment(``),k=e=>e===null||typeof e!=`object`&&typeof e!=`function`,se=Array.isArray,ce=e=>se(e)||typeof e?.[Symbol.iterator]==`function`,le=`[ 	
+\f\r]`,A=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,ue=/-->/g,de=/>/g,j=RegExp(`>|${le}(?:([^\\s"'>=/]+)(${le}*=${le}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,`g`),fe=/'/g,pe=/"/g,me=/^(?:script|style|textarea|title)$/i,M=(e=>(t,...n)=>({_$litType$:e,strings:t,values:n}))(1),N=Symbol.for(`lit-noChange`),P=Symbol.for(`lit-nothing`),he=new WeakMap,F=D.createTreeWalker(D,129);function ge(e,t){if(!se(e)||!e.hasOwnProperty(`raw`))throw Error(`invalid template strings array`);return re===void 0?t:re.createHTML(t)}const _e=(e,t)=>{let n=e.length-1,r=[],i,a=t===2?`<svg>`:t===3?`<math>`:``,o=A;for(let t=0;t<n;t++){let n=e[t],s,c,l=-1,u=0;for(;u<n.length&&(o.lastIndex=u,c=o.exec(n),c!==null);)u=o.lastIndex,o===A?c[1]===`!--`?o=ue:c[1]===void 0?c[2]===void 0?c[3]!==void 0&&(o=j):(me.test(c[2])&&(i=RegExp(`</`+c[2],`g`)),o=j):o=de:o===j?c[0]===`>`?(o=i??A,l=-1):c[1]===void 0?l=-2:(l=o.lastIndex-c[2].length,s=c[1],o=c[3]===void 0?j:c[3]===`"`?pe:fe):o===pe||o===fe?o=j:o===ue||o===de?o=A:(o=j,i=void 0);let d=o===j&&e[t+1].startsWith(`/>`)?` `:``;a+=o===A?n+oe:l>=0?(r.push(s),n.slice(0,l)+ie+n.slice(l)+E+d):n+E+(l===-2?t:d)}return[ge(e,a+(e[n]||`<?>`)+(t===2?`</svg>`:t===3?`</math>`:``)),r]};var ve=class e{constructor({strings:t,_$litType$:n},r){let i;this.parts=[];let a=0,o=0,s=t.length-1,c=this.parts,[l,u]=_e(t,n);if(this.el=e.createElement(l,r),F.currentNode=this.el.content,n===2||n===3){let e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;(i=F.nextNode())!==null&&c.length<s;){if(i.nodeType===1){if(i.hasAttributes())for(let e of i.getAttributeNames())if(e.endsWith(ie)){let t=u[o++],n=i.getAttribute(e).split(E),r=/([.?@])?(.*)/.exec(t);c.push({type:1,index:a,name:r[2],strings:n,ctor:r[1]===`.`?be:r[1]===`?`?xe:r[1]===`@`?Se:R}),i.removeAttribute(e)}else e.startsWith(E)&&(c.push({type:6,index:a}),i.removeAttribute(e));if(me.test(i.tagName)){let e=i.textContent.split(E),t=e.length-1;if(t>0){i.textContent=T?T.emptyScript:``;for(let n=0;n<t;n++)i.append(e[n],O()),F.nextNode(),c.push({type:2,index:++a});i.append(e[t],O())}}}else if(i.nodeType===8){if(i.data===ae)c.push({type:2,index:a});else{let e=-1;for(;(e=i.data.indexOf(E,e+1))!==-1;)c.push({type:7,index:a}),e+=E.length-1}}a++}}static createElement(e,t){let n=D.createElement(`template`);return n.innerHTML=e,n}};function I(e,t,n=e,r){if(t===N)return t;let i=r===void 0?n._$Cl:n._$Co?.[r],a=k(t)?void 0:t._$litDirective$;return i?.constructor!==a&&(i?._$AO?.(!1),a===void 0?i=void 0:(i=new a(e),i._$AT(e,n,r)),r===void 0?n._$Cl=i:(n._$Co??=[])[r]=i),i!==void 0&&(t=I(e,i._$AS(e,t.values),i,r)),t}var ye=class{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){let{el:{content:t},parts:n}=this._$AD,r=(e?.creationScope??D).importNode(t,!0);F.currentNode=r;let i=F.nextNode(),a=0,o=0,s=n[0];for(;s!==void 0;){if(a===s.index){let t;s.type===2?t=new L(i,i.nextSibling,this,e):s.type===1?t=new s.ctor(i,s.name,s.strings,this,e):s.type===6&&(t=new Ce(i,this,e)),this._$AV.push(t),s=n[++o]}a!==s?.index&&(i=F.nextNode(),a++)}return F.currentNode=D,r}p(e){let t=0;for(let n of this._$AV)n!==void 0&&(n.strings===void 0?n._$AI(e[t]):(n._$AI(e,n,t),t+=n.strings.length-2)),t++}},L=class e{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,n,r){this.type=2,this._$AH=P,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=n,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode,t=this._$AM;return t!==void 0&&e?.nodeType===11&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=I(this,e,t),k(e)?e===P||e==null||e===``?(this._$AH!==P&&this._$AR(),this._$AH=P):e!==this._$AH&&e!==N&&this._(e):e._$litType$===void 0?e.nodeType===void 0?ce(e)?this.k(e):this._(e):this.T(e):this.$(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==P&&k(this._$AH)?this._$AA.nextSibling.data=e:this.T(D.createTextNode(e)),this._$AH=e}$(e){let{values:t,_$litType$:n}=e,r=typeof n==`number`?this._$AC(e):(n.el===void 0&&(n.el=ve.createElement(ge(n.h,n.h[0]),this.options)),n);if(this._$AH?._$AD===r)this._$AH.p(t);else{let e=new ye(r,this),n=e.u(this.options);e.p(t),this.T(n),this._$AH=e}}_$AC(e){let t=he.get(e.strings);return t===void 0&&he.set(e.strings,t=new ve(e)),t}k(t){se(this._$AH)||(this._$AH=[],this._$AR());let n=this._$AH,r,i=0;for(let a of t)i===n.length?n.push(r=new e(this.O(O()),this.O(O()),this,this.options)):r=n[i],r._$AI(a),i++;i<n.length&&(this._$AR(r&&r._$AB.nextSibling,i),n.length=i)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){let t=w(e).nextSibling;w(e).remove(),e=t}}setConnected(e){this._$AM===void 0&&(this._$Cv=e,this._$AP?.(e))}},R=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,n,r,i){this.type=1,this._$AH=P,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=i,n.length>2||n[0]!==``||n[1]!==``?(this._$AH=Array(n.length-1).fill(new String),this.strings=n):this._$AH=P}_$AI(e,t=this,n,r){let i=this.strings,a=!1;if(i===void 0)e=I(this,e,t,0),a=!k(e)||e!==this._$AH&&e!==N,a&&(this._$AH=e);else{let r=e,o,s;for(e=i[0],o=0;o<i.length-1;o++)s=I(this,r[n+o],t,o),s===N&&(s=this._$AH[o]),a||=!k(s)||s!==this._$AH[o],s===P?e=P:e!==P&&(e+=(s??``)+i[o+1]),this._$AH[o]=s}a&&!r&&this.j(e)}j(e){e===P?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??``)}},be=class extends R{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===P?void 0:e}},xe=class extends R{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==P)}},Se=class extends R{constructor(e,t,n,r,i){super(e,t,n,r,i),this.type=5}_$AI(e,t=this){if((e=I(this,e,t,0)??P)===N)return;let n=this._$AH,r=e===P&&n!==P||e.capture!==n.capture||e.once!==n.once||e.passive!==n.passive,i=e!==P&&(n===P||r);r&&this.element.removeEventListener(this.name,this,n),i&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){typeof this._$AH==`function`?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}},Ce=class{constructor(e,t,n){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=n}get _$AU(){return this._$AM._$AU}_$AI(e){I(this,e)}};const we={M:ie,P:E,A:ae,C:1,L:_e,R:ye,D:ce,V:I,I:L,H:R,N:xe,U:Se,B:be,F:Ce},Te=C.litHtmlPolyfillSupport;Te?.(ve,L),(C.litHtmlVersions??=[]).push(`3.3.3`);const Ee=(e,t,n)=>{let r=n?.renderBefore??t,i=r._$litPart$;if(i===void 0){let e=n?.renderBefore??null;r._$litPart$=i=new L(t.insertBefore(O(),e),e,void 0,n??{})}return i._$AI(e),i},De=globalThis
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+;var z=class extends S{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){let t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=Ee(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return N}};z._$litElement$=!0,z.finalized=!0,De.litElementHydrateSupport?.({LitElement:z});const Oe=De.litElementPolyfillSupport;Oe?.({LitElement:z}),(De.litElementVersions??=[]).push(`4.2.2`);
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+const ke=e=>(t,n)=>{n===void 0?customElements.define(e,t):n.addInitializer(()=>{customElements.define(e,t)})},Ae={attribute:!0,type:String,converter:y,reflect:!1,hasChanged:b},je=(e=Ae,t,n)=>{
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+let{kind:r,metadata:i}=n,a=globalThis.litPropertyMetadata.get(i);if(a===void 0&&globalThis.litPropertyMetadata.set(i,a=new Map),r===`setter`&&((e=Object.create(e)).wrapped=!0),a.set(n.name,e),r===`accessor`){let{name:r}=n;return{set(n){let i=t.get.call(this);t.set.call(this,n),this.requestUpdate(r,i,e,!0,n)},init(t){return t!==void 0&&this.C(r,void 0,e,t),t}}}if(r===`setter`){let{name:r}=n;return function(n){let i=this[r];t.call(this,n),this.requestUpdate(r,i,e,!0,n)}}throw Error(`Unsupported decorator location: `+r)};function Me(e){return(t,n)=>typeof n==`object`?je(e,t,n):((e,t,n)=>{let r=t.hasOwnProperty(n);return t.constructor.createProperty(n,e),r?Object.getOwnPropertyDescriptor(t,n):void 0})(e,t,n)}
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/function B(e){return Me({...e,state:!0,attribute:!1})}
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+const Ne={ATTRIBUTE:1,CHILD:2,PROPERTY:3,BOOLEAN_ATTRIBUTE:4,EVENT:5,ELEMENT:6},Pe=e=>(...t)=>({_$litDirective$:e,values:t});var V=class{constructor(e){}get _$AU(){return this._$AM._$AU}_$AT(e,t,n){this._$Ct=e,this._$AM=t,this._$Ci=n}_$AS(e,t){return this.update(e,t)}update(e,t){return this.render(...t)}};
+/**
+* @license
+* Copyright 2018 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/const H=Pe(class extends V{constructor(e){if(super(e),e.type!==Ne.ATTRIBUTE||e.name!==`class`||e.strings?.length>2)throw Error("`classMap()` can only be used in the `class` attribute and must be the only part in the attribute.")}render(e){return` `+Object.keys(e).filter(t=>e[t]).join(` `)+` `}update(e,[t]){if(this.st===void 0){this.st=new Set,e.strings!==void 0&&(this.nt=new Set(e.strings.join(` `).split(/\s/).filter(e=>e!==``)));for(let e in t)t[e]&&!this.nt?.has(e)&&this.st.add(e);return this.render(t)}let n=e.element.classList;for(let e of this.st)e in t||(n.remove(e),this.st.delete(e));for(let e in t){let r=!!t[e];r===this.st.has(e)||this.nt?.has(e)||(r?(n.add(e),this.st.add(e)):(n.remove(e),this.st.delete(e)))}return N}}),{I:Fe}=we,Ie=e=>e,Le=()=>document.createComment(``),U=(e,t,n)=>{
+/**
+* @license
+* Copyright 2020 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+let r=e._$AA.parentNode,i=t===void 0?e._$AB:t._$AA;if(n===void 0){let t=r.insertBefore(Le(),i),a=r.insertBefore(Le(),i);n=new Fe(t,a,e,e.options)}else{let t=n._$AB.nextSibling,a=n._$AM,o=a!==e;if(o){let t;n._$AQ?.(e),n._$AM=e,n._$AP!==void 0&&(t=e._$AU)!==a._$AU&&n._$AP(t)}if(t!==i||o){let e=n._$AA;for(;e!==t;){let t=Ie(e).nextSibling;Ie(r).insertBefore(e,i),e=t}}}return n},W=(e,t,n=e)=>(e._$AI(t,n),e),Re={},ze=(e,t=Re)=>e._$AH=t,Be=e=>e._$AH,Ve=e=>{e._$AR(),e._$AA.remove()},He=(e,t,n)=>{
+/**
+* @license
+* Copyright 2017 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+let r=new Map;for(let i=t;i<=n;i++)r.set(e[i],i);return r},Ue=Pe(class extends V{constructor(e){if(super(e),e.type!==Ne.CHILD)throw Error(`repeat() can only be used in text expressions`)}dt(e,t,n){let r;n===void 0?n=t:t!==void 0&&(r=t);let i=[],a=[],o=0;for(let t of e)i[o]=r?r(t,o):o,a[o]=n(t,o),o++;return{values:a,keys:i}}render(e,t,n){return this.dt(e,t,n).values}update(e,[t,n,r]){let i=Be(e),{values:a,keys:o}=this.dt(t,n,r);if(!Array.isArray(i))return this.ut=o,a;let s=this.ut??=[],c=[],l,u,d=0,f=i.length-1,p=0,m=a.length-1;for(;d<=f&&p<=m;)if(i[d]===null)d++;else if(i[f]===null)f--;else if(s[d]===o[p])c[p]=W(i[d],a[p]),d++,p++;else if(s[f]===o[m])c[m]=W(i[f],a[m]),f--,m--;else if(s[d]===o[m])c[m]=W(i[d],a[m]),U(e,c[m+1],i[d]),d++,m--;else if(s[f]===o[p])c[p]=W(i[f],a[p]),U(e,i[d],i[f]),f--,p++;else if(l===void 0&&(l=He(o,p,m),u=He(s,d,f)),l.has(s[d])){if(l.has(s[f])){let t=u.get(o[p]),n=t===void 0?null:i[t];if(n===null){let t=U(e,i[d]);W(t,a[p]),c[p]=t}else c[p]=W(n,a[p]),U(e,i[d],n),i[t]=null;p++}else Ve(i[f]),f--}else Ve(i[d]),d++;for(;p<=m;){let t=U(e,c[m+1]);W(t,a[p]),c[p++]=t}for(;d<=f;){let e=i[d++];e!==null&&Ve(e)}return this.ut=o,ze(e,c),N}}),We=Pe(class extends V{constructor(e){
+/**
+* @license
+* Copyright 2018 Google LLC
+* SPDX-License-Identifier: BSD-3-Clause
+*/
+if(super(e),e.type!==Ne.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw Error("The `styleMap` directive must be used in the `style` attribute and must be the only part in the attribute.")}render(e){return Object.keys(e).reduce((t,n)=>{let r=e[n];return r==null?t:t+`${n=n.includes(`-`)?n:n.replace(/(?:^(webkit|moz|ms|o)|)(?=[A-Z])/g,`-$&`).toLowerCase()}:${r};`},``)}update(e,[t]){let{style:n}=e.element;if(this.ft===void 0)return this.ft=new Set(Object.keys(t)),this.render(t);for(let e of this.ft)t[e]??(this.ft.delete(e),e.includes(`-`)?n.removeProperty(e):n[e]=null);for(let e in t){let r=t[e];if(r!=null){this.ft.add(e);let t=typeof r==`string`&&r.endsWith(` !important`);e.includes(`-`)||t?n.setProperty(e,t?r.slice(0,-11):r,t?`important`:``):n[e]=r}}return N}});var Ge=t({card:()=>qe,common:()=>Ke,default:()=>Ye,editor:()=>Je}),Ke={no_entity_picked:`Keine Entität ausgewählt. Visuellen Editor öffnen und einen Linz Linien Sensor wählen.`,entity_unavailable:`Die ausgewählte Entität ist derzeit nicht verfügbar.`,version_update:`Eine neuere Kartenversion ({v}) ist verfügbar. Bitte neu laden.`,version_reload:`Jetzt neu laden`,version_reload_stuck:`Neu laden hat die neue Version nicht übernommen. Schließen Sie diesen Browser-Tab und öffnen Sie das Dashboard erneut, oder löschen Sie die Website-Daten für Home Assistant in den Browser-Einstellungen.`},qe={no_departures:`Keine kommenden Abfahrten.`,no_matches_for_filter:`Keine kommenden Abfahrten passen zum Linienfilter.`,platform:`Steig`,platform_short:`Steig`,platform_rail:`Gleis`,platform_rail_short:`Gleis`,open_in_maps:`In Google Maps öffnen`,next_departure_label:`Nächste Abfahrt`,and_separator:`und`,minutes:`Minuten`,minutes_short:`Min`,now:`Jetzt`,unknown:`—`,realtime:`Live`,cancelled:`Entfällt`,alerts_summary:`{count} Verkehrshinweis(e)`,affected_lines:`Betroffene Linien`,attribution:`Datenquelle: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0`,show_stops:`Folgehaltestellen der Linie {line} Richtung {direction} anzeigen`,hide_stops:`Folgehaltestellen der Linie {line} Richtung {direction} ausblenden`},Je={entity:`Sensor`,entity_helper:`Einen sensor.*_next_departure Sensor dieser Integration wählen.`,entity_missing:`Sensor {entity} existiert nicht mehr. Wählen Sie oben einen anderen Sensor.`,name:`Titel`,name_helper:`Optionaler Überschreib-Titel für die Karte.`,hide_header:`Kopfzeile ausblenden`,hide_header_helper:`Blendet das Symbol, den Haltestellennamen, die Untertitelzeile und den Karten-Link aus. Hero und Abfahrtsliste bleiben sichtbar.`,show_hero:`Hauptbereich anzeigen`,show_hero_helper:`Großer Countdown zur nächsten Abfahrt.`,max_departures:`Max. Abfahrten`,max_departures_helper:`Begrenzt die Liste. Karten-Filter (Linien + Fußweg) entfernen Zeilen VOR diesem Limit — 10 hier bedeutet also nicht zwingend 10 sichtbare Zeilen. Falls weniger als erwartet erscheinen, in der Integration die ‚Anzahl der Abfahrten' erhöhen (Einstellungen → Geräte & Dienste → Linz Linien Austria → Konfigurieren) — das ist der Pool, aus dem die Karte filtert. 0 zeigt nur den Nächste-Abfahrt-Block ohne Zeilen.`,lines:`Linien filtern`,lines_helper:`Leer (keine Chips ausgewählt) = alle Linien anzeigen. Chips antippen, um Linien ein- oder auszuschließen. Bei engem Filter an stark frequentierten Haltestellen (Hauptbahnhof) ggf. in der Integration die ‚Anzahl der Abfahrten' erhöhen, damit die Karte genügend Zeilen zum Filtern hat.`,lines_custom_placeholder:`Linie hinzufügen, die oben nicht angezeigt wird (Enter)`,show_platform:`Steig anzeigen`,show_platform_helper:`Steig in der Untertitelzeile (nächste Abfahrt) und am Ende jeder Zeile einblenden.`,show_alerts:`Verkehrsinfo anzeigen`,show_alerts_helper:`Aufklappbares Verkehrsinfo-Banner über der Abfahrtsliste anzeigen, wenn LINZ AG aktuelle Hinweise veröffentlicht.`,pulse_live:`Live-Indikator pulsiert`,pulse_live_helper:`Der grüne Punkt vor Echtzeit-Minutenangaben pulsiert dezent. Standard: an. Bei aktivierter Systemeinstellung "Bewegung reduzieren" erscheint der Punkt unabhängig von diesem Schalter statisch.`,enable_animations:`CSS-Animationen`,enable_animations_helper:`Sanftes Einblenden beim Laden der Karte plus weichere Farbübergänge (Linienbadge bei wechselndem Verkehrsmittel, Hero-Akzent, Hover-Tönung, Verkehrsinfo-Banner). Standard: aus, ruhiger statischer Look. Die Systemeinstellung "Bewegung reduzieren" hat weiterhin Vorrang.`,section_per_line:`Fußweg & Farbe pro Linie`,per_line_hint:`Fußweg: Abfahrten, deren Countdown unter dieser Minutenzahl liegt, werden ausgeblendet — sie sind ohnehin nicht erreichbar. Farbe: überschreibt die Linienbadge-Tönung. Bei längerem Fußweg gegebenenfalls in der Integration die ‚Anzahl der Abfahrten' erhöhen.`,per_line_no_data:`Oben einen Sensor wählen, dann erscheinen hier die Linien.`,walk_time:`Fußweg`,walk_time_placeholder:`Min`,minutes_short:`Min`,line_color:`Linienfarbe`,line_color_clear:`Standardfarbe wiederherstellen`},Ye={common:Ke,card:qe,editor:Je},Xe=t({card:()=>Qe,common:()=>Ze,default:()=>et,editor:()=>$e}),Ze={no_entity_picked:`No entity selected. Open the visual editor and pick a Linz Linien sensor.`,entity_unavailable:`The selected entity is not available right now.`,version_update:`A newer card version ({v}) is available. Reload to refresh.`,version_reload:`Reload now`,version_reload_stuck:`Reload didn't pick up the new version. Close this browser tab and reopen the dashboard, or clear your browser's site data for Home Assistant.`},Qe={no_departures:`No upcoming departures.`,no_matches_for_filter:`No upcoming departures match the line filter.`,platform:`Platform`,platform_short:`Pl.`,platform_rail:`Track`,platform_rail_short:`Tr.`,open_in_maps:`Open in Google Maps`,next_departure_label:`Next departure`,and_separator:`and`,minutes:`minutes`,minutes_short:`min`,now:`Now`,unknown:`—`,realtime:`Live`,cancelled:`Cancelled`,alerts_summary:`{count} service notice(s)`,affected_lines:`Affected lines`,attribution:`Source: LINZ AG LINIEN (data.linz.gv.at) · CC BY 4.0`,show_stops:`Show remaining stops for line {line} to {direction}`,hide_stops:`Hide remaining stops for line {line} to {direction}`},$e={entity:`Sensor`,entity_helper:`Pick a sensor.*_next_departure produced by this integration.`,entity_missing:`Sensor {entity} no longer exists. Pick a different sensor in the entity selector above.`,name:`Title`,name_helper:`Optional override for the card heading.`,hide_header:`Hide header`,hide_header_helper:`Hides the icon tile, stop name, subtitle and maps link. Hero and departure list remain visible.`,show_hero:`Show hero block`,show_hero_helper:`Big countdown for the next departure.`,max_departures:`Max departures`,max_departures_helper:`Cap the rendered list. Card-side filters (lines + Fußweg) trim rows BEFORE this cap, so setting it to 10 doesn't guarantee 10 rows. If you see fewer than expected, raise the integration's 'Departures to fetch' under Settings → Devices & Services → Linz Linien Austria → Configure — that's the pool the card filters from. Set 0 to render only the next-departure block above without any rows.`,lines:`Filter by lines`,lines_helper:`Empty (no chips selected) = show every line. Tap chips to toggle which lines to keep. Tight filters at busy stops (Hauptbahnhof) may need the integration's 'Departures to fetch' raised so the card has enough pre-filter rows to find matches.`,lines_custom_placeholder:`Add a line not shown above (press Enter)`,show_platform:`Show platform`,show_platform_helper:`Show the platform / bay (Steig) on the next-departure subtitle and at the trailing edge of each row.`,show_alerts:`Show traffic info`,show_alerts_helper:`Show the collapsible traffic-info banner above the departure list when LINZ AG has active service notices.`,pulse_live:`Pulse live indicator`,pulse_live_helper:`Animate the green dot in front of realtime-corrected minute counts. Defaults on. Users with the OS prefers-reduced-motion preference get a static dot regardless of this toggle.`,enable_animations:`CSS animations`,enable_animations_helper:`Add a one-shot card-mount fade-in plus longer-duration colour transitions (line badge recolour as the next departure changes mode-of-transport, hero accent shift, row hover tint, alerts banner fade). Defaults off for a calm static look. Honoured prefers-reduced-motion still wins.`,section_per_line:`Per-line walk time & colour`,per_line_hint:"Walk time (Fußweg): drop a departure when its countdown is below this many minutes — you couldn't catch it anyway. Colour: override the line badge tint. Raise the integration's `Departures to fetch` if a long walk leaves too few rows visible.",per_line_no_data:`Pick an entity above to see its lines here.`,walk_time:`Walk time`,walk_time_placeholder:`min`,minutes_short:`min`,line_color:`Line colour`,line_color_clear:`Reset to default colour`},et={common:Ze,card:Qe,editor:$e};const tt={de:Ge,en:Xe};function nt(e,t){return e.split(`.`).reduce((e,t)=>{if(e&&typeof e==`object`&&t in e)return e[t]},t)}function rt(e,t){let n=nt(e,t);return typeof n==`string`?n:void 0}function it(e){return(e.configLanguage||e.hassLanguage||`en`).replace(`-`,`_`).split(`_`)[0]===`de`?`de`:`en`}const at=tt.en??{};function G(e,t,n){let r=it(t),i=rt(e,tt[r]??at);if(i===void 0&&(i=rt(e,at)),i===void 0)return e;if(n)for(let[e,t]of Object.entries(n))i=i.replace(`{${e}}`,String(t));return i}const ot={0:`mdi:train`,1:`mdi:train`,2:`mdi:subway-variant`,3:`mdi:tram`,4:`mdi:tram`,5:`mdi:bus`,6:`mdi:bus-side`,7:`mdi:bus-clock`,8:`mdi:gondola`,9:`mdi:ferry`,10:`mdi:bus-multiple`,11:`mdi:dots-horizontal`},st={0:`#455a64`,1:`#455a64`,2:`#1565c0`,5:`#6a1b9a`,6:`#6a1b9a`,7:`#6a1b9a`};function ct(e,t=`mdi:tram`){return e===void 0?t:ot[e]??t}function K(e){return e===void 0?null:st[e]??null}function q(e){return K(e)??`#f08000`}const J=e=>Math.min(1,Math.max(0,e)),Y=e=>e<=.04045?e/12.92:((e+.055)/1.055)**2.4,lt=e=>e<=.0031308?e*12.92:1.055*e**(1/2.4)-.055;function ut(e){let t=e.trim();if(!t||t.includes(`var(`))return null;let n=/^#[0-9a-f]{3,8}$/i.test(t)?t.slice(1):``;if(!n){let e=``;try{let n=document.createElement(`span`).style;n.color=t,e=n.color.trim()}catch{return null}let n=/^rgba?\(([^)]+)\)$/.exec(e);if(!n?.[1])return null;let[r,i,a]=n[1].split(/[,\s/]+/).filter(Boolean).map(Number);return r===void 0||i===void 0||a===void 0||![r,i,a].every(Number.isFinite)?null:[Y(r/255),Y(i/255),Y(a/255)]}if((n.length===3||n.length===4)&&(n=[...n.slice(0,3)].map(e=>e+e).join(``)),n.length!==6&&n.length!==8)return null;let r=Number.parseInt(n.slice(0,6),16);return Number.isFinite(r)?[Y((r>>16&255)/255),Y((r>>8&255)/255),Y((r&255)/255)]:null}function dt([e,t,n]){let r=Math.cbrt(.4122214708*e+.5363325363*t+.0514459929*n),i=Math.cbrt(.2119034982*e+.6806995451*t+.1073969566*n),a=Math.cbrt(.0883024619*e+.2817188376*t+.6299787005*n);return[.2104542553*r+.793617785*i-.0040720468*a,1.9779984951*r-2.428592205*i+.4505937099*a,.0259040371*r+.7827717662*i-.808675766*a]}function ft([e,t,n]){let r=(e+.3963377774*t+.2158037573*n)**3,i=(e-.1055613458*t-.0638541728*n)**3,a=(e-.0894841775*t-1.291485548*n)**3;return[4.0767416621*r-3.3077115913*i+.2309699292*a,-1.2684380046*r+2.6097574011*i-.3413193965*a,-.0041960863*r-.7034186147*i+1.707614701*a]}const pt=([e,t,n])=>`#`+[e,t,n].map(e=>Math.round(J(lt(e))*255).toString(16).padStart(2,`0`)).join(``);function mt(e,t){if(t===void 0)return null;let n=ut(e);if(!n)return null;let[r,i,a]=dt(n),o=t===`dark`?Math.max(.72,r):Math.min(.45,r);if(o===r)return pt(n);let s=Math.hypot(i,a),c=Math.atan2(a,i),l=ft([o,s*Math.cos(c),s*Math.sin(c)]);return pt([J(l[0]),J(l[1]),J(l[2])])}function ht(e){return typeof e==`string`&&/^https?:\/\//i.test(e)?e:``}async function gt(e){if(!e?.callWS)return null;try{let t=await e.callWS({type:`linz_linien_austria/card_version`});if(t?.version&&t.version!==`1.0.0`)return t.version}catch{}return null}function _t(e){try{window.caches?.keys?.().then(e=>{e.forEach(e=>window.caches?.delete?.(e))})}catch{}if(e)try{window.sessionStorage?.setItem(`linz-reload-attempted-${e}`,`1`)}catch{}window.location.reload()}function vt(e){if(!e)return!1;try{return window.sessionStorage?.getItem(`linz-reload-attempted-${e}`)===`1`}catch{return!1}}function yt(e,t){return e?vt(e)?M`
       <div class="version-notice" role="alert" aria-live="assertive">
-        <span>${Be("common.version_reload_stuck",t)}</span>
+        <span>${G(`common.version_reload_stuck`,t)}</span>
       </div>
-    `:B`
+    `:M`
     <div class="version-notice" role="alert" aria-live="assertive">
-      <span>${Be("common.version_update",t,{v:e})}</span>
+      <span>${G(`common.version_update`,t,{v:e})}</span>
       <button
         class="version-reload-btn"
         type="button"
-        @click=${()=>function(e){try{window.caches?.keys?.().then(e=>{e.forEach(e=>window.caches?.delete?.(e))})}catch{}if(e)try{window.sessionStorage?.setItem(`linz-reload-attempted-${e}`,"1")}catch{}window.location.reload()}(e)}
+        @click=${()=>_t(e)}
       >
-        ${Be("common.version_reload",t)}
+        ${G(`common.version_reload`,t)}
       </button>
     </div>
-  `:W}const Qe=o`
+  `:P}const bt=c`
   :host {
     /* color-scheme enables light-dark() and steers forced-colors
        palette selection (WCAG 1.4.11). HA's active theme drives the
@@ -1034,7 +1105,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     outline: 2px solid #fff;
     outline-offset: 2px;
   }
-`,et=o`
+`,xt=c`
   :host {
     display: block;
   }
@@ -1299,23 +1370,23 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
   }
-`;function tt(e,t,i){e.dispatchEvent(new CustomEvent(t,{detail:i,bubbles:!0,composed:!0}))}function it(e,t,i,n){var r,o=arguments.length,a=o<3?t:n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)a=Reflect.decorate(e,t,i,n);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(a=(o<3?r(a):o>3?r(t,i,a):r(t,i))||a);return o>3&&a&&Object.defineProperty(t,i,a),a}class nt extends ae{setConfig(e){this._config={...e}}_t(e,t){return Be(e,{hassLanguage:this.hass?.language},t)}_allKnownLines(){const e=new Set,t=this._config.entity;if(t&&this.hass){const i=this.hass.states[t],n=i?.attributes?.lines_at_stop;if(Array.isArray(n))for(const t of n)"string"==typeof t&&t&&e.add(t);const r=i?.attributes?.departures;if(Array.isArray(r))for(const t of r)t.line&&e.add(t.line)}for(const t of this._config.lines??[])t&&e.add(t);return this._sortLines(Array.from(e))}_availableLines(){const e=(this._config.lines??[]).map(e=>e.trim()).filter(Boolean);return e.length>0?this._sortLines(e):this._allKnownLines()}_sortLines(e){return Array.from(new Set(e)).sort((e,t)=>{const i=parseInt(e,10),n=parseInt(t,10);return Number.isNaN(i)||Number.isNaN(n)||i===n?e.localeCompare(t,void 0,{numeric:!0}):i-n})}_motForLine(e){const t=this._config.entity;if(!t||!this.hass)return;const i=this.hass.states[t],n=i?.attributes?.departures;if(Array.isArray(n))for(const t of n)if(t.line===e&&"number"==typeof t.mot)return t.mot}_defaultColorForLine(e){return Ge(this._motForLine(e))}_iconForLine(e){return Ke(this._motForLine(e))}_toggleLine(e){const t=new Set(this._config.lines??[]);t.has(e)?t.delete(e):t.add(e);const i={...this._config};0===t.size?delete i.lines:i.lines=this._sortLines(Array.from(t)),this._config=i,tt(this,"config-changed",{config:i})}_onCustomLineSubmit(e){const t=e.value.trim();if(!t)return;const i=new Set(this._config.lines??[]);i.add(t);const n={...this._config,lines:this._sortLines(Array.from(i))};e.value="",this._config=n,tt(this,"config-changed",{config:n})}_renderLinesFilter(){const e=this._allKnownLines(),t=new Set(this._config.lines??[]);return B`
+`;function X(e,t,n){e.dispatchEvent(new CustomEvent(t,{detail:n,bubbles:!0,composed:!0}))}function Z(e,t,n,r){var i=arguments.length,a=i<3?t:r===null?r=Object.getOwnPropertyDescriptor(t,n):r,o;if(typeof Reflect==`object`&&typeof Reflect.decorate==`function`)a=Reflect.decorate(e,t,n,r);else for(var s=e.length-1;s>=0;s--)(o=e[s])&&(a=(i<3?o(a):i>3?o(t,n,a):o(t,n))||a);return i>3&&a&&Object.defineProperty(t,n,a),a}let Q=class extends z{constructor(...e){super(...e),this._config={type:`linz-linien-austria-card`},this._computeLabel=e=>{let t=`ui.panel.lovelace.editor.card.generic.${e.name}`,n=this.hass?.localize?.(t);if(n)return n;let r=`editor.${e.name}`,i=G(r,{hassLanguage:this.hass?.language});return i===r?e.name:i},this._computeHelper=e=>{let t=`editor.${e.name}_helper`,n=G(t,{hassLanguage:this.hass?.language});return n===t?void 0:n},this._onFormChanged=e=>{let t={...e.detail.value};this._config=t,X(this,`config-changed`,{config:t})},this._onWalkTimeChange=(e,t)=>{let n=t.target.value.trim();if(n===``){this._patchRecord(`walk_times`,e,void 0);return}let r=Number(n);if(!Number.isFinite(r)||r<=0){this._patchRecord(`walk_times`,e,void 0);return}this._patchRecord(`walk_times`,e,Math.round(r))},this._onLineColorChange=(e,t)=>{let n=t.target;this._patchRecord(`line_colors`,e,n.value)},this._onLineColorClear=e=>{this._patchRecord(`line_colors`,e,void 0)}}setConfig(e){this._config={...e}}_t(e,t){return G(e,{hassLanguage:this.hass?.language},t)}_allKnownLines(){let e=new Set,t=this._config.entity;if(t&&this.hass){let n=this.hass.states[t],r=n?.attributes?.lines_at_stop;if(Array.isArray(r))for(let t of r)typeof t==`string`&&t&&e.add(t);let i=n?.attributes?.departures;if(Array.isArray(i))for(let t of i)t.line&&e.add(t.line)}for(let t of this._config.lines??[])t&&e.add(t);return this._sortLines(Array.from(e))}_availableLines(){let e=(this._config.lines??[]).map(e=>e.trim()).filter(Boolean);return e.length>0?this._sortLines(e):this._allKnownLines()}_sortLines(e){return Array.from(new Set(e)).sort((e,t)=>{let n=parseInt(e,10),r=parseInt(t,10);return!Number.isNaN(n)&&!Number.isNaN(r)&&n!==r?n-r:e.localeCompare(t,void 0,{numeric:!0})})}_motForLine(e){let t=this._config.entity;if(!t||!this.hass)return;let n=this.hass.states[t]?.attributes?.departures;if(Array.isArray(n)){for(let t of n)if(t.line===e&&typeof t.mot==`number`)return t.mot}}_defaultColorForLine(e){return q(this._motForLine(e))}_iconForLine(e){return ct(this._motForLine(e))}_toggleLine(e){let t=new Set(this._config.lines??[]);t.has(e)?t.delete(e):t.add(e);let n={...this._config};t.size===0?delete n.lines:n.lines=this._sortLines(Array.from(t)),this._config=n,X(this,`config-changed`,{config:n})}_onCustomLineSubmit(e){let t=e.value.trim();if(!t)return;let n=new Set(this._config.lines??[]);n.add(t);let r={...this._config,lines:this._sortLines(Array.from(n))};e.value=``,this._config=r,X(this,`config-changed`,{config:r})}_renderLinesFilter(){let e=this._allKnownLines(),t=new Set(this._config.lines??[]);return M`
       <div class="editor-section">
-        <div class="section-header">${this._t("editor.lines")}</div>
-        <div class="editor-hint">${this._t("editor.lines_helper")}</div>
-        ${0===e.length?B`<div class="editor-hint">
-              ${this._t("editor.per_line_no_data")}
-            </div>`:B`<div class="line-chip-grid">
-              ${e.map(e=>{const i=this._defaultColorForLine(e),n=this._iconForLine(e),r=t.has(e);return B`
+        <div class="section-header">${this._t(`editor.lines`)}</div>
+        <div class="editor-hint">${this._t(`editor.lines_helper`)}</div>
+        ${e.length===0?M`<div class="editor-hint">
+              ${this._t(`editor.per_line_no_data`)}
+            </div>`:M`<div class="line-chip-grid">
+              ${e.map(e=>{let n=this._defaultColorForLine(e),r=this._iconForLine(e),i=t.has(e);return M`
                   <button
                     type="button"
-                    class=${"line-chip"+(r?" is-selected":"")}
-                    style=${`--chip-color: ${i};`}
-                    aria-pressed=${r?"true":"false"}
-                    aria-label="${this._t("editor.lines")}: ${e}"
+                    class=${`line-chip${i?` is-selected`:``}`}
+                    style=${`--chip-color: ${n};`}
+                    aria-pressed=${i?`true`:`false`}
+                    aria-label="${this._t(`editor.lines`)}: ${e}"
                     @click=${()=>this._toggleLine(e)}
                   >
-                    <ha-icon icon=${n} aria-hidden="true"></ha-icon>
+                    <ha-icon icon=${r} aria-hidden="true"></ha-icon>
                     <span>${e}</span>
                   </button>
                 `})}
@@ -1325,20 +1396,20 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             class="line-chip-input"
             type="text"
             inputmode="text"
-            placeholder=${this._t("editor.lines_custom_placeholder")}
-            aria-label=${this._t("editor.lines_custom_placeholder")}
-            @keydown=${e=>{"Enter"===e.key&&(e.preventDefault(),this._onCustomLineSubmit(e.currentTarget))}}
+            placeholder=${this._t(`editor.lines_custom_placeholder`)}
+            aria-label=${this._t(`editor.lines_custom_placeholder`)}
+            @keydown=${e=>{e.key===`Enter`&&(e.preventDefault(),this._onCustomLineSubmit(e.currentTarget))}}
           />
         </div>
       </div>
-    `}_schema(){return[{name:"entity",required:!0,selector:{entity:{filter:{domain:"sensor",integration:"linz_linien_austria"}}}},{name:"name",selector:{text:{}}},{name:"hide_header",selector:{boolean:{}}},{name:"show_hero",selector:{boolean:{}}},{name:"show_platform",selector:{boolean:{}}},{name:"show_alerts",selector:{boolean:{}}},{name:"pulse_live",selector:{boolean:{}}},{name:"enable_animations",selector:{boolean:{}}},{name:"max_departures",selector:{number:{min:0,max:30,step:1,mode:"box"}}}]}_patchRecord(e,t,i){const n={...this._config[e]??{}};null==i||""===i?delete n[t]:n[t]=i;const r={...this._config};0===Object.keys(n).length?delete r[e]:r[e]=n,this._config=r,tt(this,"config-changed",{config:r})}_renderPerLineSection(){const e=this._availableLines();if(0===e.length)return B`<div class="editor-hint">
-        ${this._t("editor.per_line_no_data")}
-      </div>`;const t=this._config.walk_times??{},i=this._config.line_colors??{};return B`
+    `}_schema(){return[{name:`entity`,required:!0,selector:{entity:{filter:{domain:`sensor`,integration:`linz_linien_austria`}}}},{name:`name`,selector:{text:{}}},{name:`hide_header`,selector:{boolean:{}}},{name:`show_hero`,selector:{boolean:{}}},{name:`show_platform`,selector:{boolean:{}}},{name:`show_alerts`,selector:{boolean:{}}},{name:`pulse_live`,selector:{boolean:{}}},{name:`enable_animations`,selector:{boolean:{}}},{name:`max_departures`,selector:{number:{min:0,max:30,step:1,mode:`box`}}}]}_patchRecord(e,t,n){let r={...this._config[e]??{}};n==null||n===``?delete r[t]:r[t]=n;let i={...this._config};Object.keys(r).length===0?delete i[e]:i[e]=r,this._config=i,X(this,`config-changed`,{config:i})}_renderPerLineSection(){let e=this._availableLines();if(e.length===0)return M`<div class="editor-hint">
+        ${this._t(`editor.per_line_no_data`)}
+      </div>`;let t=this._config.walk_times??{},n=this._config.line_colors??{};return M`
       <div class="editor-section">
-        <div class="section-header">${this._t("editor.section_per_line")}</div>
-        <div class="editor-hint">${this._t("editor.per_line_hint")}</div>
+        <div class="section-header">${this._t(`editor.section_per_line`)}</div>
+        <div class="editor-hint">${this._t(`editor.per_line_hint`)}</div>
         <div class="per-line-list">
-          ${e.map(e=>{const n=t[e],r=i[e]??"",o=this._defaultColorForLine(e),a=r||o;return B`
+          ${e.map(e=>{let r=t[e],i=n[e]??``,a=this._defaultColorForLine(e),o=i||a;return M`
               <div class="per-line-row">
                 <span class="per-line-badge">${e}</span>
                 <label class="per-line-walk-group">
@@ -1349,42 +1420,42 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
                     max="60"
                     step="1"
                     inputmode="numeric"
-                    .value=${void 0!==n?String(n):""}
-                    placeholder=${this._t("editor.walk_time_placeholder")}
-                    aria-label="${this._t("editor.walk_time")}: ${e}"
+                    .value=${r===void 0?``:String(r)}
+                    placeholder=${this._t(`editor.walk_time_placeholder`)}
+                    aria-label="${this._t(`editor.walk_time`)}: ${e}"
                     @change=${t=>this._onWalkTimeChange(e,t)}
                   />
                   <span class="per-line-walk-unit">
-                    ${this._t("editor.minutes_short")}
+                    ${this._t(`editor.minutes_short`)}
                   </span>
                 </label>
                 <label
                   class="per-line-color-chip"
-                  style=${`--swatch-color: ${a};`}
+                  style=${`--swatch-color: ${o};`}
                 >
                   <ha-icon
                     icon="mdi:palette-swatch-variant"
                     aria-hidden="true"
                   ></ha-icon>
                   <span class="per-line-color-hex">
-                    ${a.toUpperCase()}
+                    ${o.toUpperCase()}
                   </span>
                   <input
                     class="per-line-color-input"
                     type="color"
-                    .value=${a}
-                    aria-label="${this._t("editor.line_color")}: ${e}"
-                    title="${this._t("editor.line_color")}: ${e}"
+                    .value=${o}
+                    aria-label="${this._t(`editor.line_color`)}: ${e}"
+                    title="${this._t(`editor.line_color`)}: ${e}"
                     @input=${t=>this._onLineColorChange(e,t)}
                     @change=${t=>this._onLineColorChange(e,t)}
                   />
                 </label>
                 <button
-                  class=${"per-line-clear"+(r?"":" is-hidden")}
+                  class=${`per-line-clear${i?``:` is-hidden`}`}
                   type="button"
-                  title=${this._t("editor.line_color_clear")}
-                  aria-label="${this._t("editor.line_color_clear")}: ${e}"
-                  ?disabled=${!r}
+                  title=${this._t(`editor.line_color_clear`)}
+                  aria-label="${this._t(`editor.line_color_clear`)}: ${e}"
+                  ?disabled=${!i}
                   @click=${()=>this._onLineColorClear(e)}
                 >
                   ×
@@ -1393,7 +1464,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             `})}
         </div>
       </div>
-    `}render(){const e=this._config.entity,t="string"==typeof e&&e.length>0&&!this.hass?.states?.[e];return B`
+    `}render(){let e=this._config.entity,t=typeof e==`string`&&e.length>0&&!this.hass?.states?.[e];return M`
       <div class="editor">
         <ha-form
           .hass=${this.hass}
@@ -1403,43 +1474,43 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           .computeHelper=${this._computeHelper}
           @value-changed=${this._onFormChanged}
         ></ha-form>
-        ${t?B`<ha-alert alert-type="warning">
-              ${this._t("editor.entity_missing",{entity:e})}
-            </ha-alert>`:W}
+        ${t?M`<ha-alert alert-type="warning">
+              ${this._t(`editor.entity_missing`,{entity:e})}
+            </ha-alert>`:P}
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>
-    `}static{this.styles=et}constructor(...e){super(...e),this._config={type:"linz-linien-austria-card"},this._computeLabel=e=>{const t=`ui.panel.lovelace.editor.card.generic.${e.name}`,i=this.hass?.localize?.(t);if(i)return i;const n=`editor.${e.name}`,r=Be(n,{hassLanguage:this.hass?.language});return r!==n?r:e.name},this._computeHelper=e=>{const t=`editor.${e.name}_helper`,i=Be(t,{hassLanguage:this.hass?.language});return i===t?void 0:i},this._onFormChanged=e=>{const t={...e.detail.value};this._config=t,tt(this,"config-changed",{config:t})},this._onWalkTimeChange=(e,t)=>{const i=t.target.value.trim();if(""===i)return void this._patchRecord("walk_times",e,void 0);const n=Number(i);!Number.isFinite(n)||n<=0?this._patchRecord("walk_times",e,void 0):this._patchRecord("walk_times",e,Math.round(n))},this._onLineColorChange=(e,t)=>{const i=t.target;this._patchRecord("line_colors",e,i.value)},this._onLineColorClear=e=>{this._patchRecord("line_colors",e,void 0)}}}function rt(e,t,i,n){var r,o=arguments.length,a=o<3?t:n;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)a=Reflect.decorate(e,t,i,n);else for(var s=e.length-1;s>=0;s--)(r=e[s])&&(a=(o<3?r(a):o>3?r(t,i,a):r(t,i))||a);return o>3&&a&&Object.defineProperty(t,i,a),a}it([de({attribute:!1})],nt.prototype,"hass",void 0),it([pe()],nt.prototype,"_config",void 0),nt=it([le("linz-linien-austria-card-editor")],nt),window.customCards=window.customCards||[],window.customCards.push({type:"linz-linien-austria-card",name:"Linz Linien Austria",description:"Live LINZ AG LINIEN departure monitor.",preview:!0,documentationURL:"https://github.com/rolandzeiner/linz-linien-austria",getEntitySuggestion:(e,t)=>t.startsWith("sensor.")?"linz_linien_austria"!==e?.entities?.[t]?.platform?null:{config:{type:"custom:linz-linien-austria-card",entity:t,show_hero:!0}}:null});class ot extends ae{static getConfigElement(){return document.createElement("linz-linien-austria-card-editor")}static getStubConfig(e){const t={show_hero:!0};if(!e)return t;const i=Object.keys(e.states).find(t=>{if(!t.startsWith("sensor."))return!1;const i=e.states[t]?.attributes;return void 0!==i&&"string"==typeof i.stop_id&&Array.isArray(i.departures)});return i&&(t.entity=i),t}setConfig(e){if(!e||"object"!=typeof e)throw new Error("Invalid configuration / Ungültige Konfiguration");this.config={show_hero:!0,...e}}_t(e,t){return Be(e,{configLanguage:this.config?.language,hassLanguage:this.hass?.language},t)}shouldUpdate(e){if(!this.config)return!1;if(e.has("config"))return!0;const t=e.get("hass");return!t||!!this.config.entity&&t.states[this.config.entity]!==this.hass.states[this.config.entity]}getCardSize(){return 6}getGridOptions(){return{columns:12,rows:"auto",min_columns:6,min_rows:4}}firstUpdated(){this._maybeRunVersionCheck()}updated(e){this._maybeRunVersionCheck()}_maybeRunVersionCheck(){!this._versionCheckDone&&this.hass&&(this._versionCheckDone=!0,async function(e){if(!e?.callWS)return null;try{const t=await e.callWS({type:"linz_linien_austria/card_version"});if(t?.version&&"1.0.0"!==t.version)return t.version}catch{}return null}(this.hass).then(e=>{e&&this.isConnected&&(this._versionMismatch=e)}))}render(){const e={configLanguage:this.config?.language,hassLanguage:this.hass?.language};if(!this.hass)return B`<ha-card><div class="card-content">…</div></ha-card>`;if(!this.config.entity)return B`<ha-card>
-        ${Xe(this._versionMismatch,e)}
+    `}static{this.styles=xt}};Z([Me({attribute:!1})],Q.prototype,`hass`,void 0),Z([B()],Q.prototype,`_config`,void 0),Q=Z([ke(`linz-linien-austria-card-editor`)],Q),window.customCards=window.customCards||[],window.customCards.push({type:`linz-linien-austria-card`,name:`Linz Linien Austria`,description:`Live LINZ AG LINIEN departure monitor.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/linz-linien-austria`,getEntitySuggestion:(e,t)=>!t.startsWith(`sensor.`)||e?.entities?.[t]?.platform!==`linz_linien_austria`?null:{config:{type:`custom:linz-linien-austria-card`,entity:t,show_hero:!0}}});let $=class extends z{constructor(...e){super(...e),this._versionMismatch=null,this._versionCheckDone=!1,this._expandedStops=new Set}static getConfigElement(){return document.createElement(`linz-linien-austria-card-editor`)}static getStubConfig(e){let t={show_hero:!0};if(!e)return t;let n=Object.keys(e.states).find(t=>{if(!t.startsWith(`sensor.`))return!1;let n=e.states[t]?.attributes;return n!==void 0&&typeof n.stop_id==`string`&&Array.isArray(n.departures)});return n&&(t.entity=n),t}setConfig(e){if(!e||typeof e!=`object`)throw Error(`Invalid configuration / Ungültige Konfiguration`);this.config={show_hero:!0,...e}}_t(e,t){return G(e,{configLanguage:this.config?.language,hassLanguage:this.hass?.language},t)}shouldUpdate(e){if(!this.config)return!1;if(e.has(`config`))return!0;let t=e.get(`hass`);return t?this.config.entity?t.states[this.config.entity]!==this.hass.states[this.config.entity]:!1:!0}getCardSize(){return 6}getGridOptions(){return{columns:12,rows:`auto`,min_columns:6,min_rows:4}}firstUpdated(){this._maybeRunVersionCheck()}updated(e){this._maybeRunVersionCheck()}_maybeRunVersionCheck(){!this._versionCheckDone&&this.hass&&(this._versionCheckDone=!0,gt(this.hass).then(e=>{e&&this.isConnected&&(this._versionMismatch=e)}))}render(){let e={configLanguage:this.config?.language,hassLanguage:this.hass?.language};if(!this.hass)return M`<ha-card><div class="card-content">…</div></ha-card>`;if(!this.config.entity)return M`<ha-card>
+        ${yt(this._versionMismatch,e)}
         <div class="card-content empty-state" role="status">
-          ${this._t("common.no_entity_picked")}
+          ${this._t(`common.no_entity_picked`)}
         </div>
-      </ha-card>`;const t=this.hass.states[this.config.entity];if(!t)return B`<ha-card>
-        ${Xe(this._versionMismatch,e)}
+      </ha-card>`;let t=this.hass.states[this.config.entity];if(!t)return M`<ha-card>
+        ${yt(this._versionMismatch,e)}
         <div class="card-content empty-state" role="status">
-          ${this._t("common.entity_unavailable")}
+          ${this._t(`common.entity_unavailable`)}
         </div>
-      </ha-card>`;const i=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||"",n=t.attributes.latitude,r=t.attributes.longitude,o=t.attributes.stop_name||i,a="number"==typeof n&&"number"==typeof r?`${n},${r}`:o?encodeURIComponent(/Linz/i.test(o)?o:`${o}, Linz`):"",s=a?"string"!=typeof(l=`https://www.google.com/maps/search/?api=1&query=${a}`)?"":/^https?:\/\//i.test(l)?l:"":null;var l;const c=this._t("card.open_in_maps"),h=t.attributes.departures??[],d=new Set((this.config.lines??[]).map(e=>e.trim()).filter(Boolean)),p=this.config.walk_times??{},u=h.filter(e=>{if(d.size>0&&!d.has(e.line))return!1;const t=p[e.line];if("number"==typeof t&&t>0){const i=this._countdownFor(e);if(null===i||i<t)return!1}return!0}),m="number"==typeof this.config.max_departures?Math.max(0,this.config.max_departures):u.length,f=this._computeHeroGroup(u),g=f[0],_=!1!==this.config.show_hero?new Set(f):new Set,w=u.filter(e=>!_.has(e)),v=0===m?[]:w.slice(0,m),b=Ke(g?.mot),y=this._userLineColor(g?.line)??Ve(g?.mot),x=this._accentText(this._userLineColor(g?.line)??Ge(g?.mot)),$=(y?`--header-color: ${y};`:"")+(x?`--header-text: ${x};`:""),k=new Set(u.map(e=>e.line).filter(Boolean)),A=(t.attributes.alerts??[]).filter(e=>{const t=e.affected_lines||[];return 0===t.length||t.some(e=>k.has(e))}),z=g?.direction||"",S=this.config.show_platform?this._platformText(g):"",C=S?`${z} · ${this._platformLabel(g,!0)} ${S}`:z,E=!1!==this.config.pulse_live,L=!!this.config.enable_animations;return B`
+      </ha-card>`;let n=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||``,r=t.attributes.latitude,i=t.attributes.longitude,a=t.attributes.stop_name||n,o=typeof r==`number`&&typeof i==`number`?`${r},${i}`:a?encodeURIComponent(/Linz/i.test(a)?a:`${a}, Linz`):``,s=o?ht(`https://www.google.com/maps/search/?api=1&query=${o}`):null,c=this._t(`card.open_in_maps`),l=t.attributes.departures??[],u=new Set((this.config.lines??[]).map(e=>e.trim()).filter(Boolean)),d=this.config.walk_times??{},f=l.filter(e=>{if(u.size>0&&!u.has(e.line))return!1;let t=d[e.line];if(typeof t==`number`&&t>0){let n=this._countdownFor(e);if(n===null||n<t)return!1}return!0}),p=typeof this.config.max_departures==`number`?Math.max(0,this.config.max_departures):f.length,m=this._computeHeroGroup(f),h=m[0],ee=this.config.show_hero===!1?new Set:new Set(m),g=f.filter(e=>!ee.has(e)),_=p===0?[]:g.slice(0,p),te=ct(h?.mot),ne=this._userLineColor(h?.line)??K(h?.mot),v=this._accentText(this._userLineColor(h?.line)??q(h?.mot)),y=(ne?`--header-color: ${ne};`:``)+(v?`--header-text: ${v};`:``),b=new Set(f.map(e=>e.line).filter(Boolean)),x=(t.attributes.alerts??[]).filter(e=>{let t=e.affected_lines||[];return t.length===0||t.some(e=>b.has(e))}),S=h?.direction||``,C=this.config.show_platform?this._platformText(h):``,w=C?`${S} · ${this._platformLabel(h,!0)} ${C}`:S,T=this.config.pulse_live!==!1,re=!!this.config.enable_animations;return M`
       <ha-card
-        class=${_e({"no-pulse":!E,"with-animations":L})}
+        class=${H({"no-pulse":!T,"with-animations":re})}
       >
-        ${Xe(this._versionMismatch,e)}
-        ${this.config.hide_header?W:B`<header class="head" style=${$}>
+        ${yt(this._versionMismatch,e)}
+        ${this.config.hide_header?P:M`<header class="head" style=${y}>
               <span class="icon-tile" aria-hidden="true">
-                <ha-icon icon=${b}></ha-icon>
+                <ha-icon icon=${te}></ha-icon>
               </span>
               <div class="title-block">
-                <h3 class="title">${i}</h3>
-                ${C?B`<p class="subtitle">${C}</p>`:W}
+                <h3 class="title">${n}</h3>
+                ${w?M`<p class="subtitle">${w}</p>`:P}
               </div>
-              ${s?B`<div class="head-actions">
+              ${s?M`<div class="head-actions">
                     <a
                       class="icon-action"
                       href=${s}
                       target="_blank"
                       rel="noopener noreferrer"
                       title=${c}
-                      aria-label="${c}: ${i}"
+                      aria-label="${c}: ${n}"
                       @click=${e=>e.stopPropagation()}
                     >
                       <ha-icon
@@ -1447,21 +1518,21 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
                         aria-hidden="true"
                       ></ha-icon>
                     </a>
-                  </div>`:W}
+                  </div>`:P}
             </header>`}
-        ${!1!==this.config.show_alerts&&A.length>0?this._renderAlerts(A):W}
-        ${this.config.show_hero&&f.length>0?this._renderHero(f):W}
-        ${0===m||0===v.length&&_.size>0?W:B`<ul class="departures" role="list">
-                ${0===v.length?B`<li class="empty">
-                      ${d.size>0&&h.length>0?this._t("card.no_matches_for_filter"):this._t("card.no_departures")}
-                    </li>`:Se(v,e=>this._depKey(e),e=>this._renderRow(e))}
+        ${this.config.show_alerts!==!1&&x.length>0?this._renderAlerts(x):P}
+        ${this.config.show_hero&&m.length>0?this._renderHero(m):P}
+        ${p===0||_.length===0&&ee.size>0?P:M`<ul class="departures" role="list">
+                ${_.length===0?M`<li class="empty">
+                      ${u.size>0&&l.length>0?this._t(`card.no_matches_for_filter`):this._t(`card.no_departures`)}
+                    </li>`:Ue(_,e=>this._depKey(e),e=>this._renderRow(e))}
               </ul>`}
         <div class="foot">
-          <span class="timestamp">${this._t("card.attribution")}</span>
+          <span class="timestamp">${this._t(`card.attribution`)}</span>
         </div>
       </ha-card>
-    `}_isHighPriority(e){return"string"==typeof e&&/high/i.test(e)}_renderAlerts(e){const t=[...e].sort((e,t)=>(this._isHighPriority(e.priority)?0:1)-(this._isHighPriority(t.priority)?0:1)),i=this._t("card.alerts_summary",{count:t.length});return B`
-      <section class="alerts" role="region" aria-label=${i}>
+    `}_isHighPriority(e){return typeof e==`string`&&/high/i.test(e)}_renderAlerts(e){let t=[...e].sort((e,t)=>+!this._isHighPriority(e.priority)-!this._isHighPriority(t.priority)),n=this._t(`card.alerts_summary`,{count:t.length});return M`
+      <section class="alerts" role="region" aria-label=${n}>
         <details>
           <summary class="alerts-summary">
             <ha-icon
@@ -1469,7 +1540,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
               icon="mdi:alert-outline"
               aria-hidden="true"
             ></ha-icon>
-            <span>${i}</span>
+            <span>${n}</span>
             <ha-icon
               class="alerts-chevron"
               icon="mdi:chevron-down"
@@ -1477,151 +1548,151 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             ></ha-icon>
           </summary>
           <ul class="alerts-list" role="list">
-            ${t.map(e=>B`
+            ${t.map(e=>M`
                 <li
-                  class=${_e({alert:!0,"alert-high":this._isHighPriority(e.priority)})}
+                  class=${H({alert:!0,"alert-high":this._isHighPriority(e.priority)})}
                 >
                   <div class="alert-title">${e.title}</div>
-                  ${e.description?B`<div class="alert-body">${e.description}</div>`:W}
-                  ${e.affected_lines.length?B`<div class="alert-lines">
-                        ${this._t("card.affected_lines")}:
-                        ${e.affected_lines.join(", ")}
-                      </div>`:W}
+                  ${e.description?M`<div class="alert-body">${e.description}</div>`:P}
+                  ${e.affected_lines.length?M`<div class="alert-lines">
+                        ${this._t(`card.affected_lines`)}:
+                        ${e.affected_lines.join(`, `)}
+                      </div>`:P}
                 </li>
               `)}
           </ul>
         </details>
       </section>
-    `}_computeHeroGroup(e){if(0===e.length)return[];const t=e.filter(e=>!e.is_cancelled);if(0===t.length){const t=e[0];return t?[t]:[]}const i=e=>"number"==typeof e.countdown_rt?e.countdown_rt:"number"==typeof e.countdown?e.countdown:Number.POSITIVE_INFINITY;let n=Number.POSITIVE_INFINITY;for(const e of t){const t=i(e);t<n&&(n=t)}if(!Number.isFinite(n)){const e=t[0];return e?[e]:[]}return n<=0?t.filter(e=>i(e)<=0):t.filter(e=>i(e)===n)}_renderHero(e){const t=e[0],i=this._countdownFor(t),n=t.is_cancelled?this._t("card.cancelled"):null===i?"—":i<=0?this._t("card.now"):`${i}`,r=e.map(e=>`${e.mot_name?`${e.mot_name} `:""}${e.line} ${e.direction}`),o=t.is_cancelled?this._t("card.cancelled"):null===i?this._t("card.unknown"):i<=0?this._t("card.now"):`${i} ${this._t("card.minutes")}`,a=` ${this._t("card.and_separator")} `,s=`${this._t("card.next_departure_label")}: ${r.join(a)}, ${o}${t.is_realtime&&!t.is_cancelled?`, ${this._t("card.realtime")}`:""}`,l=t.is_cancelled?null:this._userLineColor(t.line)??Ve(t.mot),c=t.is_cancelled?null:this._accentText(this._userLineColor(t.line)??Ge(t.mot)),h=(l?`--hero-color: ${l};`:"")+(c?`--hero-text: ${c};`:"");return B`
+    `}_computeHeroGroup(e){if(e.length===0)return[];let t=e.filter(e=>!e.is_cancelled);if(t.length===0){let t=e[0];return t?[t]:[]}let n=e=>typeof e.countdown_rt==`number`?e.countdown_rt:typeof e.countdown==`number`?e.countdown:1/0,r=1/0;for(let e of t){let t=n(e);t<r&&(r=t)}if(!Number.isFinite(r)){let e=t[0];return e?[e]:[]}return r<=0?t.filter(e=>n(e)<=0):t.filter(e=>n(e)===r)}_renderHero(e){let t=e[0],n=this._countdownFor(t),r=t.is_cancelled?this._t(`card.cancelled`):n===null?`—`:n<=0?this._t(`card.now`):`${n}`,i=e.map(e=>`${e.mot_name?`${e.mot_name} `:``}${e.line} ${e.direction}`),a=t.is_cancelled?this._t(`card.cancelled`):n===null?this._t(`card.unknown`):n<=0?this._t(`card.now`):`${n} ${this._t(`card.minutes`)}`,o=` ${this._t(`card.and_separator`)} `,s=`${this._t(`card.next_departure_label`)}: ${i.join(o)}, ${a}${t.is_realtime&&!t.is_cancelled?`, ${this._t(`card.realtime`)}`:``}`,c=t.is_cancelled?null:this._userLineColor(t.line)??K(t.mot),l=t.is_cancelled?null:this._accentText(this._userLineColor(t.line)??q(t.mot)),u=(c?`--hero-color: ${c};`:``)+(l?`--hero-text: ${l};`:``);return M`
       <section
-        class=${_e({hero:!0,"hero-cancelled":!!t.is_cancelled,"hero-multi":e.length>1})}
+        class=${H({hero:!0,"hero-cancelled":!!t.is_cancelled,"hero-multi":e.length>1})}
         aria-label=${s}
-        style=${h}
+        style=${u}
       >
         <div class="hero-time">
-          <span class="hero-min" aria-live="polite">${n}</span>
-          ${!t.is_cancelled&&null!==i&&i>0?B`<span class="hero-unit"
-                >${this._t("card.minutes_short")}</span
-              >`:W}
+          <span class="hero-min" aria-live="polite">${r}</span>
+          ${!t.is_cancelled&&n!==null&&n>0?M`<span class="hero-unit"
+                >${this._t(`card.minutes_short`)}</span
+              >`:P}
         </div>
-        ${e.map(e=>B`${this._renderHeroEntry(e)}${this._renderHeroStops(e)}`)}
+        ${e.map(e=>M`${this._renderHeroEntry(e)}${this._renderHeroStops(e)}`)}
       </section>
-    `}_renderHeroEntry(e){const t=this.config.show_platform?this._platformText(e):"",i=e.is_cancelled?"":(e.delay_hint??"").trim(),n=(e.is_cancelled?[]:e.stops_ahead??[]).length>0,r=this._depKey(e),o=this._expandedStops.has(r),a=`hero-stops-${this._slugify(r)}`,s=`${e.mot_name?`${e.mot_name} `:""}${e.line} ${e.direction}`,l=n?`${s}. ${this._t(o?"card.hide_stops":"card.show_stops",{line:e.line,direction:e.direction})}`:s;return B`
+    `}_renderHeroEntry(e){let t=this.config.show_platform?this._platformText(e):``,n=e.is_cancelled?``:(e.delay_hint??``).trim(),r=(e.is_cancelled?[]:e.stops_ahead??[]).length>0,i=this._depKey(e),a=this._expandedStops.has(i),o=`hero-stops-${this._slugify(i)}`,s=`${e.mot_name?`${e.mot_name} `:``}${e.line} ${e.direction}`,c=r?`${s}. ${this._t(a?`card.hide_stops`:`card.show_stops`,{line:e.line,direction:e.direction})}`:s;return M`
       <div
-        class=${_e({"hero-entry":!0,"hero-entry-expandable":n,expanded:o})}
-        role=${n?"button":W}
-        tabindex=${n?"0":W}
-        aria-expanded=${n?o?"true":"false":W}
-        aria-controls=${n?a:W}
-        aria-label=${n?l:W}
-        @click=${()=>n&&this._toggleStops(r)}
-        @keydown=${e=>this._onExpanderKeydown(e,n,()=>this._toggleStops(r))}
+        class=${H({"hero-entry":!0,"hero-entry-expandable":r,expanded:a})}
+        role=${r?`button`:P}
+        tabindex=${r?`0`:P}
+        aria-expanded=${r?a?`true`:`false`:P}
+        aria-controls=${r?o:P}
+        aria-label=${r?c:P}
+        @click=${()=>r&&this._toggleStops(i)}
+        @keydown=${e=>this._onExpanderKeydown(e,r,()=>this._toggleStops(i))}
       >
         ${this._renderLineBadge(e)}
-        <span class="hero-direction">${e.direction||""}</span>
-        ${!e.is_cancelled&&t?B`<span class="hero-platform"
+        <span class="hero-direction">${e.direction||``}</span>
+        ${!e.is_cancelled&&t?M`<span class="hero-platform"
               >${this._platformLabel(e,!0)} ${t}</span
-            >`:W}
-        ${e.is_realtime&&!e.is_cancelled?B`<span class="rt-pill" title=${this._t("card.realtime")}>
-              ${this._t("card.realtime")}
-            </span>`:W}
-        ${n?B`<ha-icon
+            >`:P}
+        ${e.is_realtime&&!e.is_cancelled?M`<span class="rt-pill" title=${this._t(`card.realtime`)}>
+              ${this._t(`card.realtime`)}
+            </span>`:P}
+        ${r?M`<ha-icon
               class="hero-chevron"
               icon="mdi:chevron-down"
               aria-hidden="true"
-            ></ha-icon>`:W}
-        ${i?B`<span class="hero-hint">${i}</span>`:W}
+            ></ha-icon>`:P}
+        ${n?M`<span class="hero-hint">${n}</span>`:P}
       </div>
-    `}_renderHeroStops(e){const t=e.is_cancelled?[]:e.stops_ahead??[];if(0===t.length)return W;const i=this._depKey(e),n=this._expandedStops.has(i),r=`hero-stops-${this._slugify(i)}`,o=`${e.mot_name?`${e.mot_name} `:""}${e.line} ${e.direction}`;return B`
-      <div class=${_e({"hero-detail":!0,expanded:n})}>
+    `}_renderHeroStops(e){let t=e.is_cancelled?[]:e.stops_ahead??[];if(t.length===0)return P;let n=this._depKey(e),r=this._expandedStops.has(n),i=`hero-stops-${this._slugify(n)}`,a=`${e.mot_name?`${e.mot_name} `:``}${e.line} ${e.direction}`;return M`
+      <div class=${H({"hero-detail":!0,expanded:r})}>
         <div
           class="hero-detail-inner"
-          id=${r}
+          id=${i}
           role="region"
-          aria-label=${o}
-          aria-hidden=${n?"false":"true"}
+          aria-label=${a}
+          aria-hidden=${r?`false`:`true`}
         >
           ${this._renderStopsAheadTrail(t,e)}
         </div>
       </div>
-    `}_renderRow(e){const t=this._countdownFor(e),i="number"==typeof e.delay_minutes&&e.delay_minutes>0,n="number"==typeof e.delay_minutes&&e.delay_minutes<0,r=null===t?"—":t<=0?this._t("card.now"):`${t} ${this._t("card.minutes_short")}`,o=e.is_cancelled?"":(e.delay_hint??"").trim(),a=e.is_cancelled?[]:e.stops_ahead??[],s=this._depKey(e),l=this._expandedStops.has(s),c=`stops-${this._slugify(s)}`,h=a.length>0,d=null!==t&&t<=0&&!e.is_cancelled,p=d?this._accentText(this._userLineColor(e.line)??Ge(e.mot)):null,u=`${e.mot_name?`${e.mot_name} `:""}${e.line} ${e.direction} ${e.is_cancelled?this._t("card.cancelled"):r}${e.is_realtime?` ${this._t("card.realtime")}`:""}${o?`. ${o}`:""}`,m=h?`${u}. ${this._t(l?"card.hide_stops":"card.show_stops",{line:e.line,direction:e.direction})}`:u,f=B`
+    `}_renderRow(e){let t=this._countdownFor(e),n=typeof e.delay_minutes==`number`&&e.delay_minutes>0,r=typeof e.delay_minutes==`number`&&e.delay_minutes<0,i=t===null?`—`:t<=0?this._t(`card.now`):`${t} ${this._t(`card.minutes_short`)}`,a=e.is_cancelled?``:(e.delay_hint??``).trim(),o=e.is_cancelled?[]:e.stops_ahead??[],s=this._depKey(e),c=this._expandedStops.has(s),l=`stops-${this._slugify(s)}`,u=o.length>0,d=t!==null&&t<=0&&!e.is_cancelled,f=d?this._accentText(this._userLineColor(e.line)??q(e.mot)):null,p=`${e.mot_name?`${e.mot_name} `:``}${e.line} ${e.direction} ${e.is_cancelled?this._t(`card.cancelled`):i}${e.is_realtime?` ${this._t(`card.realtime`)}`:``}${a?`. ${a}`:``}`,m=u?`${p}. ${this._t(c?`card.hide_stops`:`card.show_stops`,{line:e.line,direction:e.direction})}`:p,h=M`
       <li class="row-wrap">
       <div
-        class=${_e({row:!0,"row-rt":!!e.is_realtime,"row-cancelled":!!e.is_cancelled,"row-expandable":h})}
-        role=${h?"button":W}
-        tabindex=${h?"0":W}
-        aria-expanded=${h?l?"true":"false":W}
-        aria-controls=${h?c:W}
+        class=${H({row:!0,"row-rt":!!e.is_realtime,"row-cancelled":!!e.is_cancelled,"row-expandable":u})}
+        role=${u?`button`:P}
+        tabindex=${u?`0`:P}
+        aria-expanded=${u?c?`true`:`false`:P}
+        aria-controls=${u?l:P}
         aria-label=${m}
-        style=${p?`--linz-accent-text: ${p};`:W}
-        @click=${()=>h&&this._toggleStops(s)}
-        @keydown=${e=>this._onExpanderKeydown(e,h,()=>this._toggleStops(s))}
+        style=${f?`--linz-accent-text: ${f};`:P}
+        @click=${()=>u&&this._toggleStops(s)}
+        @keydown=${e=>this._onExpanderKeydown(e,u,()=>this._toggleStops(s))}
       >
         ${this._renderLineBadge(e)}
         <span class="row-main">
-          <span class="row-direction">${e.direction||""}</span>
-          ${o?B`<span class="row-hint" title=${o}>${o}</span>`:W}
+          <span class="row-direction">${e.direction||``}</span>
+          ${a?M`<span class="row-hint" title=${a}>${a}</span>`:P}
         </span>
         <span class="row-tail">
-          ${this.config.show_platform&&!e.is_cancelled&&this._platformText(e)?B`<span
+          ${this.config.show_platform&&!e.is_cancelled&&this._platformText(e)?M`<span
                 class="row-platform"
                 aria-label="${this._platformLabel(e,!1)} ${this._platformText(e)}"
                 title="${this._platformLabel(e,!1)} ${this._platformText(e)}"
                 >${this._platformLabel(e,!0)}
                 ${this._platformText(e)}</span
-              >`:W}
+              >`:P}
           <span
-            class=${_e({"row-time":!0,late:i&&!e.is_cancelled,early:n&&!e.is_cancelled,now:d})}
+            class=${H({"row-time":!0,late:n&&!e.is_cancelled,early:r&&!e.is_cancelled,now:d})}
           >
-            ${e.is_cancelled?this._t("card.cancelled"):r}
+            ${e.is_cancelled?this._t(`card.cancelled`):i}
           </span>
-          ${h?B`<ha-icon
+          ${u?M`<ha-icon
                 class="row-chevron"
                 icon="mdi:chevron-down"
                 aria-hidden="true"
-              ></ha-icon>`:W}
+              ></ha-icon>`:P}
         </span>
       </div>
       </li>
-    `;return 0===a.length?f:[f,this._renderStopsAheadPanel(a,c,l,e)]}_onExpanderKeydown(e,t,i){t&&("Enter"!==e.key&&" "!==e.key||(e.preventDefault(),i()))}_toggleStops(e){const t=new Set(this._expandedStops);t.delete(e)||t.add(e),this._expandedStops=t}_slugify(e){return e.replace(/[^a-zA-Z0-9_-]+/g,"-")}_renderStopsAheadPanel(e,t,i,n){const r=`${n.mot_name?`${n.mot_name} `:""}${n.line} ${n.direction}`;return B`
-      <li class=${_e({"row-detail":!0,expanded:i})}>
+    `;return o.length===0?h:[h,this._renderStopsAheadPanel(o,l,c,e)]}_onExpanderKeydown(e,t,n){t&&(e.key===`Enter`||e.key===` `)&&(e.preventDefault(),n())}_toggleStops(e){let t=new Set(this._expandedStops);t.delete(e)||t.add(e),this._expandedStops=t}_slugify(e){return e.replace(/[^a-zA-Z0-9_-]+/g,`-`)}_renderStopsAheadPanel(e,t,n,r){let i=`${r.mot_name?`${r.mot_name} `:``}${r.line} ${r.direction}`;return M`
+      <li class=${H({"row-detail":!0,expanded:n})}>
         <div
           class="row-detail-inner"
           id=${t}
           role="region"
-          aria-label=${r}
-          aria-hidden=${i?"false":"true"}
+          aria-label=${i}
+          aria-hidden=${n?`false`:`true`}
         >
-          ${this._renderStopsAheadTrail(e,n)}
+          ${this._renderStopsAheadTrail(e,r)}
         </div>
       </li>
-    `}_renderStopsAheadTrail(e,t){const i=this._userLineColor(t.line)??Ve(t.mot)??"var(--linz-accent)";return B`
+    `}_renderStopsAheadTrail(e,t){let n=this._userLineColor(t.line)??K(t.mot)??`var(--linz-accent)`;return M`
       <ol
         class="stops-ahead"
-        style=${Le({"--stops-ahead-line":i})}
+        style=${We({"--stops-ahead-line":n})}
       >
-        ${e.map((t,i)=>{const n=t.delay_minutes,r=i===e.length-1;return B`<li
-            class=${_e({"stops-ahead-stop":!0,terminus:r})}
+        ${e.map((t,n)=>{let r=t.delay_minutes,i=n===e.length-1;return M`<li
+            class=${H({"stops-ahead-stop":!0,terminus:i})}
           >
             <span class="stops-ahead-dot" aria-hidden="true"></span>
             <span class="stops-ahead-name">${t.name}</span>
             <span
-              class=${_e({"stops-ahead-time":!0,late:"number"==typeof n&&n>0,early:"number"==typeof n&&n<0})}
+              class=${H({"stops-ahead-time":!0,late:typeof r==`number`&&r>0,early:typeof r==`number`&&r<0})}
               >${this._clockTime(t.arrival)}</span
             >
           </li>`})}
       </ol>
-    `}_clockTime(e){return!e||e.length<16?"":e.slice(11,16)}_renderLineBadge(e){const t=Ke(e.mot,"mdi:bus"),i=this._userLineColor(e.line),n=i?`background: ${i};`:"";return B`
+    `}_clockTime(e){return!e||e.length<16?``:e.slice(11,16)}_renderLineBadge(e){let t=ct(e.mot,`mdi:bus`),n=this._userLineColor(e.line),r=n?`background: ${n};`:``;return M`
       <span
         class="line-badge"
-        data-mot=${e.mot??""}
-        style=${n}
+        data-mot=${e.mot??``}
+        style=${r}
       >
         <ha-icon
           class="line-icon"
           icon=${t}
           aria-hidden="true"
         ></ha-icon>
-        <span class="line-num">${e.line||"—"}</span>
+        <span class="line-num">${e.line||`—`}</span>
       </span>
-    `}_userLineColor(e){if(!e)return null;const t=this.config.line_colors??{};return t[e]??t[e.toUpperCase()]??null}_colorScheme(){return!0===this.hass?.themes?.darkMode?"dark":!1===this.hass?.themes?.darkMode?"light":void 0}_accentText(e){const t=this._colorScheme();return void 0===t?null:Je(e,t)??"var(--primary-text-color)"}_depKey(e){return[e.line??"",e.direction??"",e.platform??"",e.scheduled??""].join("|")}_platformText(e){if(!e)return"";const t=(e.platform??"").trim();return t&&"0"!==t?t:""}_isRailMot(e){return 0===e||1===e}_platformLabel(e,t){const i=this._isRailMot(e?.mot)?t?"card.platform_rail_short":"card.platform_rail":t?"card.platform_short":"card.platform";return this._t(i)}_countdownFor(e){return"number"==typeof e.countdown_rt?e.countdown_rt:"number"==typeof e.countdown?e.countdown:null}static{this.styles=Qe}constructor(...e){super(...e),this._versionMismatch=null,this._versionCheckDone=!1,this._expandedStops=new Set}}rt([de({attribute:!1})],ot.prototype,"hass",void 0),rt([pe()],ot.prototype,"config",void 0),rt([pe()],ot.prototype,"_versionMismatch",void 0),rt([pe()],ot.prototype,"_expandedStops",void 0),ot=rt([le("linz-linien-austria-card")],ot);export{ot as LinzLinienAustriaCard};
+    `}_userLineColor(e){if(!e)return null;let t=this.config.line_colors??{};return t[e]??t[e.toUpperCase()]??null}_colorScheme(){if(this.hass?.themes?.darkMode===!0)return`dark`;if(this.hass?.themes?.darkMode===!1)return`light`}_accentText(e){let t=this._colorScheme();return t===void 0?null:mt(e,t)??`var(--primary-text-color)`}_depKey(e){return[e.line??``,e.direction??``,e.platform??``,e.scheduled??``].join(`|`)}_platformText(e){if(!e)return``;let t=(e.platform??``).trim();return!t||t===`0`?``:t}_isRailMot(e){return e===0||e===1}_platformLabel(e,t){let n=this._isRailMot(e?.mot)?t?`card.platform_rail_short`:`card.platform_rail`:t?`card.platform_short`:`card.platform`;return this._t(n)}_countdownFor(e){return typeof e.countdown_rt==`number`?e.countdown_rt:typeof e.countdown==`number`?e.countdown:null}static{this.styles=bt}};Z([Me({attribute:!1})],$.prototype,`hass`,void 0),Z([B()],$.prototype,`config`,void 0),Z([B()],$.prototype,`_versionMismatch`,void 0),Z([B()],$.prototype,`_expandedStops`,void 0),$=Z([ke(`linz-linien-austria-card`)],$);export{$ as LinzLinienAustriaCard};

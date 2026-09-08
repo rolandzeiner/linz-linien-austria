@@ -144,12 +144,12 @@ class JSModuleRegistration:
     async def _async_register_path(self) -> None:
         """Register the static HTTP path that serves the JS bundle.
 
-        The ``ha-lovelace-card`` skill's Rollup config writes the bundle to
+        The ``ha-lovelace-card`` skill's Rolldown config writes the bundle to
         ``custom_components/<domain>/www/<filename>``; serving that ``www``
         subdirectory under URL_BASE keeps the resource URL flat
         (``URL_BASE/<filename>``) — no ``/www`` segment in the URL the user
         copies onto their dashboard, and the JS file actually exists where
-        Rollup put it.
+        Rolldown put it.
         """
         www_dir = Path(__file__).parent / "www"
         try:

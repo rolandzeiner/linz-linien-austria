@@ -1,7 +1,7 @@
 // Linz Linien Austria — Lovelace custom card
 // https://github.com/rolandzeiner/linz-linien-austria
 //
-// Lit 3 + Shadow DOM + Rollup, single-file HACS bundle.
+// Lit 3 + Shadow DOM + Rolldown, single-file HACS bundle.
 
 import { LitElement, html, nothing } from "lit";
 import type { TemplateResult, PropertyValues, CSSResultGroup } from "lit";
