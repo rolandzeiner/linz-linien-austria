@@ -277,18 +277,52 @@ def test_normalise_departure_tolerates_malformed_operator() -> None:
 
 
 def test_normalise_departure_carries_realtime_correction() -> None:
-    """A 1-minute delay shifts countdown_rt above the scheduled countdown."""
+    """countdown_rt flags a realtime countdown; it does not re-add the delay.
+
+    The fixture mirrors what the live DM endpoint publishes: scheduled
+    20:49, realtime 20:50, delay 1, countdown 3 — i.e. the countdown is
+    already measured to 20:50, so "now" is 20:47 and the tram really is
+    3 minutes out. countdown_rt must therefore equal countdown. Adding
+    `delay` on top (the original arithmetic) published 4 and inflated
+    every delayed departure by its own delay.
+    """
     raw = EXAMPLE_DM_RESPONSE["departureList"][0]
     normalised = _normalise_departure(raw)
     assert normalised is not None
     assert normalised["line"] == "2"
     assert normalised["direction"] == "solarCity"
     assert normalised["countdown"] == 3
-    assert normalised["countdown_rt"] == 4
+    assert normalised["countdown_rt"] == 3
     assert normalised["delay_minutes"] == 1
     assert normalised["is_realtime"] is True
     assert normalised["mot"] == 4
     assert normalised["mot_name"] == "Tram"
+
+
+def test_normalise_departure_adds_delay_without_realtime() -> None:
+    """A delay with no realDateTime still corrects a schedule-based countdown.
+
+    EFA measures `countdown` to the realtime departure only when it has
+    one. With no realDateTime the countdown is the timetable's, so the
+    delay is genuinely missing from it and adding it is correct — the
+    one shape where the original arithmetic was right.
+    """
+    raw = {
+        "countdown": 5,
+        "dateTime": {
+            "year": "2026",
+            "month": "4",
+            "day": "27",
+            "hour": "20",
+            "minute": "49",
+        },
+        "servingLine": {"number": "9", "direction": "Test", "delay": "2"},
+    }
+    out = _normalise_departure(raw)
+    assert out is not None
+    assert out["countdown"] == 5
+    assert out["countdown_rt"] == 7
+    assert out["is_realtime"] is False
 
 
 def test_normalise_departure_drops_unknown_delay_sentinel() -> None:

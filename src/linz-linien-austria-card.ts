@@ -1236,15 +1236,18 @@ export class LinzLinienAustriaCard extends LitElement {
   /** Wall-clock "HH:MM" for a departure, read off whichever timestamp
    *  the countdown beside it was derived from.
    *
-   *  `realtime` and `countdown_rt` are populated independently upstream:
-   *  the timestamp only needs `realDateTime`, while the countdown also
-   *  needs a usable `delay` (`-9999` is the unknown-sentinel and gets
-   *  dropped). So a row can carry `realDateTime` with no usable delay,
-   *  leaving `_countdownFor` on the scheduled value — and reading the
-   *  clock off `realtime` there would render "4 Min · 15:47" against a
-   *  15:44 schedule, the two halves of one readout disagreeing by
-   *  exactly the delay. Gating on `countdown_rt` keeps both describing
-   *  the same estimate.
+   *  The integration sets `countdown_rt` whenever it has a realtime
+   *  prediction, so in practice this gate and a bare `realtime` check
+   *  agree. It is kept as the gate anyway because the two fields used to
+   *  diverge — `countdown_rt` additionally required a usable `delay`
+   *  (`-9999` is the unknown-sentinel and gets dropped), so a row with
+   *  `realDateTime` and no usable delay left `_countdownFor` on the
+   *  scheduled value while the clock read the prediction, and the two
+   *  halves of one readout disagreed by exactly the delay. A browser
+   *  holding a cached card against an older integration can still meet
+   *  that shape, and falling back to `scheduled` is the safe answer
+   *  there: both halves stay wrong together rather than contradicting
+   *  each other on screen.
    *
    *  Formatting (and the reason these timestamps are sliced rather than
    *  parsed) lives in `_clockTime`. Null rather than the empty string
