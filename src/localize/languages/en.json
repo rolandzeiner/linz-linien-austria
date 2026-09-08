@@ -63,7 +63,7 @@
     "per_line_hint": "Walk time (Fußweg): drop a departure when its countdown is below this many minutes — you couldn't catch it anyway. Direction: show only one direction of travel for that line — each button names the destination it heads for. Colour: override the line badge tint. Raise the integration's `Departures to fetch` if a long walk leaves too few rows visible.",
     "per_line_no_data": "Pick an entity above to see its lines here.",
     "walk_time": "Walk time",
-    "walk_time_placeholder": "min",
+    "walk_time_placeholder": "—",
     "minutes_short": "min",
     "line_color": "Line colour",
     "line_color_clear": "Reset to default colour"

@@ -63,7 +63,7 @@
     "per_line_hint": "Fußweg: Abfahrten, deren Countdown unter dieser Minutenzahl liegt, werden ausgeblendet — sie sind ohnehin nicht erreichbar. Richtung: zeigt nur eine Fahrtrichtung dieser Linie; die Beschriftung nennt das jeweilige Ziel. Farbe: überschreibt die Linienbadge-Tönung. Bei längerem Fußweg gegebenenfalls in der Integration die ‚Anzahl der Abfahrten' erhöhen.",
     "per_line_no_data": "Oben einen Sensor wählen, dann erscheinen hier die Linien.",
     "walk_time": "Fußweg",
-    "walk_time_placeholder": "Min",
+    "walk_time_placeholder": "—",
     "minutes_short": "Min",
     "line_color": "Linienfarbe",
     "line_color_clear": "Standardfarbe wiederherstellen"

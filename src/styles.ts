@@ -1259,11 +1259,12 @@ export const editorStyles = css`
      to a small × that doesn't dominate the row. */
   .per-line-row {
     display: grid;
-    /* badge | walk | direction | colour | clear. The direction group
-       takes the flexible column and pins itself left, which keeps the
-       colour swatch and its clear button in one predictable column down
-       the whole list however wide the editor pane gets. */
-    grid-template-columns: 3.6em auto 1fr auto 24px;
+    /* badge | walk | direction | colour | clear. The colour takes the
+       flexible column: it is the one control with no natural width of
+       its own — a swatch is legible at any size — so it absorbs the
+       slack instead of leaving a dead gap mid-row, and it gains a click
+       target that grows with the pane. */
+    grid-template-columns: 3.6em auto auto 1fr 24px;
     align-items: center;
     gap: 10px;
     min-height: 36px;
@@ -1333,7 +1334,6 @@ export const editorStyles = css`
      instrument rather than three widgets that happen to be adjacent.
      A dir_code is per line, so this control has to be per line too. */
   .per-line-dirs {
-    justify-self: start;
     display: inline-flex;
     align-items: stretch;
     height: 28px;
@@ -1391,10 +1391,14 @@ export const editorStyles = css`
   .per-line-color-chip {
     --swatch-color: var(--linz-accent, #f08000);
     position: relative;
+    /* Grid blockifies inline-flex, so with no width set this stretches
+       to fill its column. */
     display: inline-flex;
-    width: 28px;
     height: 28px;
-    border-radius: 999px;
+    /* Not a pill: at full row width a 999px radius reads as a progress
+       bar. 6px matches the line badge at the other end of the row, so
+       the two colour-bearing elements rhyme. */
+    border-radius: 6px;
     background: var(--swatch-color);
     /* Hairline ring rather than a border: a pale override on a light
        card would otherwise vanish into the background entirely. */
@@ -1404,8 +1408,13 @@ export const editorStyles = css`
     transition: transform var(--ha-animation-duration-fast, 150ms) ease;
     box-sizing: border-box;
   }
+  /* A wide bar cannot scale on hover without shoving the row around,
+     so the affordance is a lift in the colour itself plus a firmer
+     ring. */
   .per-line-color-chip:hover {
-    transform: scale(1.08);
+    filter: brightness(1.06);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--primary-text-color) 45%, transparent);
   }
   .per-line-color-chip:active {
     transform: translateY(1px);
