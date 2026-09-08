@@ -143,6 +143,14 @@ them.
   routes stay visible even outside their live service window
   *(0.6.0)*. Custom-value text input is still available for lines
   the picker hasn't observed yet.
+- **Card-side direction filter** — at a two-platform stop, half the
+  board is the direction you aren't travelling, and the line filter
+  can't separate them: both directions run the same line number. Pick a
+  direction in the editor and the rest drops away. It matches on the
+  operator's own direction code rather than the destination text, so a
+  short-turning trip that still serves your direction stays on the
+  board. Replacement services carry no direction code and are always
+  shown. *(1.1.0)*
 - **Per-line walk time (Fußweg)** — drop departures that you couldn't
   catch given your walk to the stop. Per-line minutes input in the
   editor; each line's walk time is independent.
@@ -150,6 +158,12 @@ them.
   the editor; the chosen colour replaces the MoT default on the
   badge, in the hero accent, in the header tile when that line is the
   next departure, and on a row's own countdown once it reads Jetzt.
+- **Optional departure time** — show the wall-clock time beside the
+  countdown ("4 Min · 15:44"). The countdown answers "can I still make
+  it?"; the clock answers "which departure is this?" — the question you
+  have when you're still at home deciding whether to leave. It follows
+  the countdown's own source, so the two never disagree. Toggle *Show
+  departure time* in the editor. *(1.1.0)*
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.
