@@ -329,6 +329,19 @@ export class LinzLinienAustriaCard extends LitElement {
     // Keyed by the bare line number; a missing or non-positive entry
     // means "no walk-time filter for this line".
     const walkTimes = this.config.walk_times ?? {};
+    // Whether any card-side filter is in a position to remove rows.
+    // Derived once, here beside the filters themselves, rather than
+    // re-stated at the empty state — restating it is exactly how the
+    // walk-time filter came to be missing from that check: the list
+    // dropped rows the message then denied having dropped, so a stop
+    // that was merely out of reach on foot reported itself as having no
+    // service at all. A non-positive walk time is a no-op in the filter
+    // below and must not count here either, or a stale `"2": 0` left in
+    // saved YAML would permanently change the empty-state wording.
+    const anyFilterActive =
+      lineFilter.size > 0 ||
+      dirFilter.size > 0 ||
+      Object.values(walkTimes).some((w) => typeof w === "number" && w > 0);
     const filtered = allDepartures.filter((d) => {
       if (lineFilter.size > 0 && !lineFilter.has(d.line)) return false;
       // A row without a `dir_code` passes regardless of the filter:
@@ -472,8 +485,7 @@ export class LinzLinienAustriaCard extends LitElement {
             : html`<ul class="departures" role="list">
                 ${departures.length === 0
                   ? html`<li class="empty">
-                      ${(lineFilter.size > 0 || dirFilter.size > 0) &&
-                        allDepartures.length > 0
+                      ${anyFilterActive && allDepartures.length > 0
                         ? this._t("card.no_matches_for_filter")
                         : this._t("card.no_departures")}
                     </li>`
