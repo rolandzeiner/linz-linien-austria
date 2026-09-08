@@ -261,10 +261,12 @@ them.
 | `entity` | required | Pick a `sensor.*_next_departure` from this integration. |
 | `name` | (auto) | Optional override for the card heading. |
 | `lines` | (none) | Card-side line filter — array of line numbers, e.g. `["2", "45"]`. Empty = no filter. |
+| `directions` | (none) | Card-side direction filter — array of direction codes, e.g. `["H"]`. Empty = both directions. Keys on the line's stable `dir_code` rather than the headsign, so short-turning trips that still serve your direction are kept. Departures without a `dir_code` (replacement services) always pass. The visual editor labels the two codes with the headsigns your stop actually shows. |
 | `walk_times` | (none) | Per-line walk time in minutes, e.g. `{"2": 5}`. Departures whose effective countdown is below this value are dropped. |
 | `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
+| `show_absolute_time` | `false` | Append the wall-clock departure time after the countdown (`4 Min · 15:44`) and on the hero baseline after the countdown. Suppressed on a hero that groups several departures sharing one countdown, since they do not share a departure time. Uses the realtime prediction where one exists, the scheduled time otherwise. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |
@@ -287,8 +289,12 @@ type: custom:linz-linien-austria-card
 entity: sensor.linz_donau_hauptbahnhof_next_departure
 show_hero: true
 show_platform: true
+show_absolute_time: true
 max_departures: 8
 lines: ["2", "3", "45"]
+# Only the outbound direction. "H" / "R" are the operator's own
+# direction codes; the visual editor shows them as headsigns.
+directions: ["H"]
 walk_times:
   "2": 4
   "45": 6
@@ -347,8 +353,15 @@ narrowed away don't surface.
   coordinator's exponential backoff also widens the polling cadence
   on consecutive failures so a sustained outage doesn't keep
   hammering.
+- **The direction filter still shows the other direction.** Rows that
+  carry no `dir_code` pass the filter by design — the upstream omits
+  the code on replacement services, and silently hiding a
+  Schienenersatzverkehr would be the worse failure. A stop where both
+  directions share a code is a data problem upstream; check the
+  `departures` attribute on the sensor to see what the operator
+  publishes.
 - **Card shows fewer rows than `max_departures`.** Card-side filters
-  (`lines`, `walk_times`) trim rows BEFORE the display cap, and the
+  (`lines`, `walk_times`, `directions`) trim rows BEFORE the display cap, and the
   integration only fetches `Departures to fetch` rows from upstream.
   Raise the integration's `Departures to fetch` so the card has more
   pre-filter rows to draw from. (Editor helper text spells this out
