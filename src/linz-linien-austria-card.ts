@@ -576,14 +576,16 @@ export class LinzLinienAustriaCard extends LitElement {
    *    skipped by render).
    *
    *  Imminent window: when the soonest non-cancelled departure is at
-   *  "Jetzt" (cd ≤ 0), also include anything else with cd ≤ 1 so a
-   *  bus arriving in 1 minute joins the immediate one rather than
-   *  staying buried in the row list. Catches the natural pattern at
-   *  Hauptbahnhof where two lines often arrive within a minute of
-   *  each other and the user is standing at the stop deciding which
-   *  to take. Outside the Jetzt case, fall back to strict tie-only
-   *  grouping so a 5-min lead doesn't pull a 6-min entry into the
-   *  hero (would overshare for the "next departure" semantic). */
+   *  "Jetzt" (cd ≤ 0), include every other departure that is also at
+   *  Jetzt. The window is exactly cd ≤ 0 — this doc claimed cd ≤ 1
+   *  from the commit that introduced the function, but the filter
+   *  below has always been `<= 0`, so a departure one minute out has
+   *  never joined the hero. Widening it to ≤ 1 is a defensible
+   *  product call (two lines a minute apart at Hauptbahnhof, user
+   *  standing at the stop choosing) but it is not what this does.
+   *  Outside the Jetzt case, fall back to strict tie-only grouping so
+   *  a 5-min lead doesn't pull a 6-min entry into the hero (would
+   *  overshare for the "next departure" semantic). */
   private _computeHeroGroup(filtered: Departure[]): Departure[] {
     if (filtered.length === 0) return [];
     const live = filtered.filter((d) => !d.is_cancelled);

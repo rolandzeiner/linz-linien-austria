@@ -322,11 +322,14 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  at multi-platform stops (Hauptbahnhof, Bulgariplatz). Defaults
    *  off so single-platform stops stay clutter-free. */
   show_platform?: boolean;
-  /** Append the wall-clock departure time after the countdown
-   *  ("4 Min · 15:44") and on the hero baseline after the
-   *  countdown. Defaults off:
-   *  the countdown alone is the faster read when you are already at
-   *  the stop, while the clock time is what you want when deciding
+  /** Show the wall-clock departure time alongside the countdown: after
+   *  it on a list row ("4 Min · 15:44"), and beside the destination in
+   *  the hero — not after the hero countdown, which widened its column
+   *  and pushed the badge away from the number it belongs to. A hero
+   *  holding several departures gives each row its own time, since
+   *  they share a rounded countdown but not a departure time. Defaults
+   *  off: the countdown alone is the faster read when you are already
+   *  at the stop, while the clock time is what you want when deciding
    *  whether to leave the house. */
   show_absolute_time?: boolean;
   /** When false, hide the collapsible service-disruption banner
