@@ -222,7 +222,13 @@ async def async_fetch_alerts(
 
 
 async def async_refresh_alerts(hass: HomeAssistant) -> None:
-    """Refresh the cached alerts list and push it into hass.data."""
+    """Refresh the cached alerts list and push it into hass.data.
+
+    Two callers, neither of which awaits this on a critical path: the
+    5-minute domain tick, and a background task the first entry's setup
+    spawns (``__init__.py``). Both are fire-and-forget by design — see
+    ``async_fetch_alerts`` for why alerts must never gate departures.
+    """
     # Alerts share the same 15 s domain-wide floor as the departure
     # polls. Without this, the 5-min alerts tick can collide with a
     # departure refresh and burn two slots in one second.

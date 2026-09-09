@@ -12,6 +12,7 @@ Covers:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from unittest.mock import AsyncMock, patch
 
@@ -224,3 +225,48 @@ async def test_setup_uses_no_deprecated_ha_api(
         await hass.async_block_till_done()
 
     assert "Detected that custom integration" not in caplog.text
+
+
+async def test_setup_does_not_wait_on_the_alerts_fetch(hass: HomeAssistant) -> None:
+    """A stalled ADDINFO fetch must not hold up the sensor platform.
+
+    Alerts are decoration on top of departures, and the fetch takes its
+    own slot in the 15 s domain-cooldown queue. Awaiting it in
+    ``async_setup_entry`` put that slot between the first successful
+    poll and ``async_forward_entry_setups``, so the entry that polled
+    first was the last to publish entities — three stops took ~45 s to
+    all appear after a restart. It runs as a background task now.
+
+    Stalling the refresh forever is what makes this a real assertion:
+    on the awaited version setup never returns and the entity never
+    exists.
+    """
+    never = asyncio.Event()
+
+    async def _stalled(_hass: HomeAssistant) -> None:
+        await never.wait()
+
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            return_value=_parse_dm(EXAMPLE_DM_RESPONSE),
+        ),
+        patch(
+            "custom_components.linz_linien_austria.async_refresh_alerts",
+            side_effect=_stalled,
+        ),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        assert entry.state is ConfigEntryState.LOADED
+        assert hass.states.get("sensor.linz_donau_hauptbahnhof_next_departure")
+
+        # Unload cancels the still-pending background task. Without it
+        # the never-set Event outlives the test.
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()

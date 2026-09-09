@@ -30,11 +30,22 @@ async def async_enforce_domain_cooldown(hass: HomeAssistant) -> None:
     fair-use floor, not a bug.
 
     Practical implication: at the default 60 s scan + 15 s floor the
-    queue drains comfortably for ~3 entries (3 × 15 = 45 < 60). With
-    more entries the slowest coordinator's wait may exceed its 30 s
-    request timeout — users with 4+ stops should bump the interval.
-    The coordinator's exponential backoff handles sustained queue
-    overruns by widening the cadence on consecutive failures.
+    queue drains comfortably for ~3 entries (3 × 15 = 45 < 60). Beyond
+    that the wait is simply added to each entry's cycle — HA schedules
+    the next refresh ``update_interval`` after the current one
+    *finishes*, not on a fixed grid — so the effective cadence stretches
+    and then settles. Users with 4+ stops should raise the interval so
+    the cadence they configured is the cadence they get.
+
+    Nothing times out while that happens, and it is worth being precise
+    about why, because the obvious guess is wrong: the wait is taken in
+    ``_fetch_departures`` *before* the request, api.py's 30 s
+    ``ClientTimeout`` covers only the HTTP call itself, and HA's
+    ``DataUpdateCoordinator`` puts no timeout around
+    ``_async_update_data`` at all. A long queue therefore shows up as
+    stale data, never as failures — which also means the coordinator's
+    exponential backoff never sees it, since there is nothing for it to
+    catch.
     """
     domain_data = hass.data.setdefault(DOMAIN, {})
     lock: asyncio.Lock = domain_data.setdefault(_LOCK_KEY, asyncio.Lock())

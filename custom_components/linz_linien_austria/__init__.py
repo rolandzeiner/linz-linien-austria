@@ -188,12 +188,32 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     # Domain-wide alerts refresh — start lazily when the first entry
-    # comes up. Order matters: refresh+start must run before the count
-    # increments so the "first entry" branch fires exactly once per
-    # zero→non-zero transition, regardless of how many flapping retries
-    # the coordinator went through to reach this point.
+    # comes up. The initial fetch is deliberately NOT awaited. Alerts
+    # are best-effort decoration on top of departures (see
+    # alerts.py::async_fetch_alerts), and awaiting them here put a
+    # second domain-cooldown slot on the critical path between the
+    # first successful poll and the sensor platform — so the entry that
+    # fetched first was the last to publish entities.
+    #
+    # Not awaiting is also what makes the "first entry" guard actually
+    # hold. The check and the increment now run in one uninterrupted
+    # block. With the await in place a second entry could reach the
+    # check while the first was still suspended inside the refresh and
+    # had not yet incremented, so on a cold start *every* entry fired
+    # its own ADDINFO fetch and each one queued behind the whole
+    # cooldown backlog. Three entries cost six slots, not four.
+    #
+    # Background task rather than `async_create_task`: the fetch can sit
+    # in the cooldown queue for a while, and unload should cancel it
+    # rather than block on it. Losing it costs nothing — the 5-minute
+    # tick refills the cache, and `get_alerts_for_lines` reads an
+    # unpopulated cache as "no alerts". The trade is that the first
+    # poll's attributes can carry an empty `alerts` list until that
+    # fetch lands.
     if not domain_data.get(ENTRY_COUNT_KEY):
-        await async_refresh_alerts(hass)
+        entry.async_create_background_task(
+            hass, async_refresh_alerts(hass), f"{DOMAIN}_initial_alerts"
+        )
         async_start_alerts_refresh(hass)
     domain_data[ENTRY_COUNT_KEY] = (domain_data.get(ENTRY_COUNT_KEY) or 0) + 1
 
