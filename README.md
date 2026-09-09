@@ -165,8 +165,8 @@ them.
   in the next-departure block. The countdown answers "can I still make
   it?"; the clock answers "which departure is this?" — the question you
   have when you're still at home deciding whether to leave. It follows
-  the countdown's own source, so the two never disagree. Toggle *Show
-  departure time* in the editor. *(1.1.0)*
+  the countdown's own source, so the two agree on which departure they
+  describe. Toggle *Show departure time* in the editor. *(1.1.0)*
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.
@@ -283,7 +283,7 @@ them.
 | `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
-| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — after the countdown on a row (`4 Min · 15:44`), and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. Suppressed on a hero that groups several departures sharing one countdown, since they do not share a departure time. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise, so the two never disagree. |
+| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — after the countdown on a row (`4 Min · 15:44`), and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. When the next-departure block groups several departures, each shows its own time: they share a countdown rounded to the minute but not a departure minute, so two entries at *Jetzt* can read 10:42 and 10:43. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |
@@ -372,6 +372,13 @@ narrowed away don't surface.
   coordinator's exponential backoff also widens the polling cadence
   on consecutive failures so a sustained outage doesn't keep
   hammering.
+- **Sensors appear one after another after a restart.** Entries share
+  the 15-second domain-wide cooldown, so each stop's first poll waits
+  a slot behind the one before it: with three stops, the third sensor
+  lands around 30 seconds in. Nothing is wrong and nothing is lost —
+  the board fills as each poll returns, and only the first cycle is
+  staggered this way. With four or more stops, raise the scan interval
+  so the cadence you configured is the cadence you get.
 - **The direction filter still shows the other direction.** Rows that
   carry no `dir_code` pass the filter by design — the upstream omits
   the code on replacement services, and silently hiding a
