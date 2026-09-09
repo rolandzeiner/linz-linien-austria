@@ -621,7 +621,9 @@ export class LinzLinienAustriaCard extends LitElement {
   private _renderHero(group: Departure[]): TemplateResult {
     // Lead drives the countdown text + accent + cancellation styling;
     // remaining members each render their own (badge + direction +
-    // flags) row inside `.hero-meta` so tied arrivals share the block.
+    // clock + flags) row as a direct grid child, so tied arrivals share
+    // the block. (`.hero-meta` is gone — see the interleaving note on
+    // the group.map below.)
     const lead = group[0]!;
     const minutes = this._countdownFor(lead);
     const minutesLabel = lead.is_cancelled
@@ -632,13 +634,35 @@ export class LinzLinienAustriaCard extends LitElement {
           ? this._t("card.now")
           : `${minutes}`;
 
+    // Clock time is per departure, not per hero. The group exists
+    // because its members share a *countdown*, which is rounded to the
+    // minute — they do not share a departure time, so two entries at
+    // "Jetzt" can genuinely leave at 10:42 and 10:43. An earlier
+    // version drew the right conclusion from that (one clock must not
+    // speak for two rows) but acted on it by suppressing the clock
+    // whenever `group.length > 1`, which read as the option being
+    // broken at exactly the busy stops it matters at. Giving each entry
+    // its own clock satisfies the same constraint without withholding
+    // anything. Same rule as the list rows for the rest: no clock on a
+    // cancelled trip.
+    const clockFor = (d: Departure): string | null =>
+      this.config.show_absolute_time && !d.is_cancelled
+        ? this._clockTimeFor(d)
+        : null;
+
     // aria-label enumerates every grouped departure so AT users hear
-    // "Tram 2 solarCity and Tram 4 Landgutstraße, 0 min, Live"
-    // instead of just the lead's identification.
-    const ariaParts = group.map(
-      (d) =>
-        `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`,
-    );
+    // "Tram 2 solarCity at 10:42 and Bus 45 Stieglbauernstraße at
+    // 10:43, Now, Live" instead of just the lead's identification. Each
+    // time rides with the departure it belongs to — appending one at
+    // the end would attach the lead's clock to the whole enumeration,
+    // which is the ambiguity the visible markup just stopped creating.
+    const ariaParts = group.map((d) => {
+      const base = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`;
+      const clock = clockFor(d);
+      return clock
+        ? `${base} ${this._t("card.at_time", { time: clock })}`
+        : base;
+    });
     const minutesText = lead.is_cancelled
       ? this._t("card.cancelled")
       : minutes === null
@@ -646,21 +670,14 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes")}`;
-    // Same rule as the list rows: no clock time on a cancelled trip.
-    // Suppressed for a grouped hero as well — the group exists because
-    // two or more departures share the same countdown, but they do not
-    // share a departure time, and a single clock would silently claim
-    // the lead's time for all of them.
-    const heroClock =
-      this.config.show_absolute_time && !lead.is_cancelled && group.length === 1
-        ? this._clockTimeFor(lead)
-        : null;
     const ariaSep = ` ${this._t("card.and_separator")} `;
     const ariaLabel = `${this._t("card.next_departure_label")}: ${ariaParts.join(
       ariaSep,
     )}, ${minutesText}${
-      heroClock ? `, ${this._t("card.at_time", { time: heroClock })}` : ""
-    }${lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
+      lead.is_realtime && !lead.is_cancelled
+        ? `, ${this._t("card.realtime")}`
+        : ""
+    }`;
 
     // Hero colour comes from the lead — user override beats MoT
     // default; both fall back to --linz-accent (the tram default).
@@ -703,16 +720,16 @@ export class LinzLinienAustriaCard extends LitElement {
           // grid children (no .hero-meta wrapper) so each panel auto-places
           // in the row directly below its entry, while .hero-time stays
           // pinned to column 1 / row 1 — matching the wiener-linien hero.
-          // heroClock rides with the entry rather than the countdown: in
+          // The clock rides with the entry rather than the countdown: in
           // column 1 it widened the auto-sized track and pushed the badge
           // and destination ~44px right, away from the number they belong
           // to. Beside the destination it costs nothing — the hero
-          // measures exactly as it does with the option off. Only ever
-          // set for a single-entry group, so the map passes it to the one
-          // entry that owns it.
+          // measures exactly as it does with the option off. Each entry
+          // resolves its own, so a grouped hero shows one time per row
+          // instead of none.
           group.map(
             (d) =>
-              html`${this._renderHeroEntry(d, heroClock)}${this._renderHeroStops(d)}`,
+              html`${this._renderHeroEntry(d, clockFor(d))}${this._renderHeroStops(d)}`,
           )
         }
       </section>
