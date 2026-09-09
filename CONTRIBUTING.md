@@ -63,6 +63,7 @@ pytest tests/ --cov-report=term-missing
 - `ruff check .`
 - `ruff format --check .` (separate from `ruff check`, which never inspects formatting — CI runs both, so skipping this one turns the job red on style alone)
 - `uv run --python 3.12 --no-project python -m compileall -q custom_components/linz_linien_austria` (mirrors the `compile-floor-python` CI job; the local venv is on 3.14, so this is the only local check that would catch syntax our oldest supported users cannot parse — see `target-version` above)
+  - **Keep `--no-project`.** Without it `uv` treats the repo root as a workspace, finds no `requires-python` (there is no `[project]` table in `pyproject.toml`), and rebuilds `.venv` at the version you asked for — silently destroying your 3.14 environment and every tool in it. Recover with `uv venv --clear --python 3.14 && uv pip install -r requirements_test.txt`.
 - `npx tsc --noEmit` (Rolldown does not type-check at all; this surfaces TS regressions before the bundle hides them)
 - `npm run build` (rebuilds the card bundle from `src/`; `npm run dev` for watch mode)
 - `node -c custom_components/linz_linien_austria/www/linz-linien-austria-card.js`
