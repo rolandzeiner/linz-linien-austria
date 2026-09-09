@@ -1,7 +1,7 @@
 # PHACC governs the test stack. It pins Home Assistant core and the whole
 # pytest toolchain with `==`, so anything it already pins is listed here
 # only if we need a constraint PHACC does not impose.
-pytest-homeassistant-custom-component>=0.13.361,<0.14
+pytest-homeassistant-custom-component>=0.13.363,<0.14
 # No floors for pytest-asyncio / pytest-cov / pytest-timeout / syrupy.
 # PHACC pins all four with `==` (1.4.0 / 7.1.0 / 2.4.0 / 6.0.0 as of
 # 0.13.361), so a floor here can never bind: it either matches PHACC and
