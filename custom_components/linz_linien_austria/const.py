@@ -157,7 +157,9 @@ COORD_OUTPUT_FORMAT: Final = "WGS84[dd.ddddd]"
 # 2. No conditional GET. The EFAController sends neither `ETag` nor
 #    `Last-Modified` on any endpoint, so there is nothing to revalidate
 #    against and a 304 fast path is impossible. `Accept-Encoding: gzip`
-#    is honoured and is the only transfer saving available (see http.py).
+#    is honoured and is the only transfer saving available (it ships in
+#    ``BASE_REQUEST_HEADERS`` above; wiener-linien keeps the equivalent
+#    in its own ``http.py``, which this integration has no counterpart to).
 # ----------------------------------------------------------------------
 # XML_ADDINFO_REQUEST returns the active line/stop-info notices that
 # the LinzMobil app surfaces in its alerts banner. Refreshed on a

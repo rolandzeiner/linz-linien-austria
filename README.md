@@ -143,6 +143,16 @@ them.
   routes stay visible even outside their live service window
   *(0.6.0)*. Custom-value text input is still available for lines
   the picker hasn't observed yet.
+- **Per-line direction filter** — at a two-platform stop, half the
+  board is the direction you aren't travelling, and the line filter
+  can't separate them: both directions run the same line number. Each
+  line gets its own Hinfahrt / Rückfahrt / both control in the editor,
+  labelled with the destination it heads for. Per line rather than
+  card-wide, because the operator defines direction per line — "H" on
+  the 2 and "H" on the 46 point different ways. It matches on that
+  stable code rather than the destination text, so a short-turning trip
+  that still serves your direction stays on the board. Replacement
+  services carry no direction code and are always shown. *(1.1.0)*
 - **Per-line walk time (Fußweg)** — drop departures that you couldn't
   catch given your walk to the stop. Per-line minutes input in the
   editor; each line's walk time is independent.
@@ -150,6 +160,13 @@ them.
   the editor; the chosen colour replaces the MoT default on the
   badge, in the hero accent, in the header tile when that line is the
   next departure, and on a row's own countdown once it reads Jetzt.
+- **Optional departure time** — show the wall-clock time as well as the
+  countdown: after it on a row ("4 Min · 15:44"), beside the destination
+  in the next-departure block. The countdown answers "can I still make
+  it?"; the clock answers "which departure is this?" — the question you
+  have when you're still at home deciding whether to leave. It follows
+  the countdown's own source, so the two agree on which departure they
+  describe. Toggle *Show departure time* in the editor. *(1.1.0)*
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.
@@ -261,10 +278,12 @@ them.
 | `entity` | required | Pick a `sensor.*_next_departure` from this integration. |
 | `name` | (auto) | Optional override for the card heading. |
 | `lines` | (none) | Card-side line filter — array of line numbers, e.g. `["2", "45"]`. Empty = no filter. |
+| `line_directions` | (none) | Per-line direction filter, e.g. `{"2": "H"}`. A line listed here shows only that direction; a line left out shows both. Per line because `dir_code` is defined per line — "H" on line 2 and "H" on line 46 are unrelated directions of travel. Keys on the stable `dir_code` rather than the headsign, so short-turning trips that still serve your direction are kept. Departures without a `dir_code` (replacement services) always pass. In the visual editor each line's buttons name the destination they head for. |
 | `walk_times` | (none) | Per-line walk time in minutes, e.g. `{"2": 5}`. Departures whose effective countdown is below this value are dropped. |
 | `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
+| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — after the countdown on a row (`4 Min · 15:44`), and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. When the next-departure block groups several departures, each shows its own time: they share a countdown rounded to the minute but not a departure minute, so two entries at *Jetzt* can read 10:42 and 10:43. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |
@@ -287,8 +306,14 @@ type: custom:linz-linien-austria-card
 entity: sensor.linz_donau_hauptbahnhof_next_departure
 show_hero: true
 show_platform: true
+show_absolute_time: true
 max_departures: 8
 lines: ["2", "3", "45"]
+# One direction per line. "H" / "R" are the operator's own codes and
+# are scoped to each line's own route, so they are set per line rather
+# than card-wide; the visual editor labels them with destinations.
+line_directions:
+  "2": "H"
 walk_times:
   "2": 4
   "45": 6
@@ -347,8 +372,24 @@ narrowed away don't surface.
   coordinator's exponential backoff also widens the polling cadence
   on consecutive failures so a sustained outage doesn't keep
   hammering.
+- **Sensors appear one after another after a restart.** Entries share
+  the 15-second domain-wide cooldown, so each stop's first poll waits
+  a slot behind the one before it: with three stops, the third sensor
+  lands around 30 seconds in. Nothing is wrong and nothing is lost —
+  the board fills as each poll returns, and only the first cycle is
+  staggered this way. With four or more stops, raise the scan interval
+  so the cadence you configured is the cadence you get.
+- **The direction filter still shows the other direction.** Rows that
+  carry no `dir_code` pass the filter by design — the upstream omits
+  the code on replacement services, and silently hiding a
+  Schienenersatzverkehr would be the worse failure. A stop where both
+  directions share a code is a data problem upstream; check the
+  `departures` attribute on the sensor to see what the operator
+  publishes. Note the filter is per line: setting a direction on the 2
+  does not constrain the 46.
 - **Card shows fewer rows than `max_departures`.** Card-side filters
-  (`lines`, `walk_times`) trim rows BEFORE the display cap, and the
+  (`lines`, `walk_times`, `line_directions`) trim rows BEFORE the display
+  cap, and the
   integration only fetches `Departures to fetch` rows from upstream.
   Raise the integration's `Departures to fetch` so the card has more
   pre-filter rows to draw from. (Editor helper text spells this out

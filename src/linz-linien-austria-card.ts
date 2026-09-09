@@ -1,7 +1,7 @@
 // Linz Linien Austria — Lovelace custom card
 // https://github.com/rolandzeiner/linz-linien-austria
 //
-// Lit 3 + Shadow DOM + Rollup, single-file HACS bundle.
+// Lit 3 + Shadow DOM + Rolldown, single-file HACS bundle.
 
 import { LitElement, html, nothing } from "lit";
 import type { TemplateResult, PropertyValues, CSSResultGroup } from "lit";
@@ -299,13 +299,58 @@ export class LinzLinienAustriaCard extends LitElement {
     const lineFilter = new Set(
       (this.config.lines ?? []).map((l) => l.trim()).filter(Boolean),
     );
+    // Direction filter, per line — keyed on the stable `dir_code`, never
+    // on the headsign. The upstream rewrites `direction` for branching
+    // termini (a short-turning line 2 reads "Simonystraße", not
+    // "Universität"), so filtering on it would drop trips that do serve
+    // the direction the user asked for.
+    //
+    // Per line rather than card-wide because `dir_code` is scoped to a
+    // line's own route: "H" on line 2 and "H" on line 46 point in
+    // unrelated directions, so one card-wide code cannot express "only
+    // the way I travel" at a multi-line stop.
+    //
+    // Normalised because YAML is hand-written: "h" and "H " behave like
+    // "H". Anything that is not a known code is dropped, so a typo
+    // degrades to "no filter for that line" rather than to "filter
+    // everything out". The typeof guard keeps a non-string value
+    // (`line_directions: {"2": true}`) from throwing inside render() and
+    // blanking the whole card.
+    const rawLineDirections = this.config.line_directions;
+    const dirFilter = new Map<string, "H" | "R">();
+    if (rawLineDirections && typeof rawLineDirections === "object") {
+      for (const [line, code] of Object.entries(rawLineDirections)) {
+        const norm = typeof code === "string" ? code.trim().toUpperCase() : "";
+        if (norm === "H" || norm === "R") dirFilter.set(line.trim(), norm);
+      }
+    }
     // Walk-time (Fußweg) filter — drop any departure whose effective
     // countdown is less than the configured walk time for that line.
     // Keyed by the bare line number; a missing or non-positive entry
     // means "no walk-time filter for this line".
     const walkTimes = this.config.walk_times ?? {};
+    // Whether any card-side filter is in a position to remove rows.
+    // Derived once, here beside the filters themselves, rather than
+    // re-stated at the empty state — restating it is exactly how the
+    // walk-time filter came to be missing from that check: the list
+    // dropped rows the message then denied having dropped, so a stop
+    // that was merely out of reach on foot reported itself as having no
+    // service at all. A non-positive walk time is a no-op in the filter
+    // below and must not count here either, or a stale `"2": 0` left in
+    // saved YAML would permanently change the empty-state wording.
+    const anyFilterActive =
+      lineFilter.size > 0 ||
+      dirFilter.size > 0 ||
+      Object.values(walkTimes).some((w) => typeof w === "number" && w > 0);
     const filtered = allDepartures.filter((d) => {
       if (lineFilter.size > 0 && !lineFilter.has(d.line)) return false;
+      // A row without a `dir_code` passes regardless of the filter:
+      // the upstream omits the code on replacement services, and
+      // hiding a Schienenersatzverkehr is a worse failure than showing
+      // one surplus row of the opposite direction. A line with no entry
+      // in the map shows both directions.
+      const wantDir = dirFilter.get(d.line);
+      if (wantDir && d.dir_code && d.dir_code !== wantDir) return false;
       const walk = walkTimes[d.line];
       if (typeof walk === "number" && walk > 0) {
         const cd = this._countdownFor(d);
@@ -440,7 +485,7 @@ export class LinzLinienAustriaCard extends LitElement {
             : html`<ul class="departures" role="list">
                 ${departures.length === 0
                   ? html`<li class="empty">
-                      ${lineFilter.size > 0 && allDepartures.length > 0
+                      ${anyFilterActive && allDepartures.length > 0
                         ? this._t("card.no_matches_for_filter")
                         : this._t("card.no_departures")}
                     </li>`
@@ -531,14 +576,16 @@ export class LinzLinienAustriaCard extends LitElement {
    *    skipped by render).
    *
    *  Imminent window: when the soonest non-cancelled departure is at
-   *  "Jetzt" (cd ≤ 0), also include anything else with cd ≤ 1 so a
-   *  bus arriving in 1 minute joins the immediate one rather than
-   *  staying buried in the row list. Catches the natural pattern at
-   *  Hauptbahnhof where two lines often arrive within a minute of
-   *  each other and the user is standing at the stop deciding which
-   *  to take. Outside the Jetzt case, fall back to strict tie-only
-   *  grouping so a 5-min lead doesn't pull a 6-min entry into the
-   *  hero (would overshare for the "next departure" semantic). */
+   *  "Jetzt" (cd ≤ 0), include every other departure that is also at
+   *  Jetzt. The window is exactly cd ≤ 0 — this doc claimed cd ≤ 1
+   *  from the commit that introduced the function, but the filter
+   *  below has always been `<= 0`, so a departure one minute out has
+   *  never joined the hero. Widening it to ≤ 1 is a defensible
+   *  product call (two lines a minute apart at Hauptbahnhof, user
+   *  standing at the stop choosing) but it is not what this does.
+   *  Outside the Jetzt case, fall back to strict tie-only grouping so
+   *  a 5-min lead doesn't pull a 6-min entry into the hero (would
+   *  overshare for the "next departure" semantic). */
   private _computeHeroGroup(filtered: Departure[]): Departure[] {
     if (filtered.length === 0) return [];
     const live = filtered.filter((d) => !d.is_cancelled);
@@ -576,7 +623,9 @@ export class LinzLinienAustriaCard extends LitElement {
   private _renderHero(group: Departure[]): TemplateResult {
     // Lead drives the countdown text + accent + cancellation styling;
     // remaining members each render their own (badge + direction +
-    // flags) row inside `.hero-meta` so tied arrivals share the block.
+    // clock + flags) row as a direct grid child, so tied arrivals share
+    // the block. (`.hero-meta` is gone — see the interleaving note on
+    // the group.map below.)
     const lead = group[0]!;
     const minutes = this._countdownFor(lead);
     const minutesLabel = lead.is_cancelled
@@ -587,13 +636,35 @@ export class LinzLinienAustriaCard extends LitElement {
           ? this._t("card.now")
           : `${minutes}`;
 
+    // Clock time is per departure, not per hero. The group exists
+    // because its members share a *countdown*, which is rounded to the
+    // minute — they do not share a departure time, so two entries at
+    // "Jetzt" can genuinely leave at 10:42 and 10:43. An earlier
+    // version drew the right conclusion from that (one clock must not
+    // speak for two rows) but acted on it by suppressing the clock
+    // whenever `group.length > 1`, which read as the option being
+    // broken at exactly the busy stops it matters at. Giving each entry
+    // its own clock satisfies the same constraint without withholding
+    // anything. Same rule as the list rows for the rest: no clock on a
+    // cancelled trip.
+    const clockFor = (d: Departure): string | null =>
+      this.config.show_absolute_time && !d.is_cancelled
+        ? this._clockTimeFor(d)
+        : null;
+
     // aria-label enumerates every grouped departure so AT users hear
-    // "Tram 2 solarCity and Tram 4 Landgutstraße, 0 min, Live"
-    // instead of just the lead's identification.
-    const ariaParts = group.map(
-      (d) =>
-        `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`,
-    );
+    // "Tram 2 solarCity at 10:42 and Bus 45 Stieglbauernstraße at
+    // 10:43, Now, Live" instead of just the lead's identification. Each
+    // time rides with the departure it belongs to — appending one at
+    // the end would attach the lead's clock to the whole enumeration,
+    // which is the ambiguity the visible markup just stopped creating.
+    const ariaParts = group.map((d) => {
+      const base = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`;
+      const clock = clockFor(d);
+      return clock
+        ? `${base} ${this._t("card.at_time", { time: clock })}`
+        : base;
+    });
     const minutesText = lead.is_cancelled
       ? this._t("card.cancelled")
       : minutes === null
@@ -604,7 +675,11 @@ export class LinzLinienAustriaCard extends LitElement {
     const ariaSep = ` ${this._t("card.and_separator")} `;
     const ariaLabel = `${this._t("card.next_departure_label")}: ${ariaParts.join(
       ariaSep,
-    )}, ${minutesText}${lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""}`;
+    )}, ${minutesText}${
+      lead.is_realtime && !lead.is_cancelled
+        ? `, ${this._t("card.realtime")}`
+        : ""
+    }`;
 
     // Hero colour comes from the lead — user override beats MoT
     // default; both fall back to --linz-accent (the tram default).
@@ -647,8 +722,16 @@ export class LinzLinienAustriaCard extends LitElement {
           // grid children (no .hero-meta wrapper) so each panel auto-places
           // in the row directly below its entry, while .hero-time stays
           // pinned to column 1 / row 1 — matching the wiener-linien hero.
+          // The clock rides with the entry rather than the countdown: in
+          // column 1 it widened the auto-sized track and pushed the badge
+          // and destination ~44px right, away from the number they belong
+          // to. Beside the destination it costs nothing — the hero
+          // measures exactly as it does with the option off. Each entry
+          // resolves its own, so a grouped hero shows one time per row
+          // instead of none.
           group.map(
-            (d) => html`${this._renderHeroEntry(d)}${this._renderHeroStops(d)}`,
+            (d) =>
+              html`${this._renderHeroEntry(d, clockFor(d))}${this._renderHeroStops(d)}`,
           )
         }
       </section>
@@ -661,7 +744,10 @@ export class LinzLinienAustriaCard extends LitElement {
    *  departure carries onward stops, the whole entry becomes the toggle
    *  for its stops-ahead panel (chevron + role=button), mirroring both the
    *  row list below and the wiener-linien hero. */
-  private _renderHeroEntry(d: Departure): TemplateResult {
+  private _renderHeroEntry(
+    d: Departure,
+    clock: string | null = null,
+  ): TemplateResult {
     const platform = this.config.show_platform
       ? this._platformText(d)
       : "";
@@ -699,7 +785,21 @@ export class LinzLinienAustriaCard extends LitElement {
           )}
       >
         ${this._renderLineBadge(d)}
-        <span class="hero-direction">${d.direction || ""}</span>
+        ${clock
+          ? // Destination and clock share a group so the clock sits
+            // against the destination's right edge: .hero-direction grows
+            // to absorb the row's slack, so a bare sibling after it would
+            // be shoved across to the platform chip. Inside the group the
+            // destination stops growing and truncates as before, while the
+            // group itself takes over the growing.
+            //
+            // aria-hidden: the section's aria-label already carries the
+            // clock time, so this would otherwise be announced twice.
+            html`<span class="hero-dest-group">
+              <span class="hero-direction">${d.direction || ""}</span>
+              <span class="hero-clock" aria-hidden="true">${clock}</span>
+            </span>`
+          : html`<span class="hero-direction">${d.direction || ""}</span>`}
         ${!d.is_cancelled && platform
           ? html`<span class="hero-platform"
               >${this._platformLabel(d, true)} ${platform}</span
@@ -771,6 +871,13 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes_short")}`;
+    // Wall-clock time trailing the countdown. Withheld on cancelled
+    // rows — "Entfällt" is the whole story there, and a departure time
+    // beside it reads as if the trip is still running.
+    const clock =
+      this.config.show_absolute_time && !d.is_cancelled
+        ? this._clockTimeFor(d)
+        : null;
     // The operator's live reason for a delay. Suppressed on cancelled
     // rows: "Entfällt" already says everything, and a "please be
     // patient" caption under it reads as if the trip is merely late.
@@ -800,8 +907,10 @@ export class LinzLinienAustriaCard extends LitElement {
     const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
       d.direction
     } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
-      d.is_realtime ? ` ${this._t("card.realtime")}` : ""
-    }${hint ? `. ${hint}` : ""}`;
+      clock ? `, ${this._t("card.at_time", { time: clock })}` : ""
+    }${d.is_realtime ? ` ${this._t("card.realtime")}` : ""}${
+      hint ? `. ${hint}` : ""
+    }`;
     // With role=button the accessible name has to say what activating
     // the row does, not just describe the departure.
     const rowLabel = expandable
@@ -867,6 +976,24 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
+          ${clock
+            ? // The visible chip is always aria-hidden — bare "15:44"
+              // read out mid-row says nothing about what it refers to.
+              // The prose form reaches assistive tech one of two ways,
+              // never both: an expandable row carries role=button and
+              // its aria-label (which already includes the time) is
+              // therefore honoured; a plain row is role=generic, where
+              // aria-label is discarded, so it gets a visually-hidden
+              // sibling instead. Emitting both would announce the
+              // departure time twice on expandable rows.
+              html`<span class="row-clock" aria-hidden="true"
+                  >${clock}</span
+                >${expandable
+                  ? nothing
+                  : html`<span class="visually-hidden"
+                      >${this._t("card.at_time", { time: clock })}</span
+                    >`}`
+            : nothing}
           ${expandable
             ? // Decorative only: the whole row carries role=button, and a
               // real <button> nested inside it would be a second control
@@ -1123,6 +1250,31 @@ export class LinzLinienAustriaCard extends LitElement {
       ? short ? "card.platform_rail_short" : "card.platform_rail"
       : short ? "card.platform_short" : "card.platform";
     return this._t(key);
+  }
+
+  /** Wall-clock "HH:MM" for a departure, read off whichever timestamp
+   *  the countdown beside it was derived from.
+   *
+   *  The integration sets `countdown_rt` whenever it has a realtime
+   *  prediction, so in practice this gate and a bare `realtime` check
+   *  agree. It is kept as the gate anyway because the two fields used to
+   *  diverge — `countdown_rt` additionally required a usable `delay`
+   *  (`-9999` is the unknown-sentinel and gets dropped), so a row with
+   *  `realDateTime` and no usable delay left `_countdownFor` on the
+   *  scheduled value while the clock read the prediction, and the two
+   *  halves of one readout disagreed by exactly the delay. A browser
+   *  holding a cached card against an older integration can still meet
+   *  that shape, and falling back to `scheduled` is the safe answer
+   *  there: both halves stay wrong together rather than contradicting
+   *  each other on screen.
+   *
+   *  Formatting (and the reason these timestamps are sliced rather than
+   *  parsed) lives in `_clockTime`. Null rather than the empty string
+   *  here so the call sites can gate on it directly. */
+  private _clockTimeFor(d: Departure): string | null {
+    const useRealtime =
+      typeof d.countdown_rt === "number" && d.realtime !== undefined;
+    return this._clockTime(useRealtime ? d.realtime : d.scheduled) || null;
   }
 
   private _countdownFor(d: Departure): number | null {

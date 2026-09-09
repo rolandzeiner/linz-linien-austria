@@ -293,11 +293,45 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  upstream payload, this one trims what the card displays from
    *  whatever the sensor publishes. */
   lines?: string[];
+  /** Card-side direction filter, keyed by line number string ("2",
+   *  "45"). A line present here renders only departures whose
+   *  ``dir_code`` matches; a line absent from the map shows both
+   *  directions. Same shape as `walk_times` and `line_colors`.
+   *
+   *  Per line, not card-wide, because ``dir_code`` is defined per line
+   *  by the operator: "H" on line 2 and "H" on line 46 are unrelated
+   *  directions of travel. The integration already models this — its
+   *  `served_lines` roster is keyed on (line, dir_code) — so a single
+   *  card-wide code would flatten four different directions into one
+   *  control at a hub like Hauptbahnhof.
+   *
+   *  Keyed on the stable Hin/Rück code rather than on ``direction`` —
+   *  the headsign is rewritten for branching termini (a line 2 run
+   *  terminating short shows "Simonystraße" instead of "Universität"),
+   *  so a headsign filter silently drops trips that do serve the
+   *  user's direction.
+   *
+   *  Departures carrying no ``dir_code`` always pass. The upstream
+   *  omits the code on replacement-service rows, and a
+   *  Schienenersatzverkehr vanishing from the board is a worse failure
+   *  than one surplus row of the opposite direction — the replacement
+   *  is precisely what the user needs to see. */
+  line_directions?: Record<string, "H" | "R">;
   /** When true, surface the platform / bay number in the header
    *  subtitle and at the trailing edge of each departure row. Useful
    *  at multi-platform stops (Hauptbahnhof, Bulgariplatz). Defaults
    *  off so single-platform stops stay clutter-free. */
   show_platform?: boolean;
+  /** Show the wall-clock departure time alongside the countdown: after
+   *  it on a list row ("4 Min · 15:44"), and beside the destination in
+   *  the hero — not after the hero countdown, which widened its column
+   *  and pushed the badge away from the number it belongs to. A hero
+   *  holding several departures gives each row its own time, since
+   *  they share a rounded countdown but not a departure time. Defaults
+   *  off: the countdown alone is the faster read when you are already
+   *  at the stop, while the clock time is what you want when deciding
+   *  whether to leave the house. */
+  show_absolute_time?: boolean;
   /** When false, hide the collapsible service-disruption banner
    *  (XML_ADDINFO_REQUEST data) above the departure list. Defaults
    *  true — alerts are user-facing operational info and disabling

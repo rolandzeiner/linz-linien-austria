@@ -98,6 +98,69 @@ export class LinzLinienAustriaCardEditor
     return this._allKnownLines();
   }
 
+  /** Real terminus per line and direction, read off the live
+   *  `departures` snapshot: `{ "2": { H: "solarCity", R: "Universität" } }`.
+   *
+   *  Headsigns are display-only — the upstream rewrites them for
+   *  short-turning runs, which is exactly why they must not be the
+   *  filter key — but that is no reason to make the user choose between
+   *  "H" and "R" with nothing to go on. The code stays the stored
+   *  value; the headsign is only ever a label.
+   *
+   *  The snapshot is the only per-direction source the card can see.
+   *  The integration computes a fuller roster (`served_lines`, keyed on
+   *  line + dir_code and covering dormant seasonal routes) but does not
+   *  publish it as an entity attribute, so a line with nothing due
+   *  right now falls back to plain Hin/Rück wording. First headsign
+   *  wins: a branching terminus would otherwise make the label flicker
+   *  between polls while the user is trying to click it. */
+  private _lineDestinations(): Map<string, { H?: string; R?: string }> {
+    const out = new Map<string, { H?: string; R?: string }>();
+    const entityId = this._config.entity;
+    const deps = entityId
+      ? (this.hass?.states[entityId]?.attributes?.departures as
+          | Departure[]
+          | undefined)
+      : undefined;
+    if (!Array.isArray(deps)) return out;
+    for (const d of deps) {
+      const code = d.dir_code;
+      if (code !== "H" && code !== "R") continue;
+      const head = (d.direction ?? "").trim();
+      if (!head || !d.line) continue;
+      const entry = out.get(d.line) ?? {};
+      if (entry[code] === undefined) {
+        entry[code] = head;
+        out.set(d.line, entry);
+      }
+    }
+    return out;
+  }
+
+  /** Set or clear one line's direction. `null` means "both", which is
+   *  stored as the absence of a key rather than as a sentinel — the
+   *  card's filter treats a missing line as unfiltered, so the two
+   *  representations would otherwise both mean the same thing. Drops
+   *  the whole map once it empties, keeping saved YAML clean. */
+  private _onLineDirectionChange(line: string, dir: "H" | "R" | null): void {
+    const next: Record<string, "H" | "R"> = {
+      ...(this._config.line_directions ?? {}),
+    };
+    if (dir === null) {
+      delete next[line];
+    } else {
+      next[line] = dir;
+    }
+    const cfg = { ...this._config };
+    if (Object.keys(next).length > 0) {
+      cfg.line_directions = next;
+    } else {
+      delete cfg.line_directions;
+    }
+    this._config = cfg;
+    fireEvent(this, "config-changed", { config: cfg });
+  }
+
   private _sortLines(lines: string[]): string[] {
     return Array.from(new Set(lines)).sort((a, b) => {
       const an = parseInt(a, 10);
@@ -248,10 +311,13 @@ export class LinzLinienAustriaCardEditor
       },
       { name: "name", selector: { text: {} } },
       // Order by salience: header first, then hero, then per-row
-      // decorations, then alerts banner, then animation toggles.
+      // decorations, then alerts banner, then animation toggles. The
+      // direction filter is NOT here — it is per line, so it lives in
+      // the per-line section beside walk time and colour.
       { name: "hide_header", selector: { boolean: {} } },
       { name: "show_hero", selector: { boolean: {} } },
       { name: "show_platform", selector: { boolean: {} } },
+      { name: "show_absolute_time", selector: { boolean: {} } },
       { name: "show_alerts", selector: { boolean: {} } },
       { name: "pulse_live", selector: { boolean: {} } },
       { name: "enable_animations", selector: { boolean: {} } },
@@ -362,6 +428,8 @@ export class LinzLinienAustriaCardEditor
     }
     const walkTimes = this._config.walk_times ?? {};
     const colors = this._config.line_colors ?? {};
+    const lineDirs = this._config.line_directions ?? {};
+    const destinations = this._lineDestinations();
     return html`
       <div class="editor-section">
         <div class="section-header">${this._t("editor.section_per_line")}</div>
@@ -374,6 +442,37 @@ export class LinzLinienAustriaCardEditor
             // Effective = user override if any, else the MoT default.
             const defaultColour = this._defaultColorForLine(line);
             const effectiveColour = colour || defaultColour;
+            const activeDir = lineDirs[line];
+            const dests = destinations.get(line) ?? {};
+            // Visible label stays the operator's own H/R code — the row
+            // is dense and every line needs its own control — while the
+            // tooltip and accessible name carry the plain-language
+            // direction and the terminus it actually heads for.
+            const dirButton = (
+              code: "H" | "R" | null,
+              content: TemplateResult | string,
+            ): TemplateResult => {
+              const generic = this._t(
+                code === "H"
+                  ? "editor.direction_h"
+                  : code === "R"
+                    ? "editor.direction_r"
+                    : "editor.direction_both",
+              );
+              const dest = code ? dests[code] : undefined;
+              const label = dest ? `${generic} → ${dest}` : generic;
+              const active = (activeDir ?? null) === code;
+              return html`<button
+                type="button"
+                class=${`per-line-dir${active ? " is-active" : ""}`}
+                aria-pressed=${active}
+                title=${label}
+                aria-label="${label} — ${this._t("editor.line")} ${line}"
+                @click=${() => this._onLineDirectionChange(line, code)}
+              >
+                ${content}
+              </button>`;
+            };
             return html`
               <div class="per-line-row">
                 <span class="per-line-badge">${line}</span>
@@ -394,17 +493,24 @@ export class LinzLinienAustriaCardEditor
                     ${this._t("editor.minutes_short")}
                   </span>
                 </label>
+                <div
+                  class="per-line-dirs"
+                  role="group"
+                  aria-label="${this._t("editor.direction")}: ${line}"
+                >
+                  ${dirButton("H", "H")}${dirButton("R", "R")}${dirButton(
+                    null,
+                    html`<ha-icon
+                      icon="mdi:arrow-left-right"
+                      aria-hidden="true"
+                    ></ha-icon>`,
+                  )}
+                </div>
                 <label
                   class="per-line-color-chip"
                   style=${`--swatch-color: ${effectiveColour};`}
+                  title="${this._t("editor.line_color")}: ${line}"
                 >
-                  <ha-icon
-                    icon="mdi:palette-swatch-variant"
-                    aria-hidden="true"
-                  ></ha-icon>
-                  <span class="per-line-color-hex">
-                    ${effectiveColour.toUpperCase()}
-                  </span>
                   <input
                     class="per-line-color-input"
                     type="color"

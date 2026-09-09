@@ -13,6 +13,20 @@ export const cardStyles = css`
        resolution; the card just opts in. */
     color-scheme: light dark;
     display: block;
+    /* Fill the grid cell the dashboard gave us.
+       A sections view puts a fixed pixel height on the cell WRAPPER whenever
+       the card's rows are numeric -- which a user also causes by dragging the
+       row handle, since a stored grid_options overrides what getGridOptions()
+       returns -- and styles nothing inside that wrapper.
+       This host is display: block, so IT is the containing block for the
+       ha-card below, and a percentage height against a containing block whose
+       own height is auto computes to auto. Without this line ha-card therefore
+       sizes to its content, overflows a cell too short for it, and is painted
+       over the card underneath. Taking the cell's height here is what gives
+       ha-card's 100% something to resolve against.
+       In an auto-height cell it resolves to auto -- the height it already had
+       -- so it costs nothing there. */
+    block-size: 100%;
   }
 
   :host {
@@ -85,6 +99,13 @@ export const cardStyles = css`
   }
 
   ha-card {
+    /* Resolves against the height :host just took from the cell, so
+       overflow: hidden clips inside the card rather than the card spilling
+       past its own cell. The two declarations only work as a pair: core cards
+       that set this one alone leave :host at its default inline display, where
+       the cell wrapper is ha-card's containing block instead. */
+    block-size: 100%;
+
     overflow: hidden;
     container-type: inline-size;
     container-name: linzcard;
@@ -190,7 +211,23 @@ export const cardStyles = css`
     display: grid;
     grid-template-columns: auto 1fr;
     column-gap: var(--ha-space-3, 12px);
-    row-gap: 6px;
+    /* Named so the item margins below reuse the one value. */
+    --linz-hero-row-gap: 6px;
+    /* Spacing lives on the items, NOT on the track gap. An entry that
+       carries onward stops always emits its .hero-detail panel;
+       collapsed, that panel is a zero-height grid row, so a row-gap
+       applied above AND below it and left the two entries it separates
+       a full two gaps apart — while an entry with no stops_ahead emits
+       no panel at all and got one. The same hero then measured
+       differently depending on whether the integration's
+       show_stop_sequence is on.
+
+       A negative margin on the panel does not fix this: a margin
+       changes an item's contribution to its own track, never the fixed
+       space the grid inserts between tracks. Only removing the gap
+       does. Same reason .departures spaces its rows with padding and
+       borders rather than a gap. */
+    row-gap: 0;
     align-items: center;
     padding: var(--ha-space-3, 12px) var(--linz-pad-x);
     margin: var(--ha-space-3, 12px) var(--linz-pad-x) 0;
@@ -206,11 +243,31 @@ export const cardStyles = css`
   .hero > .hero-time {
     grid-column: 1;
     grid-row: 1;
+    /* The metric is taller than an entry, so pinned to row 1 it sized
+       that row: the first entry sat centred in the leftover slack and
+       read about 10px further from the second entry than every later
+       pair read from each other. Cancel its contribution to row sizing
+       with symmetric negative margins and the row falls back to entry
+       height. The glyphs overflow up into .hero's own padding and down
+       into column 1, which is empty on every row below; only ha-card
+       sets overflow: hidden and this stays well inside it.
+
+       Negative margins rather than height: 0 — .hero-time is a
+       baseline flex line, so collapsing it would make the content hang
+       below the box instead of staying centred on it. */
+    align-self: center;
+    margin-block: calc(var(--linz-metric-size) / -2);
   }
   .hero > .hero-entry,
   .hero > .hero-detail {
     grid-column: 2;
     min-width: 0;
+  }
+  /* Every entry but the first carries the gap above it. A collapsed
+     panel between two entries now costs nothing, so the spacing reads
+     identically whether or not the stop has onward-stop data. */
+  .hero > .hero-entry ~ .hero-entry {
+    margin-top: var(--linz-hero-row-gap);
   }
   .hero-time {
     display: flex;
@@ -228,6 +285,31 @@ export const cardStyles = css`
     font-size: 1rem;
     font-weight: 600;
     color: var(--secondary-text-color);
+  }
+  /* Destination + clock. The group takes over the growing that
+     .hero-direction used to do alone, so the clock sits against the
+     destination's right edge instead of being pushed across to the
+     platform chip. */
+  .hero-dest-group {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .hero-dest-group .hero-direction {
+    flex: 0 1 auto;
+  }
+  /* Clock time beside the destination. Sized and muted to match
+     .row-clock so both readings of "when" look like the same kind of
+     information wherever they appear. No "·" separator: the group's
+     8px gap already does that work, and the dot only existed to
+     divide it from the unit back when it followed the countdown. */
+  .hero-clock {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
   }
   .hero-entry {
     display: flex;
@@ -264,7 +346,15 @@ export const cardStyles = css`
   .hero-detail {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 0.24s ease;
+    /* Closed, this panel is a zero-height row that must cost nothing —
+       .hero carries no row-gap (see there), so it doesn't. Open, it
+       buys its own gap below the entry it belongs to; the entry after
+       it already carries one. margin-top transitions alongside the
+       rows so the gap grows with the panel instead of snapping open at
+       frame one. */
+    transition:
+      grid-template-rows 0.24s ease,
+      margin-top 0.24s ease;
   }
   .hero-detail-inner {
     overflow: hidden;
@@ -272,6 +362,7 @@ export const cardStyles = css`
   }
   .hero-detail.expanded {
     grid-template-rows: 1fr;
+    margin-top: var(--linz-hero-row-gap);
   }
   /* Delay reason under the hero's badge + destination. flex-basis:100%
      forces a wrap onto its own line inside the flex row, so a long
@@ -402,6 +493,25 @@ export const cardStyles = css`
     min-width: 3.6em;
     justify-content: flex-end;
   }
+  /* The clock adds a second value to the tail, so the reserved slot has
+     to grow with it — otherwise the countdown column stops aligning
+     across rows the moment the option is switched on. Scoped with
+     :has() so cards without the option keep the narrow tail. */
+  .row-tail:has(.row-clock) {
+    min-width: 7.4em;
+  }
+  /* The tail centres its children, which is right for the platform chip
+     and the chevron but wrong for two runs of text set at different
+     sizes: centring equalises the boxes, leaving the smaller clock's
+     baseline about 2px above the countdown's, so the pair reads as
+     misaligned. Opt just those two into baseline alignment — the same
+     thing .hero-time does for the same pairing. Gated on :has() so a
+     card without the clock keeps the previous centred countdown
+     exactly as it was. */
+  .row-tail:has(.row-clock) .row-time,
+  .row-tail:has(.row-clock) .row-clock {
+    align-self: baseline;
+  }
   /* Drop the divider under the final row. .row is no longer a direct
      child of the list — it sits inside a .row-wrap, so a plain
      :last-child would match every row. Selecting the row-wrap that has
@@ -445,6 +555,42 @@ export const cardStyles = css`
     font-weight: 600;
     color: var(--secondary-text-color);
     white-space: nowrap;
+  }
+  /* Wall-clock departure time trailing the countdown. Deliberately
+     lighter than .row-time: the countdown is the value the eye should
+     land on first, the clock is the confirmation beside it. It also
+     never takes the late/early/now colouring — those states describe
+     the countdown's relationship to the schedule, and tinting an
+     absolute time red would imply the clock itself is wrong. */
+  .row-clock {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+  }
+  /* Separator lives in CSS rather than in the template so it stays out
+     of the DOM text — the span is aria-hidden either way, and the prose
+     form of the time is emitted separately for assistive tech.
+     The negative left margin cancels the 8px .row-tail flex gap so the
+     dot sits symmetrically between the countdown and the clock, the
+     same 4px on each side the hero uses. */
+  .row-clock::before {
+    content: "·";
+    margin: 0 4px 0 -4px;
+  }
+  /* Screen-reader-only prose. The clipped-rect idiom rather than
+     display:none or visibility:hidden, both of which would take the
+     text out of the accessibility tree along with the pixels. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
   /* Trailing platform marker — small, muted, monospace digits so
      "Steig 7" / "Steig 12" line up visually across rows. */
@@ -941,10 +1087,12 @@ export const cardStyles = css`
 
   /* Container queries — narrow column layouts. */
   @container linzcard (inline-size < 360px) {
-    .hero-min {
-      font-size: 2.25rem;
-    }
     .hero {
+      /* Scale the metric through the token rather than overriding
+         .hero-min's font-size: .hero-time's negative margin is derived
+         from it, so changing only the rendered size would leave the
+         two out of step and the cancellation incomplete. */
+      --linz-metric-size: 2.25rem;
       grid-template-columns: auto 1fr;
       padding: var(--ha-space-2, 8px) var(--ha-space-3, 12px);
     }
@@ -1122,7 +1270,12 @@ export const editorStyles = css`
      to a small × that doesn't dominate the row. */
   .per-line-row {
     display: grid;
-    grid-template-columns: 3.6em auto 1fr auto 24px;
+    /* badge | walk | direction | colour | clear. The colour takes the
+       flexible column: it is the one control with no natural width of
+       its own — a swatch is legible at any size — so it absorbs the
+       slack instead of leaving a dead gap mid-row, and it gains a click
+       target that grows with the pane. */
+    grid-template-columns: 3.6em auto auto 1fr 24px;
     align-items: center;
     gap: 10px;
     min-height: 36px;
@@ -1186,29 +1339,93 @@ export const editorStyles = css`
     border-left: 1px solid var(--divider-color);
   }
 
-  /* Colour pill — tinted pill with icon + hex text. The actual
+  /* Direction trio — Hinfahrt / Rückfahrt / both. Deliberately built
+     from the same parts as .per-line-walk-group (28px tall, 1px
+     divider-coloured border, 4px radius) so the row reads as one
+     instrument rather than three widgets that happen to be adjacent.
+     A dir_code is per line, so this control has to be per line too. */
+  .per-line-dirs {
+    display: inline-flex;
+    align-items: stretch;
+    height: 28px;
+    border: 1px solid var(--divider-color);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--card-background-color, transparent);
+  }
+  .per-line-dir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    padding: 0 6px;
+    border: 0;
+    border-left: 1px solid var(--divider-color);
+    background: transparent;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: var(--ha-font-weight-bold, 700);
+    cursor: pointer;
+    transition:
+      background-color var(--ha-animation-duration-fast, 150ms) ease,
+      color var(--ha-animation-duration-fast, 150ms) ease;
+  }
+  .per-line-dir:first-child {
+    border-left: 0;
+  }
+  .per-line-dir ha-icon {
+    --mdc-icon-size: 16px;
+  }
+  .per-line-dir:hover {
+    background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+    color: var(--primary-text-color);
+  }
+  /* The selected state carries real weight: it is the one thing in the
+     row that changes what departures the card shows. */
+  .per-line-dir.is-active {
+    background: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+  }
+  .per-line-dir:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  /* Colour swatch — the control IS the colour. It previously spelled
+     its own hex out in monospace beside a palette icon, which cost
+     about seven characters of row width and told the user something the
+     swatch already shows; the exact value is one click away in the OS
+     picker. The actual
      <input type="color"> sits invisibly on top so the OS picker opens
      on click anywhere on the chip. */
   .per-line-color-chip {
     --swatch-color: var(--linz-accent, #f08000);
     position: relative;
+    /* Grid blockifies inline-flex, so with no width set this stretches
+       to fill its column. */
     display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--swatch-color) 22%, transparent);
-    color: var(--primary-text-color);
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color var(--ha-animation-duration-fast, 150ms) ease, transform var(--ha-animation-duration-fast, 150ms) ease;
-    min-width: 0;
     height: 28px;
+    /* Not a pill: at full row width a 999px radius reads as a progress
+       bar. 6px matches the line badge at the other end of the row, so
+       the two colour-bearing elements rhyme. */
+    border-radius: 6px;
+    background: var(--swatch-color);
+    /* Hairline ring rather than a border: a pale override on a light
+       card would otherwise vanish into the background entirely. */
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--primary-text-color) 24%, transparent);
+    cursor: pointer;
+    transition: transform var(--ha-animation-duration-fast, 150ms) ease;
     box-sizing: border-box;
   }
+  /* A wide bar cannot scale on hover without shoving the row around,
+     so the affordance is a lift in the colour itself plus a firmer
+     ring. */
   .per-line-color-chip:hover {
-    background: color-mix(in srgb, var(--swatch-color) 30%, transparent);
+    filter: brightness(1.06);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--primary-text-color) 45%, transparent);
   }
   .per-line-color-chip:active {
     transform: translateY(1px);
@@ -1216,16 +1433,6 @@ export const editorStyles = css`
   .per-line-color-chip:focus-within {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
-  }
-  .per-line-color-chip ha-icon {
-    --mdc-icon-size: 16px;
-    color: var(--swatch-color);
-    flex-shrink: 0;
-  }
-  .per-line-color-hex {
-    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
   }
   /* The actual <input type="color"> covers the chip at opacity 0 so
      clicking anywhere on the chip opens the OS picker. */

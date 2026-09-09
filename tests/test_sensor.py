@@ -79,11 +79,15 @@ def _attrs(hass: HomeAssistant) -> dict[str, Any]:
 
 
 async def test_state_prefers_realtime_countdown(hass: HomeAssistant) -> None:
-    """countdown 3 + delay 1 → the sensor reads 4, not 3."""
+    """The state is the realtime countdown as published, not countdown+delay.
+
+    Fixture: scheduled 20:49, realtime 20:50, delay 1, countdown 3. EFA
+    already measured that 3 to 20:50, so the sensor must read 3.
+    """
     await _setup(hass, _parse_dm(EXAMPLE_DM_RESPONSE))
     state = hass.states.get(ENTITY_ID)
     assert state is not None
-    assert state.state == "4"
+    assert state.state == "3"
 
 
 async def test_state_falls_back_to_scheduled_countdown(
@@ -374,7 +378,7 @@ async def test_entity_goes_unavailable_on_refresh_failure(
     """A failed poll after a good one marks the entity unavailable."""
     entry = await _setup(hass, _parse_dm(EXAMPLE_DM_RESPONSE))
     state = hass.states.get(ENTITY_ID)
-    assert state is not None and state.state == "4"
+    assert state is not None and state.state == "3"
 
     coordinator = entry.runtime_data
     with patch(

@@ -393,9 +393,28 @@ def _normalise_departure(
         delay_int if delay_int is not None and delay_int != -9999 else None
     )
 
+    # EFA measures `countdown` to the departure it actually expects: when
+    # the feed carries a realtime prediction, the countdown is already
+    # relative to that, NOT to the timetable. Adding `delay` on top of it
+    # therefore counted the delay twice and inflated every delayed
+    # departure by exactly its own delay — a tram 4 minutes out published
+    # as 10 when running 6 late. Verified against the live DM endpoint on
+    # 2026-09-08 across three stops: of the departures where the two
+    # readings differ, 5 of 5 had `countdown` equal to realtime-minus-now
+    # and 0 equal to scheduled-minus-now.
+    #
+    # So when a realtime prediction exists the countdown needs no
+    # correction, only the flag that says it is one. The additive branch
+    # survives for a feed that reports a delay with no realDateTime,
+    # where the countdown really is schedule-based and adding the delay
+    # is the right move; that shape is unattested at Linz but is what
+    # the arithmetic below was originally written for.
     countdown_rt: int | None = None
-    if countdown is not None and delay_minutes is not None:
-        countdown_rt = max(0, countdown + delay_minutes)
+    if countdown is not None:
+        if realtime is not None:
+            countdown_rt = max(0, countdown)
+        elif delay_minutes is not None:
+            countdown_rt = max(0, countdown + delay_minutes)
 
     platform = str(raw.get("platform") or raw.get("platformName") or "").strip()
 
