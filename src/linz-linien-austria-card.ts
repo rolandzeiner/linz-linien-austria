@@ -861,10 +861,14 @@ export class LinzLinienAustriaCard extends LitElement {
 
   private _renderRow(d: Departure): TemplateResult | TemplateResult[] {
     const minutes = this._countdownFor(d);
+    // `show_delay_colors: false` keeps every countdown in the neutral
+    // default colour. Only the late/early tint goes — cancelled red and
+    // the "Jetzt" line accent are states, not delay signals.
+    const delayColors = this.config.show_delay_colors !== false;
     const isLate =
-      typeof d.delay_minutes === "number" && d.delay_minutes > 0;
+      delayColors && typeof d.delay_minutes === "number" && d.delay_minutes > 0;
     const isEarly =
-      typeof d.delay_minutes === "number" && d.delay_minutes < 0;
+      delayColors && typeof d.delay_minutes === "number" && d.delay_minutes < 0;
     const timeLabel =
       minutes === null
         ? "—"
@@ -1131,8 +1135,15 @@ export class LinzLinienAustriaCard extends LitElement {
             <span
               class=${classMap({
                 "stops-ahead-time": true,
-                late: typeof delay === "number" && delay > 0,
-                early: typeof delay === "number" && delay < 0,
+                // Same `show_delay_colors` gate as the row countdown.
+                late:
+                  this.config.show_delay_colors !== false &&
+                  typeof delay === "number" &&
+                  delay > 0,
+                early:
+                  this.config.show_delay_colors !== false &&
+                  typeof delay === "number" &&
+                  delay < 0,
               })}
               >${this._clockTime(s.arrival)}</span
             >

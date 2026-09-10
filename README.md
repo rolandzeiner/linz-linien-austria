@@ -177,6 +177,11 @@ them.
   describe. Toggle *Show departure time* in the editor. *(1.1.0)*
   On a row the clock now sits in front of the countdown, so the minutes
   line up at the right edge, cancelled rows included. *(1.1.1)*
+- **Delay colours you can switch off** — the countdown turns red when a
+  departure runs late and blue when it runs early, and the onward-stop
+  times follow suit. Prefer a calmer board? Switch off *Colour-code
+  delays* in the editor and every time shows in the default colour.
+  Cancelled trips stay red either way. *(1.1.1)*
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.
@@ -294,6 +299,7 @@ them.
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
 | `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — in front of the countdown on a row (`15:44  4 Min`), so the minutes stay lined up at the right edge, and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. When the next-departure block groups several departures, each shows its own time: they share a countdown rounded to the minute but not a departure minute, so two entries at *Jetzt* can read 10:42 and 10:43. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise. |
+| `show_delay_colors` | `true` | Colour the countdown red when a departure runs late and blue when it runs early, and the onward-stop times the same way. Set `false` to show every time in the default colour. Cancelled trips stay red. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |

@@ -56,6 +56,8 @@
     "direction_only_to": "Only runs towards {destination} from here",
     "direction_one_way": "Only one direction runs from this stop",
     "line": "Line",
+    "show_delay_colors": "Colour-code delays",
+    "show_delay_colors_helper": "Turns the minute count red when a departure runs late and blue when it runs early, and tints the onward-stop times the same way. Switch off to show every time in the default colour.",
     "show_alerts": "Show traffic info",
     "show_alerts_helper": "Show the collapsible traffic-info banner above the departure list when LINZ AG has active service notices.",
     "pulse_live": "Pulse live indicator",
