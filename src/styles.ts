@@ -1387,6 +1387,17 @@ export const editorStyles = css`
     background: var(--primary-color);
     color: var(--text-primary-color, #fff);
   }
+  /* A direction the line doesn't run from this stop. Opacity rather
+     than a colour swap, so a greyed ↔ that is still the selection keeps
+     reading as selected. */
+  .per-line-dir:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+  }
+  .per-line-dir:disabled:not(.is-active):hover {
+    background: transparent;
+    color: var(--secondary-text-color);
+  }
   .per-line-dir:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: -2px;

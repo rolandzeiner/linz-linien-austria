@@ -70,6 +70,11 @@ them.
   bundled card. Read from the upstream's own line roster, so it is
   complete from the first refresh and correct immediately after a
   reconfigure. *(0.6.0, rebuilt in 0.7.0)*
+- **`line_destinations` attribute.** The same roster per direction, with
+  each direction's destination:
+  `{"2": {"H": "solarCity", "R": "Universität"}}`. A direction appears
+  only if it runs from this stop, so a template can tell a one-way line
+  from one with nothing due right now. *(1.1.1)*
 - **Stop coordinates.** The sensor carries the stop's `latitude` and
   `longitude`, so the card's map link opens the actual bay instead of
   guessing from the stop name, and templates can compute distances.
@@ -153,6 +158,9 @@ them.
   stable code rather than the destination text, so a short-turning trip
   that still serves your direction stays on the board. Replacement
   services carry no direction code and are always shown. *(1.1.0)*
+  Directions a line doesn't run from your stop are greyed out, and each
+  button's tooltip names its destination, even for lines with nothing
+  due right now. *(1.1.1)*
 - **Per-line walk time (Fußweg)** — drop departures that you couldn't
   catch given your walk to the stop. Per-line minutes input in the
   editor; each line's walk time is independent.
