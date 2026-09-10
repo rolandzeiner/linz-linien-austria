@@ -871,7 +871,7 @@ export class LinzLinienAustriaCard extends LitElement {
         : minutes <= 0
           ? this._t("card.now")
           : `${minutes} ${this._t("card.minutes_short")}`;
-    // Wall-clock time trailing the countdown. Withheld on cancelled
+    // Wall-clock time in front of the countdown. Withheld on cancelled
     // rows — "Entfällt" is the whole story there, and a departure time
     // beside it reads as if the trip is still running.
     const clock =
@@ -966,6 +966,20 @@ export class LinzLinienAustriaCard extends LitElement {
                 ${this._platformText(d)}</span
               >`
             : nothing}
+          ${clock
+            ? // Before the countdown, not after: the tail is pinned to
+              // the row's right edge, and that edge is the one column
+              // the eye scans down the list — it belongs to the
+              // countdown. Cancelled rows carry no clock, so with the
+              // clock last their "Entfällt" slid into its place and
+              // broke the column.
+              //
+              // The visible chip is always aria-hidden — bare "15:44"
+              // read out mid-row says nothing about what it refers to.
+              html`<span class="row-clock" aria-hidden="true"
+                >${clock}</span
+              >`
+            : nothing}
           <span
             class=${classMap({
               "row-time": true,
@@ -976,23 +990,17 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
-          ${clock
-            ? // The visible chip is always aria-hidden — bare "15:44"
-              // read out mid-row says nothing about what it refers to.
-              // The prose form reaches assistive tech one of two ways,
+          ${clock && !expandable
+            ? // The prose form reaches assistive tech one of two ways,
               // never both: an expandable row carries role=button and
               // its aria-label (which already includes the time) is
               // therefore honoured; a plain row is role=generic, where
-              // aria-label is discarded, so it gets a visually-hidden
-              // sibling instead. Emitting both would announce the
-              // departure time twice on expandable rows.
-              html`<span class="row-clock" aria-hidden="true"
-                  >${clock}</span
-                >${expandable
-                  ? nothing
-                  : html`<span class="visually-hidden"
-                      >${this._t("card.at_time", { time: clock })}</span
-                    >`}`
+              // aria-label is discarded, so it gets this visually-hidden
+              // sibling instead. Kept after the countdown so the spoken
+              // order stays "4 Min, um 15:44" whatever the visual order.
+              html`<span class="visually-hidden"
+                >${this._t("card.at_time", { time: clock })}</span
+              >`
             : nothing}
           ${expandable
             ? // Decorative only: the whole row carries role=button, and a

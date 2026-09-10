@@ -47,7 +47,7 @@
     "show_platform": "Steig anzeigen",
     "show_platform_helper": "Steig in der Untertitelzeile (nächste Abfahrt) und am Ende jeder Zeile einblenden.",
     "show_absolute_time": "Abfahrtszeit anzeigen",
-    "show_absolute_time_helper": "Zeigt zusätzlich zur Restzeit die tatsächliche Abfahrtszeit an — in der Zeile hinter dem Countdown („4 Min · 15:44“), im Nächste-Abfahrt-Block neben dem Ziel. Bei Echtzeitdaten ist das die prognostizierte, sonst die planmäßige Zeit, damit Uhrzeit und Countdown daneben dieselbe Fahrt beschreiben.",
+    "show_absolute_time_helper": "Zeigt zusätzlich zur Restzeit die tatsächliche Abfahrtszeit an — in der Zeile vor dem Countdown („15:44  4 Min“), im Nächste-Abfahrt-Block neben dem Ziel. Bei Echtzeitdaten ist das die prognostizierte, sonst die planmäßige Zeit, damit Uhrzeit und Countdown daneben dieselbe Fahrt beschreiben.",
     "direction": "Richtung",
     "direction_h": "Hinfahrt",
     "direction_r": "Rückfahrt",

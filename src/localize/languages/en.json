@@ -47,7 +47,7 @@
     "show_platform": "Show platform",
     "show_platform_helper": "Show the platform / bay (Steig) on the next-departure subtitle and at the trailing edge of each row.",
     "show_absolute_time": "Show departure time",
-    "show_absolute_time_helper": "Adds the actual departure time as well as the countdown — after it on a row (\"4 min · 15:44\"), beside the destination in the next-departure block. Uses the realtime prediction where the operator publishes one and the scheduled time otherwise, so the clock and the countdown beside it describe the same trip.",
+    "show_absolute_time_helper": "Adds the actual departure time as well as the countdown — before it on a row (\"15:44  4 min\"), beside the destination in the next-departure block. Uses the realtime prediction where the operator publishes one and the scheduled time otherwise, so the clock and the countdown beside it describe the same trip.",
     "direction": "Direction",
     "direction_h": "Outbound",
     "direction_r": "Inbound",
