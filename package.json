@@ -10,7 +10,7 @@
     "build:push": "rolldown -c && ./scripts/dev-push.sh --quiet"
   },
   "devDependencies": {
-    "rolldown": "1.2.7",
+    "rolldown": "1.2.9",
     "typescript": "7.0.2"
   },
   "dependencies": {
