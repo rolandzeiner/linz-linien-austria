@@ -4,7 +4,7 @@
     "entity_unavailable": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
     "version_update": "Eine neuere Kartenversion ({v}) ist verfügbar. Bitte neu laden.",
     "version_reload": "Jetzt neu laden",
-    "version_reload_stuck": "Neu laden hat die neue Version nicht übernommen. Schließen Sie diesen Browser-Tab und öffnen Sie das Dashboard erneut, oder löschen Sie die Website-Daten für Home Assistant in den Browser-Einstellungen."
+    "version_reload_stuck": "Neu laden hat die neue Version nicht übernommen. Schließe diesen Browser-Tab und öffne das Dashboard erneut, oder lösche die Website-Daten für Home Assistant in den Browser-Einstellungen."
   },
   "card": {
     "no_departures": "Keine kommenden Abfahrten.",
@@ -32,7 +32,7 @@
   "editor": {
     "entity": "Sensor",
     "entity_helper": "Einen sensor.*_next_departure Sensor dieser Integration wählen.",
-    "entity_missing": "Sensor {entity} existiert nicht mehr. Wählen Sie oben einen anderen Sensor.",
+    "entity_missing": "Sensor {entity} existiert nicht mehr. Wähle oben einen anderen Sensor.",
     "name": "Titel",
     "name_helper": "Optionaler Überschreib-Titel für die Karte.",
     "hide_header": "Kopfzeile ausblenden",
