@@ -13,6 +13,7 @@ import {
 import { editorStyles } from "./styles";
 import { translate } from "./localize/localize";
 import { motColorOrDefault, motIcon } from "./mot";
+import { normaliseConfig, tidyConfig } from "./config";
 
 @customElement("linz-linien-austria-card-editor")
 export class LinzLinienAustriaCardEditor
@@ -376,34 +377,13 @@ export class LinzLinienAustriaCardEditor
     return localised === key ? undefined : localised;
   };
 
-  /** Booleans the card reads as on when unset (`!== false`). ha-form
-   *  renders an unset boolean as off, so without filling these in the
-   *  editor showed the switch off while the card behaved as if on. */
-  private readonly _defaultOn = [
-    "show_alerts",
-    "pulse_live",
-    "show_delay_colors",
-  ] as const;
-
-  /** The config as ha-form should display it — defaults filled in. */
-  private _formData(): LinzLinienAustriaCardConfig {
-    const data = { ...this._config };
-    for (const key of this._defaultOn) {
-      if (data[key] === undefined) data[key] = true;
-    }
-    return data;
-  }
-
+  /** ha-form hands back the whole normalised config it was shown, so
+   *  every default is in it. tidyConfig takes them — and cleared fields —
+   *  back out before saving; see config.ts. */
   private _onFormChanged = (
     ev: CustomEvent<{ value: LinzLinienAustriaCardConfig }>,
   ): void => {
-    const next = { ...ev.detail.value };
-    // Drop the defaults _formData() filled in, so saving the editor
-    // doesn't write `show_alerts: true` and friends into every YAML.
-    // Storing `true` would mean exactly what leaving it out means.
-    for (const key of this._defaultOn) {
-      if (next[key] === true) delete next[key];
-    }
+    const next = tidyConfig(ev.detail.value);
     this._config = next;
     fireEvent(this, "config-changed", { config: next });
   };
@@ -631,7 +611,7 @@ export class LinzLinienAustriaCardEditor
       <div class="editor">
         <ha-form
           .hass=${this.hass}
-          .data=${this._formData()}
+          .data=${normaliseConfig(this._config)}
           .schema=${this._schema()}
           .computeLabel=${this._computeLabel}
           .computeHelper=${this._computeHelper}

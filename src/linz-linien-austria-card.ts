@@ -27,6 +27,7 @@ import {
   safeHttpsUri,
 } from "./shared-render";
 import { cardStyles } from "./styles";
+import { normaliseConfig } from "./config";
 
 // Eagerly register the editor so HA can grab it synchronously from
 // `getConfigElement`. With `inlineDynamicImports: true` the editor is
@@ -72,7 +73,6 @@ interface WindowWithCustomCards extends Window {
       config: {
         type: "custom:linz-linien-austria-card",
         entity: entityId,
-        show_hero: true,
       },
     };
   },
@@ -92,9 +92,14 @@ export class LinzLinienAustriaCard extends LitElement {
    *  sensors by the marker attributes the integration always emits
    *  (`stop_id` + `departures`) — works even when the user customised
    *  the entity_id, and doesn't depend on the `attribution` string
-   *  being present at the exact moment the picker probes states. */
+   *  being present at the exact moment the picker probes states.
+   *
+   *  No defaults in here: the card fills those in from DEFAULTS. A
+   *  default in the stub is saved into the YAML, which is how a
+   *  `show_hero: true` here hid the editor showing Hero off on every
+   *  card written by hand. */
   public static getStubConfig(hass?: HomeAssistant): Record<string, unknown> {
-    const stub: Record<string, unknown> = { show_hero: true };
+    const stub: Record<string, unknown> = {};
     if (!hass) return stub;
     const match = Object.keys(hass.states).find((id) => {
       if (!id.startsWith("sensor.")) return false;
@@ -140,10 +145,9 @@ export class LinzLinienAustriaCard extends LitElement {
     if (!config || typeof config !== "object") {
       throw new Error("Invalid configuration / Ungültige Konfiguration");
     }
-    this.config = {
-      show_hero: true,
-      ...config,
-    };
+    // Defaults come from the one table the editor also reads — see
+    // config.ts for why none may be written inline below.
+    this.config = normaliseConfig(config);
   }
 
   /** `this.hass.language` is authoritative even when the user is on
@@ -373,7 +377,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // `filtered`, so the post-dedupe slice keeps "max 10" meaning
     // "10 rendered rows" rather than "10 rows including duplicates of
     // the hero". Skipped entirely when show_hero is off.
-    const heroDedupe = this.config.show_hero !== false
+    const heroDedupe = this.config.show_hero
       ? new Set(heroGroup)
       : new Set<Departure>();
     const remaining = filtered.filter((d) => !heroDedupe.has(d));
@@ -428,7 +432,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // Classes land on <ha-card> so descendant selectors in styles.ts
     // can scope the animation rules. `prefers-reduced-motion` overrides
     // both regardless of the toggles.
-    const pulseLive = this.config.pulse_live !== false;
+    const pulseLive = !!this.config.pulse_live;
     const enableAnimations = !!this.config.enable_animations;
 
     return html`
@@ -470,7 +474,7 @@ export class LinzLinienAustriaCard extends LitElement {
                   </div>`
                 : nothing}
             </header>`}
-        ${this.config.show_alerts !== false && alerts.length > 0
+        ${this.config.show_alerts && alerts.length > 0
           ? this._renderAlerts(alerts)
           : nothing}
         ${this.config.show_hero && heroGroup.length > 0
@@ -864,7 +868,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // `show_delay_colors: false` keeps every countdown in the neutral
     // default colour. Only the late/early tint goes — cancelled red and
     // the "Jetzt" line accent are states, not delay signals.
-    const delayColors = this.config.show_delay_colors !== false;
+    const delayColors = !!this.config.show_delay_colors;
     const isLate =
       delayColors && typeof d.delay_minutes === "number" && d.delay_minutes > 0;
     const isEarly =
@@ -1137,11 +1141,11 @@ export class LinzLinienAustriaCard extends LitElement {
                 "stops-ahead-time": true,
                 // Same `show_delay_colors` gate as the row countdown.
                 late:
-                  this.config.show_delay_colors !== false &&
+                  !!this.config.show_delay_colors &&
                   typeof delay === "number" &&
                   delay > 0,
                 early:
-                  this.config.show_delay_colors !== false &&
+                  !!this.config.show_delay_colors &&
                   typeof delay === "number" &&
                   delay < 0,
               })}
