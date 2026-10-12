@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Generator
+from datetime import timedelta
 from typing import Any, Self
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import async_fire_time_changed
 from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMocker,
 )
@@ -26,6 +31,7 @@ from custom_components.linz_linien_austria.alerts import (
 from custom_components.linz_linien_austria.const import (
     ADDINFO_ENDPOINT,
     ALERTS_KEY,
+    ALERTS_REFRESH_SECONDS,
     ALERTS_REFRESH_UNSUB_KEY,
     API_BASE_URL,
     DOMAIN,
@@ -401,7 +407,7 @@ async def test_async_refresh_alerts_keeps_the_cache_on_a_failed_fetch(
 
     aioclient_mock.clear_requests()
     aioclient_mock.get(ADDINFO_URL, **failure)
-    await async_refresh_alerts(hass)
+    assert await async_refresh_alerts(hass) is False
 
     assert aioclient_mock.call_count == 1
     assert hass.data[DOMAIN][ALERTS_KEY] == before
@@ -418,7 +424,7 @@ async def test_async_refresh_alerts_clears_the_cache_on_an_empty_answer(
 
     aioclient_mock.clear_requests()
     aioclient_mock.get(ADDINFO_URL, json=EMPTY_ADDINFO)
-    await async_refresh_alerts(hass)
+    assert await async_refresh_alerts(hass) is True
 
     assert hass.data[DOMAIN][ALERTS_KEY] == []
 
@@ -494,3 +500,182 @@ async def test_stop_alerts_refresh_is_safe_when_not_started(
     """Calling stop without a prior start must not raise."""
     hass.data.pop(DOMAIN, None)
     async_stop_alerts_refresh(hass)  # must not raise
+
+
+# ---------------------------------------------------------------------
+# The tick's failure backoff
+# ---------------------------------------------------------------------
+
+
+class _Clock:
+    """Stands in for the `time` module the alerts tick reads."""
+
+    def __init__(self) -> None:
+        self.now = 50_000.0
+
+    def monotonic(self) -> float:
+        return self.now
+
+
+@pytest.fixture
+def ticking(hass: HomeAssistant) -> Generator[_Clock]:
+    """Start the real 5-minute timer, on a monotonic clock the test moves.
+
+    Only the alerts module's `time` is swapped. Patching
+    `alerts.time.monotonic` would resolve the singleton `time` module
+    and move the event loop's clock as well.
+    """
+    clock = _Clock()
+    with patch.object(alerts_mod, "time", clock):
+        async_start_alerts_refresh(hass)
+        yield clock
+        async_stop_alerts_refresh(hass)
+
+
+async def _tick(
+    hass: HomeAssistant, clock: _Clock, seconds: float = ALERTS_REFRESH_SECONDS
+) -> None:
+    """Fire the next tick, `seconds` after the last one on the tick's clock."""
+    clock.now += seconds
+    async_fire_time_changed(
+        hass, dt_util.utcnow() + timedelta(seconds=ALERTS_REFRESH_SECONDS)
+    )
+    await hass.async_block_till_done()
+
+
+def _feed(mock: AiohttpClientMocker, **answer: Any) -> None:
+    """Point the ADDINFO endpoint at one answer. Restarts `call_count`."""
+    mock.clear_requests()
+    mock.get(ADDINFO_URL, **answer)
+
+
+async def test_alerts_tick_backs_off_while_the_feed_is_failing(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    ticking: _Clock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failing feed is asked 5, 10, 20, then every 30 minutes apart."""
+    caplog.set_level(logging.INFO)
+    _feed(aioclient_mock, exc=TimeoutError())
+
+    asked_at: list[int] = []
+    for minute in range(5, 135, 5):
+        await _tick(hass, ticking)
+        if aioclient_mock.call_count > len(asked_at):
+            asked_at.append(minute)
+
+    # 12 requests in the first hour before the backoff, 4 with it, and 2
+    # an hour from then on.
+    assert asked_at == [5, 10, 20, 40, 70, 100, 130]
+    # One line per step of the curve, none once it sits at the cap.
+    assert [
+        r.getMessage() for r in caplog.records if r.name == alerts_mod.__name__
+    ] == [
+        "2 consecutive alerts failures; backing off to 10 min between tries",
+        "3 consecutive alerts failures; backing off to 20 min between tries",
+        "4 consecutive alerts failures; backing off to 30 min between tries",
+    ]
+
+
+async def test_skipped_alerts_tick_takes_no_cooldown_slot(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, ticking: _Clock
+) -> None:
+    """A tick that is backing off returns before the shared 15 s slot."""
+    _feed(aioclient_mock, exc=TimeoutError())
+
+    with patch.object(
+        alerts_mod, "async_enforce_domain_cooldown", new_callable=AsyncMock
+    ) as cooldown:
+        await _tick(hass, ticking)
+        await _tick(hass, ticking)
+        assert cooldown.await_count == 2
+        assert aioclient_mock.call_count == 2
+
+        # Two failures in a row: the next tick asks nothing and waits
+        # for nothing.
+        await _tick(hass, ticking)
+        assert cooldown.await_count == 2
+        assert aioclient_mock.call_count == 2
+
+        await _tick(hass, ticking)
+        assert cooldown.await_count == 3
+        assert aioclient_mock.call_count == 3
+
+
+async def test_one_failed_alerts_fetch_keeps_the_cadence(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, ticking: _Clock
+) -> None:
+    """A single failure costs no tick, even when the next one fires early.
+
+    Ticks are 5 minutes apart only nominally, so the not-before of a
+    first failure must not sit exactly on the next tick.
+    """
+    _feed(aioclient_mock, exc=TimeoutError())
+    await _tick(hass, ticking)
+    assert aioclient_mock.call_count == 1
+
+    _feed(aioclient_mock, json=EXAMPLE_ADDINFO)
+    await _tick(hass, ticking, ALERTS_REFRESH_SECONDS - 0.5)
+    assert aioclient_mock.call_count == 1
+    assert len(hass.data[DOMAIN][ALERTS_KEY]) == 2
+
+
+async def test_alerts_backoff_counts_from_the_tick_not_the_failure(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, ticking: _Clock
+) -> None:
+    """A request that is slow to fail must not push the retry out.
+
+    The wait in the cooldown queue and the timeout both pass before the
+    failure is known. Counted from there, the not-before would land
+    past the tick it is meant to allow.
+    """
+    _feed(aioclient_mock, exc=TimeoutError())
+
+    async def _slow_queue(_hass: HomeAssistant) -> None:
+        ticking.now += 200
+
+    with patch.object(
+        alerts_mod, "async_enforce_domain_cooldown", side_effect=_slow_queue
+    ):
+        await _tick(hass, ticking)
+        assert aioclient_mock.call_count == 1
+        # 200 s of the interval are gone, so the next tick is 100 s away.
+        await _tick(hass, ticking, ALERTS_REFRESH_SECONDS - 200)
+        assert aioclient_mock.call_count == 2
+
+
+async def test_alerts_tick_resets_on_the_first_answer(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    ticking: _Clock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One answer ends the backoff, and the next outage starts from 5 min."""
+    caplog.set_level(logging.INFO)
+    _feed(aioclient_mock, exc=TimeoutError())
+    for _ in range(4):  # 5, 10, (15 skipped), 20: three failures
+        await _tick(hass, ticking)
+    assert aioclient_mock.call_count == 3
+
+    # The feed is back, but nothing asks until the not-before at 40 min.
+    _feed(aioclient_mock, json=EXAMPLE_ADDINFO)
+    for _ in range(3):  # 25, 30, 35
+        await _tick(hass, ticking)
+    assert aioclient_mock.call_count == 0
+    await _tick(hass, ticking)  # 40
+    assert aioclient_mock.call_count == 1
+    assert "Alerts feed recovered" in caplog.text
+
+    # Back on every tick.
+    await _tick(hass, ticking)
+    await _tick(hass, ticking)
+    assert aioclient_mock.call_count == 3
+
+    # A new outage counts from one again: after a single failure the
+    # next tick still asks. A counter that had kept its 3 would wait
+    # 30 minutes here.
+    _feed(aioclient_mock, exc=TimeoutError())
+    await _tick(hass, ticking)
+    await _tick(hass, ticking)
+    assert aioclient_mock.call_count == 2

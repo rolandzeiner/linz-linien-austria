@@ -260,7 +260,8 @@ them.
 - Service-disruption alerts (`XML_ADDINFO_REQUEST`) refresh on an
   independent 5-min domain-wide cadence; the cache is shared across
   all entries. If a refresh fails, the alerts already shown stay
-  until the feed answers again.
+  until the feed answers again. From the second failure in a row,
+  the wait between tries doubles, up to 30 minutes.
 - With *Show onward stops* on, each poll also asks for every trip's
   remaining stop list, which roughly triples the response. The upstream
   fetch is clamped to 10 departures to bound that, and around half of

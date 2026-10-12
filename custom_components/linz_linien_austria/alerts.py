@@ -15,11 +15,16 @@ its own request, with a different cache lifetime than departures.
 * Refresh task is started when the first entry sets up and torn down
   when the last entry is removed (entry-count refcount in
   ``hass.data[DOMAIN][ENTRY_COUNT_KEY]``).
+* While the feed is failing, the tick skips itself until a not-before
+  time that doubles with each failure in a row (see
+  ``ALERTS_REFRESH_SECONDS``), and a failed fetch never overwrites the
+  cache.
 """
 
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
@@ -35,6 +40,7 @@ from .const import (
     ALERTS_REFRESH_SECONDS,
     ALERTS_REFRESH_UNSUB_KEY,
     API_BASE_URL,
+    BACKOFF_CAP_SECONDS,
     BASE_REQUEST_HEADERS,
     DOMAIN,
 )
@@ -225,7 +231,7 @@ async def async_fetch_alerts(
     return _parse_addinfo(data)
 
 
-async def async_refresh_alerts(hass: HomeAssistant) -> None:
+async def async_refresh_alerts(hass: HomeAssistant) -> bool:
     """Refresh the cached alerts list and push it into hass.data.
 
     Two callers, neither of which awaits this on a critical path: the
@@ -236,6 +242,9 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     A failed fetch leaves the cache exactly as it was. Only a real
     answer overwrites it, an empty one included: one timeout used to
     take every notice off the cards until the next good answer.
+
+    Returns False for a failed fetch, which is what the tick backs off
+    on, and True for an answer.
     """
     # Alerts share the same 15 s domain-wide floor as the departure
     # polls. Without this, the 5-min alerts tick can collide with a
@@ -245,10 +254,11 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     alerts = await async_fetch_alerts(session)
     if alerts is None:
         _LOGGER.debug("alerts fetch failed; cache left as it was")
-        return
+        return False
     domain_data = hass.data.setdefault(DOMAIN, {})
     domain_data[ALERTS_KEY] = [a.to_dict() for a in alerts]
     _LOGGER.debug("alerts cache refreshed: %d entries", len(alerts))
+    return True
 
 
 def served_lines_from_data(
@@ -300,6 +310,11 @@ def get_alerts_for_lines(hass: HomeAssistant, lines: set[str]) -> list[dict[str,
     return out
 
 
+def _backoff_seconds(failures: int) -> int:
+    """Wait after ``failures`` failed fetches in a row: 5, 10, 20, then 30 min."""
+    return min(ALERTS_REFRESH_SECONDS << (failures - 1), BACKOFF_CAP_SECONDS)
+
+
 @callback
 def async_start_alerts_refresh(hass: HomeAssistant) -> CALLBACK_TYPE | None:
     """Schedule the domain-wide alerts refresh, idempotent."""
@@ -308,8 +323,39 @@ def async_start_alerts_refresh(hass: HomeAssistant) -> CALLBACK_TYPE | None:
     if existing is not None:
         return existing
 
+    # Backoff state. In the closure, so it goes away with the timer: the
+    # last entry's unload drops it and a re-add starts clean.
+    failures = 0
+    not_before = 0.0
+
     async def _tick(_now: Any) -> None:
-        await async_refresh_alerts(hass)
+        nonlocal failures, not_before
+        # Backing off (see ALERTS_REFRESH_SECONDS). Checked above the
+        # refresh, which is what takes the shared cooldown slot: a tick
+        # that asks nothing must not hold a departure poll up either.
+        started = time.monotonic()
+        if started < not_before:
+            return
+        if await async_refresh_alerts(hass):
+            if failures > 1:
+                _LOGGER.info("Alerts feed recovered; restoring normal refresh cadence")
+            failures, not_before = 0, 0.0
+            return
+        failures += 1
+        delay = _backoff_seconds(failures)
+        # Counted from the tick, not from the failure: the request can
+        # take most of a minute to fail (cooldown queue plus timeout).
+        # And set half a tick early, because ticks are only nominally
+        # one interval apart and the tick due at the not-before must not
+        # lose a coin toss against it. That margin is also what keeps a
+        # single failure from costing a tick: its 5 min is the next one.
+        not_before = started + delay - ALERTS_REFRESH_SECONDS / 2
+        if failures > 1 and delay != _backoff_seconds(failures - 1):
+            _LOGGER.info(
+                "%d consecutive alerts failures; backing off to %d min between tries",
+                failures,
+                delay // 60,
+            )
 
     unsub = async_track_time_interval(
         hass, _tick, timedelta(seconds=ALERTS_REFRESH_SECONDS)
