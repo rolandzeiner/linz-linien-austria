@@ -125,6 +125,7 @@ def test_parse_alert_extracts_lines_and_dates() -> None:
 
 def test_parse_addinfo_drops_deactivated_keeps_active() -> None:
     out = _parse_addinfo(EXAMPLE_ADDINFO)
+    assert out is not None
     ids = [a.info_id for a in out]
     assert "11892_LL_ICSLAG" in ids
     assert "high_prio" in ids
@@ -270,7 +271,8 @@ def test_parse_alert_skips_concerned_line_without_number() -> None:
 def test_parse_addinfo_rejects_malformed_envelopes(
     payload: dict[str, Any],
 ) -> None:
-    assert _parse_addinfo(payload) == []
+    """No envelope is no answer, which is not the same as no notices."""
+    assert _parse_addinfo(payload) is None
 
 
 # ---------------------------------------------------------------------
@@ -391,8 +393,9 @@ async def test_async_refresh_alerts_writes_to_hass_data(
         {"status": 503},
         {"text": "<html>Wartung</html>"},
         {"json": ["not", "a", "dict"]},
+        {"json": {"error": "Service temporarily unavailable"}},
     ],
-    ids=["timeout", "http-503", "html-body", "non-dict-json"],
+    ids=["timeout", "http-503", "html-body", "non-dict-json", "no-envelope"],
 )
 async def test_async_refresh_alerts_keeps_the_cache_on_a_failed_fetch(
     hass: HomeAssistant,
@@ -576,6 +579,23 @@ async def test_alerts_tick_backs_off_while_the_feed_is_failing(
         "3 consecutive alerts failures; backing off to 20 min between tries",
         "4 consecutive alerts failures; backing off to 30 min between tries",
     ]
+
+
+async def test_alerts_tick_backs_off_on_an_answer_without_the_envelope(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    ticking: _Clock,
+) -> None:
+    """A 200 carrying some other JSON object is a failure to the tick too."""
+    _feed(aioclient_mock, json={"error": "Service temporarily unavailable"})
+
+    asked_at: list[int] = []
+    for minute in range(5, 75, 5):
+        await _tick(hass, ticking)
+        if aioclient_mock.call_count > len(asked_at):
+            asked_at.append(minute)
+
+    assert asked_at == [5, 10, 20, 40, 70]
 
 
 async def test_skipped_alerts_tick_takes_no_cooldown_slot(

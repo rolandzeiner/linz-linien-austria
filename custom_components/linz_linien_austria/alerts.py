@@ -170,18 +170,25 @@ def _parse_alert(raw: dict[str, Any]) -> TrafficInfo | None:
     )
 
 
-def _parse_addinfo(payload: dict[str, Any]) -> list[TrafficInfo]:
-    """Reduce a XML_ADDINFO_REQUEST JSON payload to a flat list."""
-    out: list[TrafficInfo] = []
+def _parse_addinfo(payload: dict[str, Any]) -> list[TrafficInfo] | None:
+    """Reduce a XML_ADDINFO_REQUEST JSON payload to a flat list.
+
+    ``None`` when the notices envelope is missing: that is some other
+    JSON object, an error body for instance, and says nothing about the
+    notices. An answer carries the envelope even when it has no notices
+    (see ``async_fetch_alerts``), and one notice still comes as a list
+    (measured 2026-10-12 at 12, 1 and 0 notices).
+    """
     additional = payload.get("additionalInformation")
     if not isinstance(additional, dict):
-        return out
+        return None
     travel = additional.get("travelInformations")
     if not isinstance(travel, dict):
-        return out
+        return None
     items = travel.get("travelInformation")
     if not isinstance(items, list):
-        return out
+        return None
+    out: list[TrafficInfo] = []
     for raw in items:
         info = _parse_alert(raw)
         if info is not None:
@@ -201,7 +208,9 @@ async def async_fetch_alerts(
     ``None`` and the empty list are different answers. An empty list is
     the upstream saying there are no notices (measured 2026-10-12: the
     full envelope with ``"travelInformation": []``), and the caller
-    clears its cache on it. ``None`` says nothing was learned.
+    clears its cache on it. ``None`` says nothing was learned, and that
+    includes a 200 whose JSON lacks the envelope: read as "no notices",
+    it cleared the cache and reset the tick's backoff on every request.
     """
     url = f"{API_BASE_URL}{ADDINFO_ENDPOINT}"
     params = {
