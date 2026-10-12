@@ -185,13 +185,17 @@ def _parse_addinfo(payload: dict[str, Any]) -> list[TrafficInfo]:
 
 async def async_fetch_alerts(
     session: aiohttp.ClientSession,
-) -> list[TrafficInfo]:
+) -> list[TrafficInfo] | None:
     """Fetch the current addinfo list from LINZ AG.
 
-    Failures are swallowed and surfaced as an empty list — the alerts
-    feed is best-effort decoration on top of departures, not a critical
-    data path. Don't block the integration's setup or refresh cycle on
-    it.
+    Failures are swallowed and surfaced as ``None`` — the alerts feed
+    is best-effort decoration on top of departures, not a critical data
+    path. Don't block the integration's setup or refresh cycle on it.
+
+    ``None`` and the empty list are different answers. An empty list is
+    the upstream saying there are no notices (measured 2026-10-12: the
+    full envelope with ``"travelInformation": []``), and the caller
+    clears its cache on it. ``None`` says nothing was learned.
     """
     url = f"{API_BASE_URL}{ADDINFO_ENDPOINT}"
     params = {
@@ -210,14 +214,14 @@ async def async_fetch_alerts(
             data = await resp.json(content_type=None)
     except aiohttp.ClientError as err:
         _LOGGER.debug("alerts fetch failed (network): %s", err)
-        return []
+        return None
     except (ValueError, TimeoutError) as err:
         _LOGGER.debug("alerts fetch failed (parse): %s", err)
-        return []
+        return None
 
     if not isinstance(data, dict):
         _LOGGER.debug("alerts fetch returned non-dict payload: %r", type(data))
-        return []
+        return None
     return _parse_addinfo(data)
 
 
@@ -228,6 +232,10 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     5-minute domain tick, and a background task the first entry's setup
     spawns (``__init__.py``). Both are fire-and-forget by design — see
     ``async_fetch_alerts`` for why alerts must never gate departures.
+
+    A failed fetch leaves the cache exactly as it was. Only a real
+    answer overwrites it, an empty one included: one timeout used to
+    take every notice off the cards until the next good answer.
     """
     # Alerts share the same 15 s domain-wide floor as the departure
     # polls. Without this, the 5-min alerts tick can collide with a
@@ -235,6 +243,9 @@ async def async_refresh_alerts(hass: HomeAssistant) -> None:
     await async_enforce_domain_cooldown(hass)
     session = async_get_clientsession(hass)
     alerts = await async_fetch_alerts(session)
+    if alerts is None:
+        _LOGGER.debug("alerts fetch failed; cache left as it was")
+        return
     domain_data = hass.data.setdefault(DOMAIN, {})
     domain_data[ALERTS_KEY] = [a.to_dict() for a in alerts]
     _LOGGER.debug("alerts cache refreshed: %d entries", len(alerts))

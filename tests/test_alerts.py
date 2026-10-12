@@ -8,6 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+)
 
 from custom_components.linz_linien_austria import alerts as alerts_mod
 from custom_components.linz_linien_austria.alerts import (
@@ -21,10 +24,14 @@ from custom_components.linz_linien_austria.alerts import (
     get_alerts_for_lines,
 )
 from custom_components.linz_linien_austria.const import (
+    ADDINFO_ENDPOINT,
     ALERTS_KEY,
     ALERTS_REFRESH_UNSUB_KEY,
+    API_BASE_URL,
     DOMAIN,
 )
+
+ADDINFO_URL = f"{API_BASE_URL}{ADDINFO_ENDPOINT}"
 
 EXAMPLE_ADDINFO = {
     "additionalInformation": {
@@ -74,6 +81,16 @@ EXAMPLE_ADDINFO = {
                 },
             ]
         }
+    }
+}
+
+# What the EFA answers when no notice is current (measured 2026-10-12):
+# the full envelope around an empty list, not a missing key.
+EMPTY_ADDINFO = {
+    "additionalInformation": {
+        "date": "12.10.2026",
+        "time": "12:06",
+        "travelInformations": {"status": "current", "travelInformation": []},
     }
 }
 
@@ -290,27 +307,35 @@ class _FakeResp:
 async def test_async_fetch_alerts_swallows_client_error() -> None:
     session = _FakeSession(exc=aiohttp.ClientError("boom"))
     out = await async_fetch_alerts(session)  # type: ignore[arg-type]
-    assert out == []
+    assert out is None
 
 
 async def test_async_fetch_alerts_swallows_value_error() -> None:
-    """Bad JSON → ValueError → empty list, not propagated."""
+    """Bad JSON → ValueError → None, not propagated."""
     session = _FakeSession(exc=ValueError("invalid json"))
     out = await async_fetch_alerts(session)  # type: ignore[arg-type]
-    assert out == []
+    assert out is None
 
 
 async def test_async_fetch_alerts_rejects_non_dict_body() -> None:
     session = _FakeSession(body=["not", "a", "dict"])
     out = await async_fetch_alerts(session)  # type: ignore[arg-type]
-    assert out == []
+    assert out is None
 
 
 async def test_async_fetch_alerts_returns_parsed_list_on_success() -> None:
     session = _FakeSession(body=EXAMPLE_ADDINFO)
     out = await async_fetch_alerts(session)  # type: ignore[arg-type]
+    assert out is not None
     ids = {a.info_id for a in out}
     assert "11892_LL_ICSLAG" in ids
+
+
+async def test_async_fetch_alerts_tells_an_empty_answer_from_a_failure() -> None:
+    """No current notices is `[]`; only a failed fetch is `None`."""
+    session = _FakeSession(body=EMPTY_ADDINFO)
+    out = await async_fetch_alerts(session)  # type: ignore[arg-type]
+    assert out == []
 
 
 # ---------------------------------------------------------------------
@@ -351,6 +376,51 @@ async def test_async_refresh_alerts_writes_to_hass_data(
     cache = hass.data[DOMAIN][ALERTS_KEY]
     assert isinstance(cache, list)
     assert cache[0]["info_id"] == "X"
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        {"exc": TimeoutError()},
+        {"status": 503},
+        {"text": "<html>Wartung</html>"},
+        {"json": ["not", "a", "dict"]},
+    ],
+    ids=["timeout", "http-503", "html-body", "non-dict-json"],
+)
+async def test_async_refresh_alerts_keeps_the_cache_on_a_failed_fetch(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    failure: dict[str, Any],
+) -> None:
+    """One bad answer must not take the notices off the cards."""
+    aioclient_mock.get(ADDINFO_URL, json=EXAMPLE_ADDINFO)
+    await async_refresh_alerts(hass)
+    before = list(hass.data[DOMAIN][ALERTS_KEY])
+    assert [a["info_id"] for a in before] == ["11892_LL_ICSLAG", "high_prio"]
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(ADDINFO_URL, **failure)
+    await async_refresh_alerts(hass)
+
+    assert aioclient_mock.call_count == 1
+    assert hass.data[DOMAIN][ALERTS_KEY] == before
+    assert len(get_alerts_for_lines(hass, {"191"})) == 2
+
+
+async def test_async_refresh_alerts_clears_the_cache_on_an_empty_answer(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    """No current notices is an answer, and the cache has to follow it."""
+    aioclient_mock.get(ADDINFO_URL, json=EXAMPLE_ADDINFO)
+    await async_refresh_alerts(hass)
+    assert hass.data[DOMAIN][ALERTS_KEY]
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(ADDINFO_URL, json=EMPTY_ADDINFO)
+    await async_refresh_alerts(hass)
+
+    assert hass.data[DOMAIN][ALERTS_KEY] == []
 
 
 # ---------------------------------------------------------------------
