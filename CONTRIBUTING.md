@@ -62,10 +62,6 @@ View per-file coverage locally:
 pytest tests/ --cov-report=term-missing
 ```
 
-## Local iteration against a live HA box
-
-`./scripts/dev-push.sh` rsyncs to your dev container over SSH; it needs SSH access to the box and nothing else. The script runs `npm run build` automatically before pushing so direct invocation is always safe; pass `--no-build` for Python-only iteration. `npm run build:push` chains build + dev-push (quiet) for tight card-iteration loops.
-
 ## Verification gate (must pass before pushing)
 
 - `pytest tests/ -v`
