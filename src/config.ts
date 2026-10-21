@@ -38,8 +38,7 @@ export const DEFAULTS = {
 } as const satisfies Partial<LinzLinienAustriaCardConfig>;
 
 /** "" is what a cleared text field or dropdown hands back. */
-const isUnset = (value: unknown): boolean =>
-  value === undefined || value === null || value === "";
+const isUnset = (value: unknown): boolean => value === undefined || value === null || value === "";
 
 /** The config with every default filled in: what the card renders and what
  *  the editor shows. Unset values (undefined, null, "") fall back to the
@@ -47,9 +46,7 @@ const isUnset = (value: unknown): boolean =>
  *  the defaults follow them: ha-form saves back in this order, so filling
  *  defaults in first would move every changed option above `entity` in
  *  the saved YAML. */
-export function normaliseConfig(
-  config: LinzLinienAustriaCardConfig,
-): LinzLinienAustriaCardConfig {
+export function normaliseConfig(config: LinzLinienAustriaCardConfig): LinzLinienAustriaCardConfig {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(config)) {
     if (!isUnset(value)) out[key] = value;
@@ -66,9 +63,7 @@ export function normaliseConfig(
  *  the config is pinned — a later change to DEFAULTS would never reach
  *  that card. Records and lists are never equal to a default, so the
  *  per-line sections round-trip untouched. */
-export function tidyConfig(
-  config: LinzLinienAustriaCardConfig,
-): LinzLinienAustriaCardConfig {
+export function tidyConfig(config: LinzLinienAustriaCardConfig): LinzLinienAustriaCardConfig {
   const defaults: Record<string, unknown> = DEFAULTS;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(config)) {

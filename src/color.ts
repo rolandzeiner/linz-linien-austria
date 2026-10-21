@@ -74,7 +74,10 @@ function parseColor(value: string): Rgb | null {
     }
     const match = /^rgba?\(([^)]+)\)$/.exec(serialised);
     if (!match?.[1]) return null;
-    const parts = match[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+    const parts = match[1]
+      .split(/[,\s/]+/)
+      .filter(Boolean)
+      .map(Number);
     const [r, g, b] = parts;
     if (r === undefined || g === undefined || b === undefined) return null;
     if (![r, g, b].every(Number.isFinite)) return null;
@@ -157,17 +160,11 @@ export function accentTextColor(
 
   const [lightness, a, b] = linearToOklab(linear);
   const clamped =
-    scheme === "dark"
-      ? Math.max(DARK_FLOOR, lightness)
-      : Math.min(LIGHT_CEILING, lightness);
+    scheme === "dark" ? Math.max(DARK_FLOOR, lightness) : Math.min(LIGHT_CEILING, lightness);
   if (clamped === lightness) return toHex(linear);
 
   const chroma = Math.hypot(a, b);
   const hue = Math.atan2(b, a);
-  const lifted = oklabToLinear([
-    clamped,
-    chroma * Math.cos(hue),
-    chroma * Math.sin(hue),
-  ]);
+  const lifted = oklabToLinear([clamped, chroma * Math.cos(hue), chroma * Math.sin(hue)]);
   return toHex([clamp01(lifted[0]), clamp01(lifted[1]), clamp01(lifted[2])]);
 }

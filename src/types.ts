@@ -73,14 +73,8 @@ export type LovelaceCard = HTMLElement;
 /** `bubbles: true` + `composed: true` are required so the event crosses
  *  the editor's shadow boundary and reaches the dashboard's
  *  card-editor listener. */
-export function fireEvent<T>(
-  node: HTMLElement,
-  type: string,
-  detail: T,
-): void {
-  node.dispatchEvent(
-    new CustomEvent(type, { detail, bubbles: true, composed: true }),
-  );
+export function fireEvent<T>(node: HTMLElement, type: string, detail: T): void {
+  node.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
 }
 
 declare global {
@@ -188,10 +182,7 @@ export interface HaFormExpandableSchema {
   flatten?: boolean;
   schema: ReadonlyArray<HaFormSchema>;
 }
-export type HaFormSchema =
-  | HaFormSelectorSchema
-  | HaFormGridSchema
-  | HaFormExpandableSchema;
+export type HaFormSchema = HaFormSelectorSchema | HaFormGridSchema | HaFormExpandableSchema;
 
 /** One stop still ahead on a departure's trip, as normalised by
  *  parser.py::_parse_onward_stops. Nearest first. */

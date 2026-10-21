@@ -16,10 +16,7 @@ import { motColorOrDefault, motIcon } from "./mot";
 import { normaliseConfig, tidyConfig } from "./config";
 
 @customElement("linz-linien-austria-card-editor")
-export class LinzLinienAustriaCardEditor
-  extends LitElement
-  implements LovelaceCardEditor
-{
+export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @state() private _config: LinzLinienAustriaCardConfig = {
@@ -32,15 +29,8 @@ export class LinzLinienAustriaCardEditor
 
   /** Translate `key` against the active HA language. Centralises the
    *  `{ hassLanguage }` ctx so call sites don't repeat it. */
-  private _t(
-    key: string,
-    replacements?: Record<string, string | number>,
-  ): string {
-    return translate(
-      key,
-      { hassLanguage: this.hass?.language },
-      replacements,
-    );
+  private _t(key: string, replacements?: Record<string, string | number>): string {
+    return translate(key, { hassLanguage: this.hass?.language }, replacements);
   }
 
   /** Lines available for the picker dropdown — union of:
@@ -69,9 +59,7 @@ export class LinzLinienAustriaCardEditor
           if (typeof l === "string" && l) seen.add(l);
         }
       }
-      const deps = stateObj?.attributes?.departures as
-        | Departure[]
-        | undefined;
+      const deps = stateObj?.attributes?.departures as Departure[] | undefined;
       if (Array.isArray(deps)) {
         for (const d of deps) {
           if (d.line) seen.add(d.line);
@@ -90,9 +78,7 @@ export class LinzLinienAustriaCardEditor
    *  lines the user explicitly excluded is just clutter. Without a
    *  filter, fall back to every known line. */
   private _availableLines(): string[] {
-    const filterLines = (this._config.lines ?? [])
-      .map((l) => l.trim())
-      .filter(Boolean);
+    const filterLines = (this._config.lines ?? []).map((l) => l.trim()).filter(Boolean);
     if (filterLines.length > 0) {
       return this._sortLines(filterLines);
     }
@@ -124,9 +110,7 @@ export class LinzLinienAustriaCardEditor
   } {
     const destinations = new Map<string, { H?: string; R?: string }>();
     const entityId = this._config.entity;
-    const attrs = entityId
-      ? this.hass?.states[entityId]?.attributes
-      : undefined;
+    const attrs = entityId ? this.hass?.states[entityId]?.attributes : undefined;
     const roster = attrs?.line_destinations as
       | Record<string, { H?: unknown; R?: unknown }>
       | undefined;
@@ -201,9 +185,7 @@ export class LinzLinienAustriaCardEditor
     const entityId = this._config.entity;
     if (!entityId || !this.hass) return undefined;
     const stateObj = this.hass.states[entityId];
-    const deps = stateObj?.attributes?.departures as
-      | Departure[]
-      | undefined;
+    const deps = stateObj?.attributes?.departures as Departure[] | undefined;
     if (!Array.isArray(deps)) return undefined;
     for (const d of deps) {
       if (d.line === line && typeof d.mot === "number") {
@@ -272,11 +254,12 @@ export class LinzLinienAustriaCardEditor
       <div class="editor-section">
         <div class="section-header">${this._t("editor.lines")}</div>
         <div class="editor-hint">${this._t("editor.lines_helper")}</div>
-        ${known.length === 0
-          ? html`<div class="editor-hint">
+        ${
+          known.length === 0
+            ? html`<div class="editor-hint">
               ${this._t("editor.per_line_no_data")}
             </div>`
-          : html`<div class="line-chip-grid">
+            : html`<div class="line-chip-grid">
               ${known.map((line) => {
                 const colour = this._defaultColorForLine(line);
                 const icon = this._iconForLine(line);
@@ -295,7 +278,8 @@ export class LinzLinienAustriaCardEditor
                   </button>
                 `;
               })}
-            </div>`}
+            </div>`
+        }
         <div class="line-chip-add">
           <input
             class="line-chip-input"
@@ -380,9 +364,7 @@ export class LinzLinienAustriaCardEditor
   /** ha-form hands back the whole normalised config it was shown, so
    *  every default is in it. tidyConfig takes them — and cleared fields —
    *  back out before saving; see config.ts. */
-  private _onFormChanged = (
-    ev: CustomEvent<{ value: LinzLinienAustriaCardConfig }>,
-  ): void => {
+  private _onFormChanged = (ev: CustomEvent<{ value: LinzLinienAustriaCardConfig }>): void => {
     const next = tidyConfig(ev.detail.value);
     this._config = next;
     fireEvent(this, "config-changed", { config: next });
@@ -502,9 +484,7 @@ export class LinzLinienAustriaCardEditor
                 // cleared.
                 disabled = !runsBoth && active;
               } else {
-                const generic = this._t(
-                  code === "H" ? "editor.direction_h" : "editor.direction_r",
-                );
+                const generic = this._t(code === "H" ? "editor.direction_h" : "editor.direction_r");
                 const dest = dests?.[code];
                 label = !runs(code)
                   ? this._t("editor.direction_not_served", {
@@ -573,10 +553,8 @@ export class LinzLinienAustriaCardEditor
                     .value=${effectiveColour}
                     aria-label="${this._t("editor.line_color")}: ${line}"
                     title="${this._t("editor.line_color")}: ${line}"
-                    @input=${(ev: Event) =>
-                      this._onLineColorChange(line, ev)}
-                    @change=${(ev: Event) =>
-                      this._onLineColorChange(line, ev)}
+                    @input=${(ev: Event) => this._onLineColorChange(line, ev)}
+                    @change=${(ev: Event) => this._onLineColorChange(line, ev)}
                   />
                 </label>
                 <button
@@ -617,11 +595,13 @@ export class LinzLinienAustriaCardEditor
           .computeHelper=${this._computeHelper}
           @value-changed=${this._onFormChanged}
         ></ha-form>
-        ${entityMissing
-          ? html`<ha-alert alert-type="warning">
+        ${
+          entityMissing
+            ? html`<ha-alert alert-type="warning">
               ${this._t("editor.entity_missing", { entity: cfgEntity! })}
             </ha-alert>`
-          : nothing}
+            : nothing
+        }
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>

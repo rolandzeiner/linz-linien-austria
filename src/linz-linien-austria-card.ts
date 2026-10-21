@@ -21,11 +21,7 @@ import type {
 import { translate } from "./localize/localize";
 import { motColor, motColorOrDefault, motIcon } from "./mot";
 import { accentTextColor, NEUTRAL_ACCENT_TEXT } from "./color";
-import {
-  checkCardVersionWS,
-  renderVersionBanner,
-  safeHttpsUri,
-} from "./shared-render";
+import { checkCardVersionWS, renderVersionBanner, safeHttpsUri } from "./shared-render";
 import { cardStyles } from "./styles";
 import { normaliseConfig } from "./config";
 
@@ -81,9 +77,7 @@ interface WindowWithCustomCards extends Window {
 @customElement("linz-linien-austria-card")
 export class LinzLinienAustriaCard extends LitElement {
   public static getConfigElement(): LovelaceCardEditor {
-    return document.createElement(
-      "linz-linien-austria-card-editor",
-    ) as LovelaceCardEditor;
+    return document.createElement("linz-linien-austria-card-editor") as LovelaceCardEditor;
   }
 
   /** Stub returned to the HA card picker. Auto-pick the first sensor
@@ -105,9 +99,7 @@ export class LinzLinienAustriaCard extends LitElement {
       if (!id.startsWith("sensor.")) return false;
       const attrs = hass.states[id]?.attributes;
       return (
-        attrs !== undefined &&
-        typeof attrs.stop_id === "string" &&
-        Array.isArray(attrs.departures)
+        attrs !== undefined && typeof attrs.stop_id === "string" && Array.isArray(attrs.departures)
       );
     });
     if (match) {
@@ -153,15 +145,11 @@ export class LinzLinienAustriaCard extends LitElement {
   /** `this.hass.language` is authoritative even when the user is on
    *  the default "Auto" profile, unlike `localStorage.selectedLanguage`
    *  (which HA only writes when the user picks a language explicitly). */
-  private _t(
-    key: string,
-    replacements?: Record<string, string | number>,
-  ): string {
+  private _t(key: string, replacements?: Record<string, string | number>): string {
     return translate(
       key,
       {
-        configLanguage: (this.config as { language?: string } | undefined)
-          ?.language,
+        configLanguage: (this.config as { language?: string } | undefined)?.language,
         hassLanguage: this.hass?.language,
       },
       replacements,
@@ -178,10 +166,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
     if (!oldHass) return true;
     if (!this.config.entity) return false;
-    return (
-      oldHass.states[this.config.entity] !==
-      this.hass.states[this.config.entity]
-    );
+    return oldHass.states[this.config.entity] !== this.hass.states[this.config.entity];
   }
 
   public getCardSize(): number {
@@ -229,8 +214,7 @@ export class LinzLinienAustriaCard extends LitElement {
 
   protected override render(): TemplateResult {
     const ctx = {
-      configLanguage: (this.config as { language?: string } | undefined)
-        ?.language,
+      configLanguage: (this.config as { language?: string } | undefined)?.language,
       hassLanguage: this.hass?.language,
     };
 
@@ -258,10 +242,7 @@ export class LinzLinienAustriaCard extends LitElement {
     }
 
     const stopName =
-      this.config.name ||
-      stateObj.attributes.stop_name ||
-      stateObj.attributes.friendly_name ||
-      "";
+      this.config.name || stateObj.attributes.stop_name || stateObj.attributes.friendly_name || "";
 
     // Maps URL — prefer the stop's WGS84 position, which the integration
     // now gets straight from the EFA (`coordOutputFormat=WGS84`). A
@@ -278,9 +259,7 @@ export class LinzLinienAustriaCard extends LitElement {
         ? `${lat},${lon}`
         : resolvedStopName
           ? encodeURIComponent(
-              /Linz/i.test(resolvedStopName)
-                ? resolvedStopName
-                : `${resolvedStopName}, Linz`,
+              /Linz/i.test(resolvedStopName) ? resolvedStopName : `${resolvedStopName}, Linz`,
             )
           : "";
     // Self-built URL — passed through `safeHttpsUri` defensively so a
@@ -294,15 +273,12 @@ export class LinzLinienAustriaCard extends LitElement {
     // after `next` has been assigned. Don't reference it here — `const`
     // TDZ would throw at render time and silently blank the card.
 
-    const allDepartures =
-      (stateObj.attributes.departures as Departure[] | undefined) ?? [];
+    const allDepartures = (stateObj.attributes.departures as Departure[] | undefined) ?? [];
 
     // Card-side line filter — applied BEFORE the max-departures cap so
     // capping doesn't accidentally hide everything that matched the
     // user's selected lines. Empty set means "no filter, pass through".
-    const lineFilter = new Set(
-      (this.config.lines ?? []).map((l) => l.trim()).filter(Boolean),
-    );
+    const lineFilter = new Set((this.config.lines ?? []).map((l) => l.trim()).filter(Boolean));
     // Direction filter, per line — keyed on the stable `dir_code`, never
     // on the headsign. The upstream rewrites `direction` for branching
     // termini (a short-turning line 2 reads "Simonystraße", not
@@ -377,9 +353,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // `filtered`, so the post-dedupe slice keeps "max 10" meaning
     // "10 rendered rows" rather than "10 rows including duplicates of
     // the hero". Skipped entirely when show_hero is off.
-    const heroDedupe = this.config.show_hero
-      ? new Set(heroGroup)
-      : new Set<Departure>();
+    const heroDedupe = this.config.show_hero ? new Set(heroGroup) : new Set<Departure>();
     const remaining = filtered.filter((d) => !heroDedupe.has(d));
     const departures = max === 0 ? [] : remaining.slice(0, max);
 
@@ -388,8 +362,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // the MoT default; both fall back to the tram tint when `next` is
     // missing.
     const headerIcon = motIcon(next?.mot);
-    const headerColor =
-      this._userLineColor(next?.line) ?? motColor(next?.mot);
+    const headerColor = this._userLineColor(next?.line) ?? motColor(next?.mot);
     // The text half resolves the tram default explicitly rather than
     // letting CSS fall back to --linz-accent: #f08000 as a glyph is
     // 2.26:1 on a light card, so the fallback branch is exactly the one
@@ -410,8 +383,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // departing — so this trim avoids surfacing detours for routes the
     // user doesn't care about right now.
     const visibleLines = new Set(filtered.map((d) => d.line).filter(Boolean));
-    const allAlerts =
-      (stateObj.attributes.alerts as AlertInfo[] | undefined) ?? [];
+    const allAlerts = (stateObj.attributes.alerts as AlertInfo[] | undefined) ?? [];
     const alerts = allAlerts.filter((a) => {
       const affected = a.affected_lines || [];
       if (affected.length === 0) return true; // system-wide
@@ -422,9 +394,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // direction-only when `_platformText()` reduces the upstream value
     // to empty (some terminals emit "0" / "" for non-numbered bays).
     const directionText = next?.direction || "";
-    const platformText = this.config.show_platform
-      ? this._platformText(next)
-      : "";
+    const platformText = this.config.show_platform ? this._platformText(next) : "";
     const subtitle = platformText
       ? `${directionText} · ${this._platformLabel(next, true)} ${platformText}`
       : directionText;
@@ -443,20 +413,20 @@ export class LinzLinienAustriaCard extends LitElement {
         })}
       >
         ${renderVersionBanner(this._versionMismatch, ctx)}
-        ${this.config.hide_header
-          ? nothing
-          : html`<header class="head" style=${headerStyle}>
+        ${
+          this.config.hide_header
+            ? nothing
+            : html`<header class="head" style=${headerStyle}>
               <span class="icon-tile" aria-hidden="true">
                 <ha-icon icon=${headerIcon}></ha-icon>
               </span>
               <div class="title-block">
                 <h3 class="title">${stopName}</h3>
-                ${subtitle
-                  ? html`<p class="subtitle">${subtitle}</p>`
-                  : nothing}
+                ${subtitle ? html`<p class="subtitle">${subtitle}</p>` : nothing}
               </div>
-              ${mapsUrl
-                ? html`<div class="head-actions">
+              ${
+                mapsUrl
+                  ? html`<div class="head-actions">
                     <a
                       class="icon-action"
                       href=${mapsUrl}
@@ -472,33 +442,37 @@ export class LinzLinienAustriaCard extends LitElement {
                       ></ha-icon>
                     </a>
                   </div>`
-                : nothing}
-            </header>`}
-        ${this.config.show_alerts && alerts.length > 0
-          ? this._renderAlerts(alerts)
-          : nothing}
-        ${this.config.show_hero && heroGroup.length > 0
-          ? this._renderHero(heroGroup)
-          : nothing}
-        ${max === 0
-          ? nothing
-          : departures.length === 0 && heroDedupe.size > 0
-            ? // Hero already shows the only departure(s); no need
-              // for an empty placeholder row underneath.
-              nothing
-            : html`<ul class="departures" role="list">
-                ${departures.length === 0
-                  ? html`<li class="empty">
-                      ${anyFilterActive && allDepartures.length > 0
-                        ? this._t("card.no_matches_for_filter")
-                        : this._t("card.no_departures")}
+                  : nothing
+              }
+            </header>`
+        }
+        ${this.config.show_alerts && alerts.length > 0 ? this._renderAlerts(alerts) : nothing}
+        ${this.config.show_hero && heroGroup.length > 0 ? this._renderHero(heroGroup) : nothing}
+        ${
+          max === 0
+            ? nothing
+            : departures.length === 0 && heroDedupe.size > 0
+              ? // Hero already shows the only departure(s); no need
+                // for an empty placeholder row underneath.
+                nothing
+              : html`<ul class="departures" role="list">
+                ${
+                  departures.length === 0
+                    ? html`<li class="empty">
+                      ${
+                        anyFilterActive && allDepartures.length > 0
+                          ? this._t("card.no_matches_for_filter")
+                          : this._t("card.no_departures")
+                      }
                     </li>`
-                  : repeat(
-                      departures,
-                      (d) => this._depKey(d),
-                      (d) => this._renderRow(d),
-                    )}
-              </ul>`}
+                    : repeat(
+                        departures,
+                        (d) => this._depKey(d),
+                        (d) => this._renderRow(d),
+                      )
+                }
+              </ul>`
+        }
         <div class="foot">
           <span class="timestamp">${this._t("card.attribution")}</span>
         </div>
@@ -552,15 +526,15 @@ export class LinzLinienAustriaCard extends LitElement {
                   })}
                 >
                   <div class="alert-title">${a.title}</div>
-                  ${a.description
-                    ? html`<div class="alert-body">${a.description}</div>`
-                    : nothing}
-                  ${a.affected_lines.length
-                    ? html`<div class="alert-lines">
+                  ${a.description ? html`<div class="alert-body">${a.description}</div>` : nothing}
+                  ${
+                    a.affected_lines.length
+                      ? html`<div class="alert-lines">
                         ${this._t("card.affected_lines")}:
                         ${a.affected_lines.join(", ")}
                       </div>`
-                    : nothing}
+                      : nothing
+                  }
                 </li>
               `,
             )}
@@ -652,9 +626,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // anything. Same rule as the list rows for the rest: no clock on a
     // cancelled trip.
     const clockFor = (d: Departure): string | null =>
-      this.config.show_absolute_time && !d.is_cancelled
-        ? this._clockTimeFor(d)
-        : null;
+      this.config.show_absolute_time && !d.is_cancelled ? this._clockTimeFor(d) : null;
 
     // aria-label enumerates every grouped departure so AT users hear
     // "Tram 2 solarCity at 10:42 and Bus 45 Stieglbauernstraße at
@@ -665,9 +637,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const ariaParts = group.map((d) => {
       const base = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`;
       const clock = clockFor(d);
-      return clock
-        ? `${base} ${this._t("card.at_time", { time: clock })}`
-        : base;
+      return clock ? `${base} ${this._t("card.at_time", { time: clock })}` : base;
     });
     const minutesText = lead.is_cancelled
       ? this._t("card.cancelled")
@@ -680,9 +650,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const ariaLabel = `${this._t("card.next_departure_label")}: ${ariaParts.join(
       ariaSep,
     )}, ${minutesText}${
-      lead.is_realtime && !lead.is_cancelled
-        ? `, ${this._t("card.realtime")}`
-        : ""
+      lead.is_realtime && !lead.is_cancelled ? `, ${this._t("card.realtime")}` : ""
     }`;
 
     // Hero colour comes from the lead — user override beats MoT
@@ -696,9 +664,7 @@ export class LinzLinienAustriaCard extends LitElement {
       : (this._userLineColor(lead.line) ?? motColor(lead.mot));
     const heroText = lead.is_cancelled
       ? null
-      : this._accentText(
-          this._userLineColor(lead.line) ?? motColorOrDefault(lead.mot),
-        );
+      : this._accentText(this._userLineColor(lead.line) ?? motColorOrDefault(lead.mot));
     const heroStyle =
       (heroColor ? `--hero-color: ${heroColor};` : "") +
       (heroText ? `--hero-text: ${heroText};` : "");
@@ -715,11 +681,13 @@ export class LinzLinienAustriaCard extends LitElement {
       >
         <div class="hero-time">
           <span class="hero-min" aria-live="polite">${minutesLabel}</span>
-          ${!lead.is_cancelled && minutes !== null && minutes > 0
-            ? html`<span class="hero-unit"
+          ${
+            !lead.is_cancelled && minutes !== null && minutes > 0
+              ? html`<span class="hero-unit"
                 >${this._t("card.minutes_short")}</span
               >`
-            : nothing}
+              : nothing
+          }
         </div>
         ${
           // Entries and their onward-stop panels are interleaved as direct
@@ -734,8 +702,7 @@ export class LinzLinienAustriaCard extends LitElement {
           // resolves its own, so a grouped hero shows one time per row
           // instead of none.
           group.map(
-            (d) =>
-              html`${this._renderHeroEntry(d, clockFor(d))}${this._renderHeroStops(d)}`,
+            (d) => html`${this._renderHeroEntry(d, clockFor(d))}${this._renderHeroStops(d)}`,
           )
         }
       </section>
@@ -748,27 +715,20 @@ export class LinzLinienAustriaCard extends LitElement {
    *  departure carries onward stops, the whole entry becomes the toggle
    *  for its stops-ahead panel (chevron + role=button), mirroring both the
    *  row list below and the wiener-linien hero. */
-  private _renderHeroEntry(
-    d: Departure,
-    clock: string | null = null,
-  ): TemplateResult {
-    const platform = this.config.show_platform
-      ? this._platformText(d)
-      : "";
+  private _renderHeroEntry(d: Departure, clock: string | null = null): TemplateResult {
+    const platform = this.config.show_platform ? this._platformText(d) : "";
     const hint = d.is_cancelled ? "" : (d.delay_hint ?? "").trim();
     const stopsAhead = d.is_cancelled ? [] : (d.stops_ahead ?? []);
     const expandable = stopsAhead.length > 0;
     const key = this._depKey(d);
     const expanded = this._expandedStops.has(key);
     const panelId = `hero-stops-${this._slugify(key)}`;
-    const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
-      d.direction
-    }`;
+    const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`;
     const entryLabel = expandable
-      ? `${baseLabel}. ${this._t(
-          expanded ? "card.hide_stops" : "card.show_stops",
-          { line: d.line, direction: d.direction },
-        )}`
+      ? `${baseLabel}. ${this._t(expanded ? "card.hide_stops" : "card.show_stops", {
+          line: d.line,
+          direction: d.direction,
+        })}`
       : baseLabel;
     return html`
       <div
@@ -784,51 +744,59 @@ export class LinzLinienAustriaCard extends LitElement {
         aria-label=${expandable ? entryLabel : nothing}
         @click=${() => expandable && this._toggleStops(key)}
         @keydown=${(ev: KeyboardEvent) =>
-          this._onExpanderKeydown(ev, expandable, () =>
-            this._toggleStops(key),
-          )}
+          this._onExpanderKeydown(ev, expandable, () => this._toggleStops(key))}
       >
         ${this._renderLineBadge(d)}
-        ${clock
-          ? // Destination and clock share a group so the clock sits
-            // against the destination's right edge: .hero-direction grows
-            // to absorb the row's slack, so a bare sibling after it would
-            // be shoved across to the platform chip. Inside the group the
-            // destination stops growing and truncates as before, while the
-            // group itself takes over the growing.
-            //
-            // aria-hidden: the section's aria-label already carries the
-            // clock time, so this would otherwise be announced twice.
-            html`<span class="hero-dest-group">
+        ${
+          clock
+            ? // Destination and clock share a group so the clock sits
+              // against the destination's right edge: .hero-direction grows
+              // to absorb the row's slack, so a bare sibling after it would
+              // be shoved across to the platform chip. Inside the group the
+              // destination stops growing and truncates as before, while the
+              // group itself takes over the growing.
+              //
+              // aria-hidden: the section's aria-label already carries the
+              // clock time, so this would otherwise be announced twice.
+              html`<span class="hero-dest-group">
               <span class="hero-direction">${d.direction || ""}</span>
               <span class="hero-clock" aria-hidden="true">${clock}</span>
             </span>`
-          : html`<span class="hero-direction">${d.direction || ""}</span>`}
-        ${!d.is_cancelled && platform
-          ? html`<span class="hero-platform"
+            : html`<span class="hero-direction">${d.direction || ""}</span>`
+        }
+        ${
+          !d.is_cancelled && platform
+            ? html`<span class="hero-platform"
               >${this._platformLabel(d, true)} ${platform}</span
             >`
-          : nothing}
-        ${d.is_realtime && !d.is_cancelled
-          ? html`<span class="rt-pill" title=${this._t("card.realtime")}>
+            : nothing
+        }
+        ${
+          d.is_realtime && !d.is_cancelled
+            ? html`<span class="rt-pill" title=${this._t("card.realtime")}>
               ${this._t("card.realtime")}
             </span>`
-          : nothing}
-        ${expandable
-          ? html`<ha-icon
+            : nothing
+        }
+        ${
+          expandable
+            ? html`<ha-icon
               class="hero-chevron"
               icon="mdi:chevron-down"
               aria-hidden="true"
             ></ha-icon>`
-          : nothing}
-        ${hint
-          ? // Full width via flex-basis so the caption wraps onto its own
-            // line under the badge/direction rather than fighting them
-            // for horizontal space. The hero de-dupes its departure out
-            // of the row list below, so without this the next departure
-            // would be the one row whose delay reason is never shown.
-            html`<span class="hero-hint">${hint}</span>`
-          : nothing}
+            : nothing
+        }
+        ${
+          hint
+            ? // Full width via flex-basis so the caption wraps onto its own
+              // line under the badge/direction rather than fighting them
+              // for horizontal space. The hero de-dupes its departure out
+              // of the row list below, so without this the next departure
+              // would be the one row whose delay reason is never shown.
+              html`<span class="hero-hint">${hint}</span>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -845,9 +813,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const key = this._depKey(d);
     const expanded = this._expandedStops.has(key);
     const panelId = `hero-stops-${this._slugify(key)}`;
-    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
-      d.direction
-    }`;
+    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`;
     return html`
       <div class=${classMap({ "hero-detail": true, expanded })}>
         <div
@@ -869,10 +835,8 @@ export class LinzLinienAustriaCard extends LitElement {
     // default colour. Only the late/early tint goes — cancelled red and
     // the "Jetzt" line accent are states, not delay signals.
     const delayColors = !!this.config.show_delay_colors;
-    const isLate =
-      delayColors && typeof d.delay_minutes === "number" && d.delay_minutes > 0;
-    const isEarly =
-      delayColors && typeof d.delay_minutes === "number" && d.delay_minutes < 0;
+    const isLate = delayColors && typeof d.delay_minutes === "number" && d.delay_minutes > 0;
+    const isEarly = delayColors && typeof d.delay_minutes === "number" && d.delay_minutes < 0;
     const timeLabel =
       minutes === null
         ? "—"
@@ -882,10 +846,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // Wall-clock time in front of the countdown. Withheld on cancelled
     // rows — "Entfällt" is the whole story there, and a departure time
     // beside it reads as if the trip is still running.
-    const clock =
-      this.config.show_absolute_time && !d.is_cancelled
-        ? this._clockTimeFor(d)
-        : null;
+    const clock = this.config.show_absolute_time && !d.is_cancelled ? this._clockTimeFor(d) : null;
     // The operator's live reason for a delay. Suppressed on cancelled
     // rows: "Entfällt" already says everything, and a "please be
     // patient" caption under it reads as if the trip is merely late.
@@ -907,25 +868,21 @@ export class LinzLinienAustriaCard extends LitElement {
     // row painted the card accent regardless of its own line.
     const isNow = minutes !== null && minutes <= 0 && !d.is_cancelled;
     const rowAccentText = isNow
-      ? this._accentText(
-          this._userLineColor(d.line) ?? motColorOrDefault(d.mot),
-        )
+      ? this._accentText(this._userLineColor(d.line) ?? motColorOrDefault(d.mot))
       : null;
 
     const baseLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
       d.direction
     } ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}${
       clock ? `, ${this._t("card.at_time", { time: clock })}` : ""
-    }${d.is_realtime ? ` ${this._t("card.realtime")}` : ""}${
-      hint ? `. ${hint}` : ""
-    }`;
+    }${d.is_realtime ? ` ${this._t("card.realtime")}` : ""}${hint ? `. ${hint}` : ""}`;
     // With role=button the accessible name has to say what activating
     // the row does, not just describe the departure.
     const rowLabel = expandable
-      ? `${baseLabel}. ${this._t(
-          expanded ? "card.hide_stops" : "card.show_stops",
-          { line: d.line, direction: d.direction },
-        )}`
+      ? `${baseLabel}. ${this._t(expanded ? "card.hide_stops" : "card.show_stops", {
+          line: d.line,
+          direction: d.direction,
+        })}`
       : baseLabel;
 
     // The <li> stays a plain listitem and the interactive role lives on
@@ -946,48 +903,44 @@ export class LinzLinienAustriaCard extends LitElement {
         aria-expanded=${expandable ? (expanded ? "true" : "false") : nothing}
         aria-controls=${expandable ? panelId : nothing}
         aria-label=${rowLabel}
-        style=${rowAccentText
-          ? `--linz-accent-text: ${rowAccentText};`
-          : nothing}
+        style=${rowAccentText ? `--linz-accent-text: ${rowAccentText};` : nothing}
         @click=${() => expandable && this._toggleStops(key)}
         @keydown=${(ev: KeyboardEvent) =>
-          this._onExpanderKeydown(ev, expandable, () =>
-            this._toggleStops(key),
-          )}
+          this._onExpanderKeydown(ev, expandable, () => this._toggleStops(key))}
       >
         ${this._renderLineBadge(d)}
         <span class="row-main">
           <span class="row-direction">${d.direction || ""}</span>
-          ${hint
-            ? html`<span class="row-hint" title=${hint}>${hint}</span>`
-            : nothing}
+          ${hint ? html`<span class="row-hint" title=${hint}>${hint}</span>` : nothing}
         </span>
         <span class="row-tail">
-          ${this.config.show_platform &&
-          !d.is_cancelled &&
-          this._platformText(d)
-            ? html`<span
+          ${
+            this.config.show_platform && !d.is_cancelled && this._platformText(d)
+              ? html`<span
                 class="row-platform"
                 aria-label="${this._platformLabel(d, false)} ${this._platformText(d)}"
                 title="${this._platformLabel(d, false)} ${this._platformText(d)}"
                 >${this._platformLabel(d, true)}
                 ${this._platformText(d)}</span
               >`
-            : nothing}
-          ${clock
-            ? // Before the countdown, not after: the tail is pinned to
-              // the row's right edge, and that edge is the one column
-              // the eye scans down the list — it belongs to the
-              // countdown. Cancelled rows carry no clock, so with the
-              // clock last their "Entfällt" slid into its place and
-              // broke the column.
-              //
-              // The visible chip is always aria-hidden — bare "15:44"
-              // read out mid-row says nothing about what it refers to.
-              html`<span class="row-clock" aria-hidden="true"
+              : nothing
+          }
+          ${
+            clock
+              ? // Before the countdown, not after: the tail is pinned to
+                // the row's right edge, and that edge is the one column
+                // the eye scans down the list — it belongs to the
+                // countdown. Cancelled rows carry no clock, so with the
+                // clock last their "Entfällt" slid into its place and
+                // broke the column.
+                //
+                // The visible chip is always aria-hidden — bare "15:44"
+                // read out mid-row says nothing about what it refers to.
+                html`<span class="row-clock" aria-hidden="true"
                 >${clock}</span
               >`
-            : nothing}
+              : nothing
+          }
           <span
             class=${classMap({
               "row-time": true,
@@ -998,29 +951,33 @@ export class LinzLinienAustriaCard extends LitElement {
           >
             ${d.is_cancelled ? this._t("card.cancelled") : timeLabel}
           </span>
-          ${clock && !expandable
-            ? // The prose form reaches assistive tech one of two ways,
-              // never both: an expandable row carries role=button and
-              // its aria-label (which already includes the time) is
-              // therefore honoured; a plain row is role=generic, where
-              // aria-label is discarded, so it gets this visually-hidden
-              // sibling instead. Kept after the countdown so the spoken
-              // order stays "4 Min, um 15:44" whatever the visual order.
-              html`<span class="visually-hidden"
+          ${
+            clock && !expandable
+              ? // The prose form reaches assistive tech one of two ways,
+                // never both: an expandable row carries role=button and
+                // its aria-label (which already includes the time) is
+                // therefore honoured; a plain row is role=generic, where
+                // aria-label is discarded, so it gets this visually-hidden
+                // sibling instead. Kept after the countdown so the spoken
+                // order stays "4 Min, um 15:44" whatever the visual order.
+                html`<span class="visually-hidden"
                 >${this._t("card.at_time", { time: clock })}</span
               >`
-            : nothing}
-          ${expandable
-            ? // Decorative only: the whole row carries role=button, and a
-              // real <button> nested inside it would be a second control
-              // in the same activation target. One chevron that rotates
-              // rather than two icons, so the transform can animate.
-              html`<ha-icon
+              : nothing
+          }
+          ${
+            expandable
+              ? // Decorative only: the whole row carries role=button, and a
+                // real <button> nested inside it would be a second control
+                // in the same activation target. One chevron that rotates
+                // rather than two icons, so the transform can animate.
+                html`<ha-icon
                 class="row-chevron"
                 icon="mdi:chevron-down"
                 aria-hidden="true"
               ></ha-icon>`
-            : nothing}
+              : nothing
+          }
         </span>
       </div>
       </li>
@@ -1031,10 +988,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // would make it a fourth item in the row's three-column grid, and
     // the open/close animation needs its own grid context — this keeps
     // the row's own layout untouched whether the panel is open or not.
-    return [
-      rowTpl,
-      this._renderStopsAheadPanel(stopsAhead, panelId, expanded, d),
-    ];
+    return [rowTpl, this._renderStopsAheadPanel(stopsAhead, panelId, expanded, d)];
   }
 
   /** Keyboard activation for the row's button role.
@@ -1044,11 +998,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  and has to reimplement Enter/Space. `preventDefault` on Space stops
    *  the page scrolling out from under the user.
    */
-  private _onExpanderKeydown(
-    ev: KeyboardEvent,
-    expandable: boolean,
-    activate: () => void,
-  ): void {
+  private _onExpanderKeydown(ev: KeyboardEvent, expandable: boolean, activate: () => void): void {
     if (!expandable) return;
     if (ev.key !== "Enter" && ev.key !== " ") return;
     ev.preventDefault();
@@ -1088,9 +1038,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // by axe/WCAG. Name it after the trip it belongs to, mirroring the
     // hero/row aria pattern, so AT users know which departure's onward
     // stops they've expanded.
-    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${
-      d.direction
-    }`;
+    const regionLabel = `${d.mot_name ? `${d.mot_name} ` : ""}${d.line} ${d.direction}`;
     return html`
       <li class=${classMap({ "row-detail": true, expanded })}>
         <div
@@ -1113,12 +1061,8 @@ export class LinzLinienAustriaCard extends LitElement {
    *  override first, then the mode-of-transport default — so the trail
    *  reads as belonging to the row it hangs off.
    */
-  private _renderStopsAheadTrail(
-    stops: StopAhead[],
-    d: Departure,
-  ): TemplateResult {
-    const lineColor =
-      this._userLineColor(d.line) ?? motColor(d.mot) ?? "var(--linz-accent)";
+  private _renderStopsAheadTrail(stops: StopAhead[], d: Departure): TemplateResult {
+    const lineColor = this._userLineColor(d.line) ?? motColor(d.mot) ?? "var(--linz-accent)";
     return html`
       <ol
         class="stops-ahead"
@@ -1140,14 +1084,8 @@ export class LinzLinienAustriaCard extends LitElement {
               class=${classMap({
                 "stops-ahead-time": true,
                 // Same `show_delay_colors` gate as the row countdown.
-                late:
-                  !!this.config.show_delay_colors &&
-                  typeof delay === "number" &&
-                  delay > 0,
-                early:
-                  !!this.config.show_delay_colors &&
-                  typeof delay === "number" &&
-                  delay < 0,
+                late: !!this.config.show_delay_colors && typeof delay === "number" && delay > 0,
+                early: !!this.config.show_delay_colors && typeof delay === "number" && delay < 0,
               })}
               >${this._clockTime(s.arrival)}</span
             >
@@ -1239,12 +1177,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  every tick, so we key off the trip's stable identifiers
    *  (line + direction + platform + scheduled time) instead. */
   private _depKey(d: Departure): string {
-    const parts = [
-      d.line ?? "",
-      d.direction ?? "",
-      d.platform ?? "",
-      d.scheduled ?? "",
-    ];
+    const parts = [d.line ?? "", d.direction ?? "", d.platform ?? "", d.scheduled ?? ""];
     return parts.join("|");
   }
 
@@ -1270,8 +1203,12 @@ export class LinzLinienAustriaCard extends LitElement {
   private _platformLabel(d: Departure | undefined, short: boolean): string {
     const rail = this._isRailMot(d?.mot);
     const key = rail
-      ? short ? "card.platform_rail_short" : "card.platform_rail"
-      : short ? "card.platform_short" : "card.platform";
+      ? short
+        ? "card.platform_rail_short"
+        : "card.platform_rail"
+      : short
+        ? "card.platform_short"
+        : "card.platform";
     return this._t(key);
   }
 
@@ -1295,8 +1232,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  parsed) lives in `_clockTime`. Null rather than the empty string
    *  here so the call sites can gate on it directly. */
   private _clockTimeFor(d: Departure): string | null {
-    const useRealtime =
-      typeof d.countdown_rt === "number" && d.realtime !== undefined;
+    const useRealtime = typeof d.countdown_rt === "number" && d.realtime !== undefined;
     return this._clockTime(useRealtime ? d.realtime : d.scheduled) || null;
   }
 
