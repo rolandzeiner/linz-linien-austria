@@ -74,7 +74,7 @@ them.
   each direction's destination:
   `{"2": {"H": "solarCity", "R": "Universität"}}`. A direction appears
   only if it runs from this stop, so a template can tell a one-way line
-  from one with nothing due right now. *(1.1.1)*
+  from one with nothing due right now. *(1.2.0)*
 - **Stop coordinates.** The sensor carries the stop's `latitude` and
   `longitude`, so the card's map link opens the actual bay instead of
   guessing from the stop name, and templates can compute distances.
@@ -160,7 +160,7 @@ them.
   services carry no direction code and are always shown. *(1.1.0)*
   Directions a line doesn't run from your stop are greyed out, and each
   button's tooltip names its destination, even for lines with nothing
-  due right now. *(1.1.1)*
+  due right now. *(1.2.0)*
 - **Per-line walk time (Fußweg)** — drop departures that you couldn't
   catch given your walk to the stop. Per-line minutes input in the
   editor; each line's walk time is independent.
@@ -176,12 +176,12 @@ them.
   the countdown's own source, so the two agree on which departure they
   describe. Toggle *Show departure time* in the editor. *(1.1.0)*
   On a row the clock now sits in front of the countdown, so the minutes
-  line up at the right edge, cancelled rows included. *(1.1.1)*
+  line up at the right edge, cancelled rows included. *(1.2.0)*
 - **Delay colours you can switch off** — the countdown turns red when a
   departure runs late and blue when it runs early, and the onward-stop
   times follow suit. Prefer a calmer board? Switch off *Colour-code
   delays* in the editor and every time shows in the default colour.
-  Cancelled trips stay red either way. *(1.1.1)*
+  Cancelled trips stay red either way. *(1.2.0)*
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.
