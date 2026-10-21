@@ -85,7 +85,7 @@ function parseColor(value: string): Rgb | null {
   }
 
   if (hex.length === 3 || hex.length === 4) {
-    hex = [...hex.slice(0, 3)].map((c) => c + c).join("");
+    hex = hex.slice(0, 3).replace(/./g, "$&$&");
   }
   if (hex.length !== 6 && hex.length !== 8) return null;
   const int = Number.parseInt(hex.slice(0, 6), 16);

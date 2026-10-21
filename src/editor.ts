@@ -148,7 +148,7 @@ export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceC
    *  the whole map once it empties, keeping saved YAML clean. */
   private _onLineDirectionChange(line: string, dir: "H" | "R" | null): void {
     const next: Record<string, "H" | "R"> = {
-      ...(this._config.line_directions ?? {}),
+      ...this._config.line_directions,
     };
     if (dir === null) {
       delete next[line];
@@ -166,7 +166,8 @@ export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceC
   }
 
   private _sortLines(lines: string[]): string[] {
-    return Array.from(new Set(lines)).sort((a, b) => {
+    const unique = Array.from(new Set(lines));
+    unique.sort((a, b) => {
       const an = parseInt(a, 10);
       const bn = parseInt(b, 10);
       if (!Number.isNaN(an) && !Number.isNaN(bn) && an !== bn) {
@@ -174,6 +175,7 @@ export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceC
       }
       return a.localeCompare(b, undefined, { numeric: true });
     });
+    return unique;
   }
 
   /** Look up the mode-of-transport id the upstream reported for a
@@ -379,7 +381,7 @@ export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceC
     line: string,
     value: NonNullable<LinzLinienAustriaCardConfig[K]>[string] | undefined,
   ): void {
-    const current = { ...(this._config[field] ?? {}) } as Record<
+    const current = { ...this._config[field] } as Record<
       string,
       NonNullable<LinzLinienAustriaCardConfig[K]>[string]
     >;
@@ -598,7 +600,7 @@ export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceC
         ${
           entityMissing
             ? html`<ha-alert alert-type="warning">
-              ${this._t("editor.entity_missing", { entity: cfgEntity! })}
+              ${this._t("editor.entity_missing", { entity: cfgEntity })}
             </ha-alert>`
             : nothing
         }

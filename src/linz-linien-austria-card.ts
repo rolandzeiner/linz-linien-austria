@@ -77,7 +77,7 @@ interface WindowWithCustomCards extends Window {
 @customElement("linz-linien-austria-card")
 export class LinzLinienAustriaCard extends LitElement {
   public static getConfigElement(): LovelaceCardEditor {
-    return document.createElement("linz-linien-austria-card-editor") as LovelaceCardEditor;
+    return document.createElement("linz-linien-austria-card-editor");
   }
 
   /** Stub returned to the HA card picker. Auto-pick the first sensor
@@ -492,7 +492,8 @@ export class LinzLinienAustriaCard extends LitElement {
   private _renderAlerts(alerts: AlertInfo[]): TemplateResult {
     // Sort high-priority alerts first so the most actionable ones don't
     // get hidden behind the <details> fold.
-    const sorted = [...alerts].sort((a, b) => {
+    const sorted = [...alerts];
+    sorted.sort((a, b) => {
       const av = this._isHighPriority(a.priority) ? 0 : 1;
       const bv = this._isHighPriority(b.priority) ? 0 : 1;
       return av - bv;
