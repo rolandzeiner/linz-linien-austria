@@ -556,27 +556,28 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
     white-space: nowrap;
   }
-  /* Wall-clock departure time trailing the countdown. Deliberately
+  /* Wall-clock departure time in front of the countdown. Deliberately
      lighter than .row-time: the countdown is the value the eye should
      land on first, the clock is the confirmation beside it. It also
      never takes the late/early/now colouring — those states describe
      the countdown's relationship to the schedule, and tinting an
-     absolute time red would imply the clock itself is wrong. */
+     absolute time red would imply the clock itself is wrong. No "·"
+     separator: the tail's 8px gap divides the pair, and a dot would
+     collide with the realtime bullet that leads .row-time. */
   .row-clock {
     font-variant-numeric: tabular-nums;
     font-size: 0.8rem;
     color: var(--secondary-text-color);
     white-space: nowrap;
   }
-  /* Separator lives in CSS rather than in the template so it stays out
-     of the DOM text — the span is aria-hidden either way, and the prose
-     form of the time is emitted separately for assistive tech.
-     The negative left margin cancels the 8px .row-tail flex gap so the
-     dot sits symmetrically between the countdown and the clock, the
-     same 4px on each side the hero uses. */
-  .row-clock::before {
-    content: "·";
-    margin: 0 4px 0 -4px;
+  /* Fixed, right-aligned slot for the countdown whenever a clock sits
+     beside it. The countdown's width varies ("Jetzt", "• 12 Min"), so
+     without the slot each clock would shift with it; with it the clocks
+     form their own column too. 4.5em fits "• 12 Min" — a rare
+     three-digit countdown just grows the slot on that one row. */
+  .row-tail:has(.row-clock) .row-time {
+    min-width: 4.5em;
+    text-align: right;
   }
   /* Screen-reader-only prose. The clipped-rect idiom rather than
      display:none or visibility:hidden, both of which would take the
@@ -1122,8 +1123,8 @@ export const cardStyles = css`
   /* Version-mismatch banner — surfaced when the WS probe reports a
      different CARD_VERSION than the bundle in the user's tab. Sits at
      the top of <ha-card>, full-bleed (the card has no horizontal
-     padding on its root). The reload button does a cache-wipe + hard
-     reload via shared-render::reloadAfterCacheWipe. */
+     padding on its root). The reload button (renderVersionBanner in
+     shared-render.ts) wipes the cache storage and hard-reloads. */
   .version-notice {
     display: flex;
     align-items: center;
@@ -1386,6 +1387,17 @@ export const editorStyles = css`
   .per-line-dir.is-active {
     background: var(--primary-color);
     color: var(--text-primary-color, #fff);
+  }
+  /* A direction the line doesn't run from this stop. Opacity rather
+     than a colour swap, so a greyed ↔ that is still the selection keeps
+     reading as selected. */
+  .per-line-dir:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+  }
+  .per-line-dir:disabled:not(.is-active):hover {
+    background: transparent;
+    color: var(--secondary-text-color);
   }
   .per-line-dir:focus-visible {
     outline: 2px solid var(--primary-color);

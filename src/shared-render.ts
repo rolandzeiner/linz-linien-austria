@@ -36,9 +36,7 @@ export function safeHttpsUri(raw: unknown): string {
  * — older HA installs without the handler simply don't surface a
  * mismatch, which is correct (cache-buster URL still applies).
  */
-export async function checkCardVersionWS(
-  hass: HomeAssistant | undefined,
-): Promise<string | null> {
+export async function checkCardVersionWS(hass: HomeAssistant | undefined): Promise<string | null> {
   if (!hass?.callWS) return null;
   try {
     const r = await hass.callWS<{ version?: string }>({
@@ -59,20 +57,20 @@ export async function checkCardVersionWS(
  * CDN refusing to invalidate) and short-circuit instead of looping the
  * banner forever — see `wasReloadAttemptedFor` below.
  */
-export function reloadAfterCacheWipe(forVersion?: string | null): void {
+function reloadAfterCacheWipe(forVersion?: string | null): void {
   try {
-    window.caches?.keys?.().then((keys) => {
-      keys.forEach((k) => window.caches?.delete?.(k));
-    });
+    window.caches
+      ?.keys?.()
+      .then((keys) => {
+        keys.forEach((k) => window.caches?.delete?.(k));
+      })
+      .catch(() => {});
   } catch {
     // best-effort cache wipe
   }
   if (forVersion) {
     try {
-      window.sessionStorage?.setItem(
-        `linz-reload-attempted-${forVersion}`,
-        "1",
-      );
+      window.sessionStorage?.setItem(`linz-reload-attempted-${forVersion}`, "1");
     } catch {
       // sessionStorage may be disabled (Safari private mode etc.) —
       // fall through; worst case the user gets the regular reload
@@ -91,13 +89,10 @@ export function reloadAfterCacheWipe(forVersion?: string | null): void {
  * is the right scope: after closing and reopening, the user gets a
  * fresh reload attempt.
  */
-export function wasReloadAttemptedFor(version: string | null): boolean {
+function wasReloadAttemptedFor(version: string | null): boolean {
   if (!version) return false;
   try {
-    return (
-      window.sessionStorage?.getItem(`linz-reload-attempted-${version}`) ===
-      "1"
-    );
+    return window.sessionStorage?.getItem(`linz-reload-attempted-${version}`) === "1";
   } catch {
     return false;
   }

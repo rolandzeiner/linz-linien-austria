@@ -152,6 +152,33 @@ async def test_lines_at_stop_covers_whole_roster(hass: HomeAssistant) -> None:
     assert _attrs(hass)["lines_at_stop"] == ["2", "3", "17"]
 
 
+async def test_line_destinations_lists_only_directions_served(
+    hass: HomeAssistant,
+) -> None:
+    """One-way lines carry only the direction they run.
+
+    The card editor greys out the H/R button a line has no key for, so a
+    missing key must mean "does not run here", never "nothing due".
+    """
+    await _setup(hass, _parse_dm(EXAMPLE_DM_RESPONSE))
+    assert _attrs(hass)["line_destinations"] == {
+        "2": {"H": "solarCity", "R": "Universität"},
+        "3": {"H": "Auwiesen"},
+        "17": {"R": "Karlhof"},
+    }
+
+
+async def test_line_destinations_skips_rows_without_direction(
+    hass: HomeAssistant,
+) -> None:
+    """Replacement rows (no Hin/Rück code) have no button to label."""
+    await _setup(
+        hass,
+        _payload(served_lines=[{"line": "5"}, {"line": "6", "dir_code": "H"}]),
+    )
+    assert _attrs(hass)["line_destinations"] == {"6": {"H": ""}}
+
+
 async def test_next_convenience_fields(hass: HomeAssistant) -> None:
     """Top-level `next_*` mirrors of the first departure, for templates."""
     await _setup(hass, _parse_dm(EXAMPLE_DM_RESPONSE))
@@ -315,6 +342,7 @@ async def test_bulky_attributes_excluded_from_recorder(
         "next_scheduled",
         "next_realtime",
         "lines_at_stop",
+        "line_destinations",
     } <= set(excluded)
     assert "next_delay_minutes" not in excluded
 

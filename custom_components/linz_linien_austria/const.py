@@ -171,6 +171,14 @@ ADDINFO_ENDPOINT: Final = "/XML_ADDINFO_REQUEST"
 # Alerts (line/stop info) — domain-wide cadence shared across all entries.
 # 5 min is plenty: editorial events arrive a few times per hour at most
 # and per-entry polling would burn fair-use budget for no benefit.
+# While the feed is failing, ticks are skipped until a not-before time
+# that doubles with each failure in a row: 5, 10, 20, then
+# BACKOFF_CAP_SECONDS after the tick that failed, and back to every tick
+# on the first answer. The first wait is the next tick, so one failure
+# changes nothing. Without it an outage cost 12 requests an hour for as
+# long as it lasted, beside departure polls that had backed off to two
+# an hour per stop. The one fetch at setup is not counted; the first
+# tick is its retry.
 ALERTS_REFRESH_SECONDS: Final = 300
 ALERTS_KEY: Final = "alerts"
 ALERTS_REFRESH_UNSUB_KEY: Final = "alerts_refresh_unsub"

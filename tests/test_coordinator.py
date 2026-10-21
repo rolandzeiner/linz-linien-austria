@@ -526,6 +526,19 @@ async def test_repeated_failures_back_off_then_cap(hass: HomeAssistant) -> None:
     assert coordinator.update_interval.total_seconds() == BACKOFF_CAP_SECONDS
 
 
+async def test_backoff_holds_the_cap_through_a_very_long_outage(
+    hass: HomeAssistant,
+) -> None:
+    """The 1025th failure in a row used to raise: `2 ** 1024` fits no float."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    for _ in range(3000):
+        coordinator._note_failure()
+    assert coordinator.update_interval == timedelta(seconds=BACKOFF_CAP_SECONDS)
+
+
 async def test_recovery_restores_normal_cadence(hass: HomeAssistant) -> None:
     """First success after a streak resets the failure counter and cadence."""
     entry = _make_entry()

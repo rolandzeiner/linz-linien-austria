@@ -68,19 +68,13 @@ export interface LovelaceCardEditor extends HTMLElement {
 
 /** `LovelaceCard` is only referenced as the `hui-error-card` tag-map
  *  entry below, so an HTMLElement alias suffices. */
-export type LovelaceCard = HTMLElement;
+type LovelaceCard = HTMLElement;
 
 /** `bubbles: true` + `composed: true` are required so the event crosses
  *  the editor's shadow boundary and reaches the dashboard's
  *  card-editor listener. */
-export function fireEvent<T>(
-  node: HTMLElement,
-  type: string,
-  detail: T,
-): void {
-  node.dispatchEvent(
-    new CustomEvent(type, { detail, bubbles: true, composed: true }),
-  );
+export function fireEvent<T>(node: HTMLElement, type: string, detail: T): void {
+  node.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
 }
 
 declare global {
@@ -188,10 +182,7 @@ export interface HaFormExpandableSchema {
   flatten?: boolean;
   schema: ReadonlyArray<HaFormSchema>;
 }
-export type HaFormSchema =
-  | HaFormSelectorSchema
-  | HaFormGridSchema
-  | HaFormExpandableSchema;
+export type HaFormSchema = HaFormSelectorSchema | HaFormGridSchema | HaFormExpandableSchema;
 
 /** One stop still ahead on a departure's trip, as normalised by
  *  parser.py::_parse_onward_stops. Nearest first. */
@@ -322,9 +313,9 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  at multi-platform stops (Hauptbahnhof, Bulgariplatz). Defaults
    *  off so single-platform stops stay clutter-free. */
   show_platform?: boolean;
-  /** Show the wall-clock departure time alongside the countdown: after
-   *  it on a list row ("4 Min · 15:44"), and beside the destination in
-   *  the hero — not after the hero countdown, which widened its column
+  /** Show the wall-clock departure time alongside the countdown: in
+   *  front of it on a list row ("15:44  4 Min"), so the countdown keeps
+   *  the row's right edge, and beside the destination in the hero — not after the hero countdown, which widened its column
    *  and pushed the badge away from the number it belongs to. A hero
    *  holding several departures gives each row its own time, since
    *  they share a rounded countdown but not a departure time. Defaults
@@ -332,6 +323,12 @@ export interface LinzLinienAustriaCardConfig extends LovelaceCardConfig {
    *  at the stop, while the clock time is what you want when deciding
    *  whether to leave the house. */
   show_absolute_time?: boolean;
+  /** Tint the countdown by delay — red when late, blue when early —
+   *  and the onward-stop times the same way. Defaults true (unset =
+   *  on); false keeps every time in the neutral default colour.
+   *  Cancelled red and the "Jetzt" line accent are states rather than
+   *  delay signals, so they stay either way. */
+  show_delay_colors?: boolean;
   /** When false, hide the collapsible service-disruption banner
    *  (XML_ADDINFO_REQUEST data) above the departure list. Defaults
    *  true — alerts are user-facing operational info and disabling

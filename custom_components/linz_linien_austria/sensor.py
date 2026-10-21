@@ -68,6 +68,8 @@ class NextDepartureSensor(
             # again). Keeping it out of the recorder avoids logging the
             # same list every poll.
             "lines_at_stop",
+            # Same roster, keyed per direction — same reasoning.
+            "line_destinations",
         }
     )
 
@@ -138,6 +140,10 @@ class NextDepartureSensor(
             # can opt into rush-hour / seasonal lines that don't have a
             # departure inside the current live window.
             "lines_at_stop": data.get("lines_at_stop") or [],
+            # The same roster per direction, with each direction's
+            # terminus. The card editor labels its H/R buttons from it
+            # and greys out a direction a line doesn't run here.
+            "line_destinations": _line_destinations(data.get("served_lines") or []),
         }
         # WGS84 position of the resolved stop. Lets the card build a
         # precise map deeplink instead of a name query, and gives
@@ -183,3 +189,28 @@ class NextDepartureSensor(
             return None
         first = departures[0]
         return first if isinstance(first, dict) else None
+
+
+def _line_destinations(
+    served_lines: list[dict[str, Any]],
+) -> dict[str, dict[str, str]]:
+    """Map each line to the terminus of every direction it runs here.
+
+    ``{"2": {"H": "solarCity", "R": "Universität"}, "17": {"R": "Karlhof"}}``.
+    A direction's key is present exactly when the timetable runs it
+    through this stop, so the card editor can grey out the H/R button a
+    one-way line doesn't have — the departure snapshot can't tell "not
+    served" from "nothing due right now". The value is the headsign, or
+    "" when the upstream gave none. Rows without a Hin/Rück code
+    (replacement services) are skipped: there is no button to label.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for item in served_lines:
+        line = str(item.get("line") or "").strip()
+        code = item.get("dir_code")
+        if not line or code not in ("H", "R"):
+            continue
+        out.setdefault(line, {}).setdefault(
+            code, str(item.get("destination") or "").strip()
+        )
+    return out

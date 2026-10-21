@@ -70,6 +70,11 @@ them.
   bundled card. Read from the upstream's own line roster, so it is
   complete from the first refresh and correct immediately after a
   reconfigure. *(0.6.0, rebuilt in 0.7.0)*
+- **`line_destinations` attribute.** The same roster per direction, with
+  each direction's destination:
+  `{"2": {"H": "solarCity", "R": "Universität"}}`. A direction appears
+  only if it runs from this stop, so a template can tell a one-way line
+  from one with nothing due right now. *(1.2.0)*
 - **Stop coordinates.** The sensor carries the stop's `latitude` and
   `longitude`, so the card's map link opens the actual bay instead of
   guessing from the stop name, and templates can compute distances.
@@ -153,6 +158,9 @@ them.
   stable code rather than the destination text, so a short-turning trip
   that still serves your direction stays on the board. Replacement
   services carry no direction code and are always shown. *(1.1.0)*
+  Directions a line doesn't run from your stop are greyed out, and each
+  button's tooltip names its destination, even for lines with nothing
+  due right now. *(1.2.0)*
 - **Per-line walk time (Fußweg)** — drop departures that you couldn't
   catch given your walk to the stop. Per-line minutes input in the
   editor; each line's walk time is independent.
@@ -161,12 +169,19 @@ them.
   badge, in the hero accent, in the header tile when that line is the
   next departure, and on a row's own countdown once it reads Jetzt.
 - **Optional departure time** — show the wall-clock time as well as the
-  countdown: after it on a row ("4 Min · 15:44"), beside the destination
+  countdown: in front of it on a row ("15:44  4 Min"), beside the destination
   in the next-departure block. The countdown answers "can I still make
   it?"; the clock answers "which departure is this?" — the question you
   have when you're still at home deciding whether to leave. It follows
   the countdown's own source, so the two agree on which departure they
   describe. Toggle *Show departure time* in the editor. *(1.1.0)*
+  On a row the clock now sits in front of the countdown, so the minutes
+  line up at the right edge, cancelled rows included. *(1.2.0)*
+- **Delay colours you can switch off** — the countdown turns red when a
+  departure runs late and blue when it runs early, and the onward-stop
+  times follow suit. Prefer a calmer board? Switch off *Colour-code
+  delays* in the editor and every time shows in the default colour.
+  Cancelled trips stay red either way. *(1.2.0)*
 - **Optional Steig display** — toggle in the editor; appears in the
   hero subtitle and at the right edge of each row when the upstream
   reports a non-zero platform.
@@ -197,13 +212,13 @@ them.
 
 ### HACS (recommended)
 
-1. HACS → **Integrations** → ⋯ → **Custom repositories**.
-2. Add `https://github.com/rolandzeiner/linz-linien-austria` as type
-   **Integration**.
-3. Search for "Linz Linien Austria" and install.
-4. Restart Home Assistant.
+1. Open HACS and search for **Linz Linien Austria**.
+2. Select it and choose **Download**.
+3. Restart Home Assistant.
 
 [![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=linz-linien-austria&category=integration)
+
+Not in the search yet? In HACS, open ⋮ → **Custom repositories**, add `https://github.com/rolandzeiner/linz-linien-austria` with type **Integration**, then search again.
 
 ### Manual
 
@@ -244,7 +259,9 @@ them.
   to bound the payload sent on every update).
 - Service-disruption alerts (`XML_ADDINFO_REQUEST`) refresh on an
   independent 5-min domain-wide cadence; the cache is shared across
-  all entries.
+  all entries. If a refresh fails, the alerts already shown stay
+  until the feed answers again. From the second failure in a row,
+  the wait between tries doubles, up to 30 minutes.
 - With *Show onward stops* on, each poll also asks for every trip's
   remaining stop list, which roughly triples the response. The upstream
   fetch is clamped to 10 departures to bound that, and around half of
@@ -283,7 +300,8 @@ them.
 | `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
 | `show_hero` | `true` | Show the big "next departure" countdown block. |
 | `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
-| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — after the countdown on a row (`4 Min · 15:44`), and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. When the next-departure block groups several departures, each shows its own time: they share a countdown rounded to the minute but not a departure minute, so two entries at *Jetzt* can read 10:42 and 10:43. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise. |
+| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — in front of the countdown on a row (`15:44  4 Min`), so the minutes stay lined up at the right edge, and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. When the next-departure block groups several departures, each shows its own time: they share a countdown rounded to the minute but not a departure minute, so two entries at *Jetzt* can read 10:42 and 10:43. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise. |
+| `show_delay_colors` | `true` | Colour the countdown red when a departure runs late and blue when it runs early, and the onward-stop times the same way. Set `false` to show every time in the default colour. Cancelled trips stay red. |
 | `show_alerts` | `true` | Show the collapsible service-disruption banner. |
 | `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
 | `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |

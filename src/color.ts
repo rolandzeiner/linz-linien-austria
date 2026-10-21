@@ -74,7 +74,10 @@ function parseColor(value: string): Rgb | null {
     }
     const match = /^rgba?\(([^)]+)\)$/.exec(serialised);
     if (!match?.[1]) return null;
-    const parts = match[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+    const parts = match[1]
+      .split(/[,\s/]+/)
+      .filter(Boolean)
+      .map(Number);
     const [r, g, b] = parts;
     if (r === undefined || g === undefined || b === undefined) return null;
     if (![r, g, b].every(Number.isFinite)) return null;
@@ -82,7 +85,7 @@ function parseColor(value: string): Rgb | null {
   }
 
   if (hex.length === 3 || hex.length === 4) {
-    hex = [...hex.slice(0, 3)].map((c) => c + c).join("");
+    hex = hex.slice(0, 3).replace(/./g, "$&$&");
   }
   if (hex.length !== 6 && hex.length !== 8) return null;
   const int = Number.parseInt(hex.slice(0, 6), 16);
@@ -136,12 +139,13 @@ const toHex = ([r, g, b]: Rgb): string =>
  *
  * Being a clamp rather than a blend, it only moves the colours that need it:
  * bus purple passes through unchanged in light mode and is lifted to #C67EFF
- * in dark; the tram orange is unchanged in dark and deepened to #972D00 in
- * light. Lifting lightness can push a saturated accent outside sRGB; the
- * channels are then clipped, which is what browsers do for `oklch()` in
- * practice. Deliberately NOT the CSS Color 4 §13.2 chroma-reduction gamut
- * map — the sibling card matched the shipped browser output instead, and
- * these two cards have to agree on a stacked dashboard.
+ * in dark; the tram orange sits just under the dark floor, so it is lifted
+ * only a hair (#F3830A) in dark and deepened to #972D00 in light. Lifting
+ * lightness can push a saturated accent outside sRGB; the channels are
+ * then clipped, which is what browsers do for `oklch()` in practice.
+ * Deliberately NOT the CSS Color 4 §13.2 chroma-reduction gamut map — the
+ * sibling card matched the shipped browser output instead, and these two
+ * cards have to agree on a stacked dashboard.
  *
  * Worst case across the four MoT colours, measured against the tinted plates
  * the glyphs actually sit on (not the flat card): 4.93:1 on the 18% icon-tile
@@ -157,17 +161,11 @@ export function accentTextColor(
 
   const [lightness, a, b] = linearToOklab(linear);
   const clamped =
-    scheme === "dark"
-      ? Math.max(DARK_FLOOR, lightness)
-      : Math.min(LIGHT_CEILING, lightness);
+    scheme === "dark" ? Math.max(DARK_FLOOR, lightness) : Math.min(LIGHT_CEILING, lightness);
   if (clamped === lightness) return toHex(linear);
 
   const chroma = Math.hypot(a, b);
   const hue = Math.atan2(b, a);
-  const lifted = oklabToLinear([
-    clamped,
-    chroma * Math.cos(hue),
-    chroma * Math.sin(hue),
-  ]);
+  const lifted = oklabToLinear([clamped, chroma * Math.cos(hue), chroma * Math.sin(hue)]);
   return toHex([clamp01(lifted[0]), clamp01(lifted[1]), clamp01(lifted[2])]);
 }

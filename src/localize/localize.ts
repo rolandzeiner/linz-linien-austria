@@ -4,8 +4,8 @@ import * as en from "./languages/en.json";
 type Dict = Record<string, unknown>;
 
 const languages: Record<string, Dict> = {
-  de: de as unknown as Dict,
-  en: en as unknown as Dict,
+  de,
+  en,
 };
 
 function resolvePath(path: string, dictionary: Dict): unknown {

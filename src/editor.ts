@@ -13,12 +13,10 @@ import {
 import { editorStyles } from "./styles";
 import { translate } from "./localize/localize";
 import { motColorOrDefault, motIcon } from "./mot";
+import { normaliseConfig, tidyConfig } from "./config";
 
 @customElement("linz-linien-austria-card-editor")
-export class LinzLinienAustriaCardEditor
-  extends LitElement
-  implements LovelaceCardEditor
-{
+export class LinzLinienAustriaCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @state() private _config: LinzLinienAustriaCardConfig = {
@@ -31,15 +29,8 @@ export class LinzLinienAustriaCardEditor
 
   /** Translate `key` against the active HA language. Centralises the
    *  `{ hassLanguage }` ctx so call sites don't repeat it. */
-  private _t(
-    key: string,
-    replacements?: Record<string, string | number>,
-  ): string {
-    return translate(
-      key,
-      { hassLanguage: this.hass?.language },
-      replacements,
-    );
+  private _t(key: string, replacements?: Record<string, string | number>): string {
+    return translate(key, { hassLanguage: this.hass?.language }, replacements);
   }
 
   /** Lines available for the picker dropdown — union of:
@@ -68,9 +59,7 @@ export class LinzLinienAustriaCardEditor
           if (typeof l === "string" && l) seen.add(l);
         }
       }
-      const deps = stateObj?.attributes?.departures as
-        | Departure[]
-        | undefined;
+      const deps = stateObj?.attributes?.departures as Departure[] | undefined;
       if (Array.isArray(deps)) {
         for (const d of deps) {
           if (d.line) seen.add(d.line);
@@ -89,17 +78,15 @@ export class LinzLinienAustriaCardEditor
    *  lines the user explicitly excluded is just clutter. Without a
    *  filter, fall back to every known line. */
   private _availableLines(): string[] {
-    const filterLines = (this._config.lines ?? [])
-      .map((l) => l.trim())
-      .filter(Boolean);
+    const filterLines = (this._config.lines ?? []).map((l) => l.trim()).filter(Boolean);
     if (filterLines.length > 0) {
       return this._sortLines(filterLines);
     }
     return this._allKnownLines();
   }
 
-  /** Real terminus per line and direction, read off the live
-   *  `departures` snapshot: `{ "2": { H: "solarCity", R: "Universität" } }`.
+  /** Real terminus per line and direction:
+   *  `{ "2": { H: "solarCity", R: "Universität" } }`.
    *
    *  Headsigns are display-only — the upstream rewrites them for
    *  short-turning runs, which is exactly why they must not be the
@@ -107,34 +94,51 @@ export class LinzLinienAustriaCardEditor
    *  "H" and "R" with nothing to go on. The code stays the stored
    *  value; the headsign is only ever a label.
    *
-   *  The snapshot is the only per-direction source the card can see.
-   *  The integration computes a fuller roster (`served_lines`, keyed on
-   *  line + dir_code and covering dormant seasonal routes) but does not
-   *  publish it as an entity attribute, so a line with nothing due
-   *  right now falls back to plain Hin/Rück wording. First headsign
-   *  wins: a branching terminus would otherwise make the label flicker
-   *  between polls while the user is trying to click it. */
-  private _lineDestinations(): Map<string, { H?: string; R?: string }> {
-    const out = new Map<string, { H?: string; R?: string }>();
+   *  Primary source is the sensor's `line_destinations` attribute, built
+   *  from the timetable's full roster: it covers lines with nothing due
+   *  right now, and a missing H or R key there means the direction does
+   *  not run from this stop at all. `fromRoster` records which source
+   *  answered, because only the roster may be read as "not served" —
+   *  the live `departures` snapshot, the fallback for an entity without
+   *  the attribute, only knows what is due in the next few minutes.
+   *  In the fallback the first headsign wins: a branching terminus
+   *  would otherwise make the label flicker between polls while the
+   *  user is trying to click it. */
+  private _lineDestinations(): {
+    destinations: Map<string, { H?: string; R?: string }>;
+    fromRoster: boolean;
+  } {
+    const destinations = new Map<string, { H?: string; R?: string }>();
     const entityId = this._config.entity;
-    const deps = entityId
-      ? (this.hass?.states[entityId]?.attributes?.departures as
-          | Departure[]
-          | undefined)
-      : undefined;
-    if (!Array.isArray(deps)) return out;
-    for (const d of deps) {
-      const code = d.dir_code;
-      if (code !== "H" && code !== "R") continue;
-      const head = (d.direction ?? "").trim();
-      if (!head || !d.line) continue;
-      const entry = out.get(d.line) ?? {};
-      if (entry[code] === undefined) {
-        entry[code] = head;
-        out.set(d.line, entry);
+    const attrs = entityId ? this.hass?.states[entityId]?.attributes : undefined;
+    const roster = attrs?.line_destinations as
+      | Record<string, { H?: unknown; R?: unknown }>
+      | undefined;
+    if (roster && typeof roster === "object" && !Array.isArray(roster)) {
+      for (const [line, dirs] of Object.entries(roster)) {
+        if (!dirs || typeof dirs !== "object") continue;
+        const entry: { H?: string; R?: string } = {};
+        if (typeof dirs.H === "string") entry.H = dirs.H.trim();
+        if (typeof dirs.R === "string") entry.R = dirs.R.trim();
+        destinations.set(line, entry);
+      }
+      return { destinations, fromRoster: true };
+    }
+    const deps = attrs?.departures as Departure[] | undefined;
+    if (Array.isArray(deps)) {
+      for (const d of deps) {
+        const code = d.dir_code;
+        if (code !== "H" && code !== "R") continue;
+        const head = (d.direction ?? "").trim();
+        if (!head || !d.line) continue;
+        const entry = destinations.get(d.line) ?? {};
+        if (entry[code] === undefined) {
+          entry[code] = head;
+          destinations.set(d.line, entry);
+        }
       }
     }
-    return out;
+    return { destinations, fromRoster: false };
   }
 
   /** Set or clear one line's direction. `null` means "both", which is
@@ -144,7 +148,7 @@ export class LinzLinienAustriaCardEditor
    *  the whole map once it empties, keeping saved YAML clean. */
   private _onLineDirectionChange(line: string, dir: "H" | "R" | null): void {
     const next: Record<string, "H" | "R"> = {
-      ...(this._config.line_directions ?? {}),
+      ...this._config.line_directions,
     };
     if (dir === null) {
       delete next[line];
@@ -162,7 +166,8 @@ export class LinzLinienAustriaCardEditor
   }
 
   private _sortLines(lines: string[]): string[] {
-    return Array.from(new Set(lines)).sort((a, b) => {
+    const unique = Array.from(new Set(lines));
+    unique.sort((a, b) => {
       const an = parseInt(a, 10);
       const bn = parseInt(b, 10);
       if (!Number.isNaN(an) && !Number.isNaN(bn) && an !== bn) {
@@ -170,6 +175,7 @@ export class LinzLinienAustriaCardEditor
       }
       return a.localeCompare(b, undefined, { numeric: true });
     });
+    return unique;
   }
 
   /** Look up the mode-of-transport id the upstream reported for a
@@ -181,9 +187,7 @@ export class LinzLinienAustriaCardEditor
     const entityId = this._config.entity;
     if (!entityId || !this.hass) return undefined;
     const stateObj = this.hass.states[entityId];
-    const deps = stateObj?.attributes?.departures as
-      | Departure[]
-      | undefined;
+    const deps = stateObj?.attributes?.departures as Departure[] | undefined;
     if (!Array.isArray(deps)) return undefined;
     for (const d of deps) {
       if (d.line === line && typeof d.mot === "number") {
@@ -252,11 +256,12 @@ export class LinzLinienAustriaCardEditor
       <div class="editor-section">
         <div class="section-header">${this._t("editor.lines")}</div>
         <div class="editor-hint">${this._t("editor.lines_helper")}</div>
-        ${known.length === 0
-          ? html`<div class="editor-hint">
+        ${
+          known.length === 0
+            ? html`<div class="editor-hint">
               ${this._t("editor.per_line_no_data")}
             </div>`
-          : html`<div class="line-chip-grid">
+            : html`<div class="line-chip-grid">
               ${known.map((line) => {
                 const colour = this._defaultColorForLine(line);
                 const icon = this._iconForLine(line);
@@ -275,7 +280,8 @@ export class LinzLinienAustriaCardEditor
                   </button>
                 `;
               })}
-            </div>`}
+            </div>`
+        }
         <div class="line-chip-add">
           <input
             class="line-chip-input"
@@ -318,6 +324,7 @@ export class LinzLinienAustriaCardEditor
       { name: "show_hero", selector: { boolean: {} } },
       { name: "show_platform", selector: { boolean: {} } },
       { name: "show_absolute_time", selector: { boolean: {} } },
+      { name: "show_delay_colors", selector: { boolean: {} } },
       { name: "show_alerts", selector: { boolean: {} } },
       { name: "pulse_live", selector: { boolean: {} } },
       { name: "enable_animations", selector: { boolean: {} } },
@@ -356,10 +363,11 @@ export class LinzLinienAustriaCardEditor
     return localised === key ? undefined : localised;
   };
 
-  private _onFormChanged = (
-    ev: CustomEvent<{ value: LinzLinienAustriaCardConfig }>,
-  ): void => {
-    const next = { ...ev.detail.value };
+  /** ha-form hands back the whole normalised config it was shown, so
+   *  every default is in it. tidyConfig takes them — and cleared fields —
+   *  back out before saving; see config.ts. */
+  private _onFormChanged = (ev: CustomEvent<{ value: LinzLinienAustriaCardConfig }>): void => {
+    const next = tidyConfig(ev.detail.value);
     this._config = next;
     fireEvent(this, "config-changed", { config: next });
   };
@@ -373,7 +381,7 @@ export class LinzLinienAustriaCardEditor
     line: string,
     value: NonNullable<LinzLinienAustriaCardConfig[K]>[string] | undefined,
   ): void {
-    const current = { ...(this._config[field] ?? {}) } as Record<
+    const current = { ...this._config[field] } as Record<
       string,
       NonNullable<LinzLinienAustriaCardConfig[K]>[string]
     >;
@@ -429,7 +437,7 @@ export class LinzLinienAustriaCardEditor
     const walkTimes = this._config.walk_times ?? {};
     const colors = this._config.line_colors ?? {};
     const lineDirs = this._config.line_directions ?? {};
-    const destinations = this._lineDestinations();
+    const { destinations, fromRoster } = this._lineDestinations();
     return html`
       <div class="editor-section">
         <div class="section-header">${this._t("editor.section_per_line")}</div>
@@ -443,7 +451,13 @@ export class LinzLinienAustriaCardEditor
             const defaultColour = this._defaultColorForLine(line);
             const effectiveColour = colour || defaultColour;
             const activeDir = lineDirs[line];
-            const dests = destinations.get(line) ?? {};
+            const dests = destinations.get(line);
+            // Only the roster can say a direction doesn't run here. A
+            // line it doesn't list, or no roster at all, is unknown —
+            // and unknown never disables anything.
+            const runs = (code: "H" | "R"): boolean =>
+              !fromRoster || dests === undefined || code in dests;
+            const runsBoth = runs("H") && runs("R");
             // Visible label stays the operator's own H/R code — the row
             // is dense and every line needs its own control — while the
             // tooltip and accessible name carry the plain-language
@@ -452,20 +466,44 @@ export class LinzLinienAustriaCardEditor
               code: "H" | "R" | null,
               content: TemplateResult | string,
             ): TemplateResult => {
-              const generic = this._t(
-                code === "H"
-                  ? "editor.direction_h"
-                  : code === "R"
-                    ? "editor.direction_r"
-                    : "editor.direction_both",
-              );
-              const dest = code ? dests[code] : undefined;
-              const label = dest ? `${generic} → ${dest}` : generic;
               const active = (activeDir ?? null) === code;
+              let label: string;
+              let disabled: boolean;
+              if (code === null) {
+                const generic = this._t("editor.direction_both");
+                const only = dests?.H || dests?.R;
+                label = runsBoth
+                  ? dests?.H && dests?.R
+                    ? `${generic}: ${dests.H} ↔ ${dests.R}`
+                    : generic
+                  : only
+                    ? this._t("editor.direction_only_to", { destination: only })
+                    : this._t("editor.direction_one_way");
+                // Asymmetric on purpose: ↔ is the stored default, so on
+                // a one-way line it is greyed only while it is already
+                // the selection. Once a filter is saved it stays live as
+                // the way back — otherwise that filter could never be
+                // cleared.
+                disabled = !runsBoth && active;
+              } else {
+                const generic = this._t(code === "H" ? "editor.direction_h" : "editor.direction_r");
+                const dest = dests?.[code];
+                label = !runs(code)
+                  ? this._t("editor.direction_not_served", {
+                      direction: generic,
+                    })
+                  : dest
+                    ? `${generic} → ${dest}`
+                    : generic;
+                // A saved filter for a direction the roster no longer
+                // lists stays enabled, so it is visible and clearable.
+                disabled = !runs(code) && !active;
+              }
               return html`<button
                 type="button"
                 class=${`per-line-dir${active ? " is-active" : ""}`}
                 aria-pressed=${active}
+                ?disabled=${disabled}
                 title=${label}
                 aria-label="${label} — ${this._t("editor.line")} ${line}"
                 @click=${() => this._onLineDirectionChange(line, code)}
@@ -517,10 +555,8 @@ export class LinzLinienAustriaCardEditor
                     .value=${effectiveColour}
                     aria-label="${this._t("editor.line_color")}: ${line}"
                     title="${this._t("editor.line_color")}: ${line}"
-                    @input=${(ev: Event) =>
-                      this._onLineColorChange(line, ev)}
-                    @change=${(ev: Event) =>
-                      this._onLineColorChange(line, ev)}
+                    @input=${(ev: Event) => this._onLineColorChange(line, ev)}
+                    @change=${(ev: Event) => this._onLineColorChange(line, ev)}
                   />
                 </label>
                 <button
@@ -555,17 +591,19 @@ export class LinzLinienAustriaCardEditor
       <div class="editor">
         <ha-form
           .hass=${this.hass}
-          .data=${this._config}
+          .data=${normaliseConfig(this._config)}
           .schema=${this._schema()}
           .computeLabel=${this._computeLabel}
           .computeHelper=${this._computeHelper}
           @value-changed=${this._onFormChanged}
         ></ha-form>
-        ${entityMissing
-          ? html`<ha-alert alert-type="warning">
-              ${this._t("editor.entity_missing", { entity: cfgEntity! })}
+        ${
+          entityMissing
+            ? html`<ha-alert alert-type="warning">
+              ${this._t("editor.entity_missing", { entity: cfgEntity })}
             </ha-alert>`
-          : nothing}
+            : nothing
+        }
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>

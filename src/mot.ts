@@ -43,10 +43,7 @@ const MOT_COLORS: Record<number, string> = {
 
 /** Look up the icon for a MoT id, returning ``fallback`` for
  *  unknowns (or the tram icon if no fallback is supplied). */
-export function motIcon(
-  mot: number | undefined,
-  fallback = "mdi:tram",
-): string {
+export function motIcon(mot: number | undefined, fallback = "mdi:tram"): string {
   if (mot === undefined) return fallback;
   return MOT_ICON[mot] ?? fallback;
 }
