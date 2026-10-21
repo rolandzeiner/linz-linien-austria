@@ -1,19 +1,33 @@
 {
   "name": "linz-linien-austria-card",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "description": "Lovelace custom card for the Linz Linien Austria HA integration",
   "type": "module",
   "scripts": {
-    "build": "rolldown -c",
-    "dev": "rolldown -c -w",
-    "build:push": "./scripts/dev-push.sh --quiet"
-  },
-  "devDependencies": {
-    "rolldown": "1.2.11",
-    "typescript": "7.0.2"
+    "build": "vp build",
+    "dev": "vp build --watch --mode development",
+    "build:push": "./scripts/dev-push.sh --quiet",
+    "test": "vp test run",
+    "check": "vp check"
   },
   "dependencies": {
     "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "vite-plus": "1.3.0"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.3.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.0.0"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "^24.11.0 || >=26.0.0"
+    }
   }
 }

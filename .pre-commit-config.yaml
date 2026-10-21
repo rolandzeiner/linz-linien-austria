@@ -34,3 +34,14 @@ repos:
       - id: check-yaml
       - id: check-json
       - id: check-merge-conflict
+  # Card side: Oxfmt + Oxlint + type-check, the same `vp check` CI runs.
+  # A local hook rather than Vite+'s own `vp staged` / `.vite-hooks`: those
+  # take over core.hooksPath, which would switch off the hooks above.
+  - repo: local
+    hooks:
+      - id: vp-check
+        name: vp check (card format, lint, types)
+        entry: npx --no-install vp check
+        language: system
+        files: ^(src/.*\.ts|vite\.config\.ts|package\.json)$
+        pass_filenames: false
