@@ -26,7 +26,7 @@
  */
 import type { LinzLinienAustriaCardConfig } from "./types";
 
-export const DEFAULTS = {
+const DEFAULTS = {
   hide_header: false,
   show_hero: true,
   show_platform: false,

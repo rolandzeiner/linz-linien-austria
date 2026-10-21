@@ -57,7 +57,7 @@ export async function checkCardVersionWS(hass: HomeAssistant | undefined): Promi
  * CDN refusing to invalidate) and short-circuit instead of looping the
  * banner forever — see `wasReloadAttemptedFor` below.
  */
-export function reloadAfterCacheWipe(forVersion?: string | null): void {
+function reloadAfterCacheWipe(forVersion?: string | null): void {
   try {
     window.caches
       ?.keys?.()
@@ -89,7 +89,7 @@ export function reloadAfterCacheWipe(forVersion?: string | null): void {
  * is the right scope: after closing and reopening, the user gets a
  * fresh reload attempt.
  */
-export function wasReloadAttemptedFor(version: string | null): boolean {
+function wasReloadAttemptedFor(version: string | null): boolean {
   if (!version) return false;
   try {
     return window.sessionStorage?.getItem(`linz-reload-attempted-${version}`) === "1";
