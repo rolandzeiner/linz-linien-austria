@@ -34,13 +34,20 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 - `pytest.ini` — pytest config and the **`--cov-fail-under=90` coverage gate**. `pytest tests/` automatically runs with coverage; CI fails fast if a new commit drops coverage below the gate.
 - `ATTRIBUTION` — canonical data-source statement and licence terms; matches the `attribution` attribute every sensor emits. Update when the upstream API or licence wording changes (and keep `const.ATTRIBUTION` in sync).
 
+## Card tests
+
+The card tests live next to the code as `src/**/*.test.ts` and run in plain node through `vp test` (`npm test`). `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. The render methods have no tests yet; a DOM suite would need `happy-dom`, as in the sibling repos.
+
 ## Module map (Python side)
 
-- `api.py` — EFA HTTP client. JSON-only, single source of truth for `_common_headers` (which delegates to `http.py::base_request_headers`).
+- `api.py` — EFA HTTP transport and request parameters. JSON-only; sends `const.BASE_REQUEST_HEADERS`.
+- `parser.py` — pure parsing of the EFA payloads into the shapes the coordinator and the card consume. No network, so it is tested against captured fixtures.
+- `text.py` — the HTML decoder shared by the alert and departure-hint parsers.
 - `coordinator.py` — `DataUpdateCoordinator` subclass with realtime-aware sort, exponential backoff on consecutive failures, and per-stop alerts slice.
 - `alerts.py` — XML_ADDINFO_REQUEST fetcher + 5-min domain-wide refresh task with refcounted lifecycle.
 - `rate_limit.py` — lock-serialised 15 s domain-wide cooldown shared between the coordinator's departure polls and the alerts refresh.
-- `http.py` — single source of truth for outbound headers (User-Agent, Accept, Accept-Encoding: gzip). Every new HTTP call site MUST go through `base_request_headers`.
+- `const.py` — `BASE_REQUEST_HEADERS` is the single source of truth for outbound headers (User-Agent, Accept, Accept-Encoding: gzip). Every new HTTP call site MUST send it.
+- `migration.py` — the v1 → v2 line-filter remap, shared by `async_migrate_entry` and the coordinator's self-heal.
 - `card_registration.py` — Lovelace JS module + `?v=` cache-busting.
 - `config_flow.py`, `sensor.py`, `diagnostics.py`, `__init__.py` — standard HA platform pieces.
 
@@ -57,7 +64,7 @@ pytest tests/ --cov-report=term-missing
 
 ## Local iteration against a live HA box
 
-`./scripts/dev-push.sh` rsyncs to your dev container. See script header for prerequisites (SSH access to the box, sudo NOPASSWD for rsync). The script runs `npm run build` automatically before pushing so direct invocation is always safe; pass `--no-build` for Python-only iteration. `npm run build:push` chains build + dev-push (quiet) for tight card-iteration loops.
+`./scripts/dev-push.sh` rsyncs to your dev container over SSH; it needs SSH access to the box and nothing else. The script runs `npm run build` automatically before pushing so direct invocation is always safe; pass `--no-build` for Python-only iteration. `npm run build:push` chains build + dev-push (quiet) for tight card-iteration loops.
 
 ## Verification gate (must pass before pushing)
 
