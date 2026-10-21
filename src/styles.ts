@@ -1123,8 +1123,8 @@ export const cardStyles = css`
   /* Version-mismatch banner — surfaced when the WS probe reports a
      different CARD_VERSION than the bundle in the user's tab. Sits at
      the top of <ha-card>, full-bleed (the card has no horizontal
-     padding on its root). The reload button does a cache-wipe + hard
-     reload via shared-render::reloadAfterCacheWipe. */
+     padding on its root). The reload button (renderVersionBanner in
+     shared-render.ts) wipes the cache storage and hard-reloads. */
   .version-notice {
     display: flex;
     align-items: center;

@@ -19,7 +19,7 @@ const config = (extra: Record<string, unknown> = {}): LinzLinienAustriaCardConfi
 });
 
 describe("normaliseConfig", () => {
-  it("fills in every default after the user's keys", () => {
+  it("fills in the defaults after the user's keys", () => {
     const out = normaliseConfig(config({ show_alerts: false }));
     expect(Object.keys(out).slice(0, 3)).toEqual(["type", "entity", "show_alerts"]);
     expect(out.show_alerts).toBe(false);

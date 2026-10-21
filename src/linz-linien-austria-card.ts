@@ -88,7 +88,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  the entity_id, and doesn't depend on the `attribution` string
    *  being present at the exact moment the picker probes states.
    *
-   *  No defaults in here: the card fills those in from DEFAULTS. A
+   *  No defaults in here: the card fills those in through normaliseConfig(). A
    *  default in the stub is saved into the YAML, which is how a
    *  `show_hero: true` here hid the editor showing Hero off on every
    *  card written by hand. */
