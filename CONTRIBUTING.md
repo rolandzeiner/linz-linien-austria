@@ -21,7 +21,7 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 ## Tooling & config
 
-- `vite.config.ts` — the whole card toolchain, run through [Vite+](https://viteplus.dev/) (`vp`): `vp build` (Vite library mode on Rolldown), `vp test` (Vitest), and `vp check` (Oxfmt + Oxlint + type-check). The only card `devDependency` is `vite-plus`. Vitest, Rolldown and the type-checker all ship inside it, and `typescript` is not installed. Five things there fail silently if you change them:
+- `vite.config.ts` — the whole card toolchain, run through [Vite+](https://viteplus.dev/) (`vp`): `vp build` (Vite library mode on Rolldown), `vp test` (Vitest), and `vp check` (Oxfmt + Oxlint + type-check). The only card `devDependencies` are `vite-plus` and `happy-dom`. Vitest, Rolldown and the type-checker all ship inside `vite-plus`, and `typescript` is not installed. Five things there fail silently if you change them:
   - The banner must be a **legal** comment — `/*! ... */` — with `comments: { legal: true }`. A `//` banner is stripped by the minifier and nothing tells you; only the built file's first bytes do.
   - **`minify` lives on `rolldownOptions.output`, with `dropConsole: false`.** Vite's library mode skips whitespace minification for ES output, so `build.minify` alone ships the bundle with its whitespace left in. `dropConsole` is all-or-nothing, and most `console.*` calls here sit in `catch` blocks where dropping them turns a caught error into a silent one.
   - **Dev vs prod comes from `--mode development`** (`npm run dev`). A plain `vp build` is production: minified, no sourcemap.
@@ -36,7 +36,7 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 ## Card tests
 
-The card tests live next to the code as `src/**/*.test.ts` and run in plain node through `vp test` (`npm test`). `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. The render methods have no tests yet; a DOM suite would need `happy-dom`, as in the sibling repos.
+The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract and the empty states. The departure rendering has no tests yet.
 
 ## Module map (Python side)
 
