@@ -139,8 +139,8 @@ const toHex = ([r, g, b]: Rgb): string =>
  *
  * Being a clamp rather than a blend, it only moves the colours that need it:
  * bus purple passes through unchanged in light mode and is lifted to #C67EFF
- * in dark; the tram orange is unchanged in dark and deepened to #972D00 in
- * light. Lifting lightness can push a saturated accent outside sRGB; the
+ * in dark; the tram orange sits just under the dark floor, so it is lifted
+ * only a hair (#F3830A) in dark and deepened to #972D00 in light. Lifting lightness can push a saturated accent outside sRGB; the
  * channels are then clipped, which is what browsers do for `oklch()` in
  * practice. Deliberately NOT the CSS Color 4 §13.2 chroma-reduction gamut
  * map — the sibling card matched the shipped browser output instead, and
