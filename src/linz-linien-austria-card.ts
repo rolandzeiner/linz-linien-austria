@@ -395,9 +395,14 @@ export class LinzLinienAustriaCard extends LitElement {
     // to empty (some terminals emit "0" / "" for non-numbered bays).
     const directionText = next?.direction || "";
     const platformText = this.config.show_platform ? this._platformText(next) : "";
-    const subtitle = platformText
-      ? `${directionText} · ${this._platformLabel(next, true)} ${platformText}`
-      : directionText;
+    // The destination is upstream German; the platform label is localised.
+    const subtitle = directionText
+      ? html`<span lang="de">${directionText}</span>${
+          platformText ? ` · ${this._platformLabel(next, true)} ${platformText}` : ""
+        }`
+      : platformText
+        ? `${this._platformLabel(next, true)} ${platformText}`
+        : "";
 
     // Classes land on <ha-card> so descendant selectors in styles.ts
     // can scope the animation rules. `prefers-reduced-motion` overrides
@@ -421,7 +426,7 @@ export class LinzLinienAustriaCard extends LitElement {
                 <ha-icon icon=${headerIcon}></ha-icon>
               </span>
               <div class="title-block">
-                <h3 class="title">${stopName}</h3>
+                <h3 class="title" lang=${this.config.name ? nothing : "de"}>${stopName}</h3>
                 ${subtitle ? html`<p class="subtitle">${subtitle}</p>` : nothing}
               </div>
               ${
@@ -526,8 +531,8 @@ export class LinzLinienAustriaCard extends LitElement {
                     "alert-high": this._isHighPriority(a.priority),
                   })}
                 >
-                  <div class="alert-title">${a.title}</div>
-                  ${a.description ? html`<div class="alert-body">${a.description}</div>` : nothing}
+                  <div class="alert-title" lang="de">${a.title}</div>
+                  ${a.description ? html`<div class="alert-body" lang="de">${a.description}</div>` : nothing}
                   ${
                     a.affected_lines.length
                       ? html`<div class="alert-lines">
@@ -760,10 +765,10 @@ export class LinzLinienAustriaCard extends LitElement {
               // aria-hidden: the section's aria-label already carries the
               // clock time, so this would otherwise be announced twice.
               html`<span class="hero-dest-group">
-              <span class="hero-direction">${d.direction || ""}</span>
+              <span class="hero-direction" lang="de">${d.direction || ""}</span>
               <span class="hero-clock" aria-hidden="true">${clock}</span>
             </span>`
-            : html`<span class="hero-direction">${d.direction || ""}</span>`
+            : html`<span class="hero-direction" lang="de">${d.direction || ""}</span>`
         }
         ${
           !d.is_cancelled && platform
@@ -911,7 +916,7 @@ export class LinzLinienAustriaCard extends LitElement {
       >
         ${this._renderLineBadge(d)}
         <span class="row-main">
-          <span class="row-direction">${d.direction || ""}</span>
+          <span class="row-direction" lang="de">${d.direction || ""}</span>
           ${hint ? html`<span class="row-hint" title=${hint}>${hint}</span>` : nothing}
         </span>
         <span class="row-tail">
@@ -1080,7 +1085,7 @@ export class LinzLinienAustriaCard extends LitElement {
             class=${classMap({ "stops-ahead-stop": true, terminus: isTerminus })}
           >
             <span class="stops-ahead-dot" aria-hidden="true"></span>
-            <span class="stops-ahead-name">${s.name}</span>
+            <span class="stops-ahead-name" lang="de">${s.name}</span>
             <span
               class=${classMap({
                 "stops-ahead-time": true,

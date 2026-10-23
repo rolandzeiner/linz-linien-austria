@@ -128,3 +128,45 @@ describe("empty states", () => {
     expect(text(el)).toContain("Keine Entität ausgewählt.");
   });
 });
+
+describe("language of parts", () => {
+  const departure = (direction: string, countdown: number, scheduled: string) => ({
+    line: "2",
+    direction,
+    countdown,
+    scheduled,
+    is_realtime: true,
+  });
+  const stop = (): HomeAssistant =>
+    hass({
+      "sensor.hbf": {
+        entity_id: "sensor.hbf",
+        state: "3",
+        attributes: {
+          stop_name: "Linz Hauptbahnhof",
+          departures: [
+            departure("Universität", 3, "2026-10-23T10:00:00+02:00"),
+            departure("Solarcity", 8, "2026-10-23T10:05:00+02:00"),
+          ],
+        },
+      },
+    });
+
+  // WCAG 3.1.2: upstream German names keep a German voice on an English
+  // dashboard; the card's own localised labels must not be tagged.
+  it("marks upstream stop names and destinations as German", async () => {
+    const el = await mount({ entity: "sensor.hbf" }, stop());
+    const root = el.shadowRoot!;
+    expect(root.querySelector(".title")?.getAttribute("lang")).toBe("de");
+    for (const sel of [".hero-direction", ".row-direction"]) {
+      const node = root.querySelector(sel);
+      expect(node, sel).not.toBeNull();
+      expect(node?.getAttribute("lang"), sel).toBe("de");
+    }
+  });
+
+  it("leaves a user-entered title untagged", async () => {
+    const el = await mount({ entity: "sensor.hbf", name: "Home stop" }, stop());
+    expect(el.shadowRoot!.querySelector(".title")?.hasAttribute("lang")).toBe(false);
+  });
+});

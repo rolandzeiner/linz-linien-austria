@@ -1703,7 +1703,7 @@ if(super(e),e.type!==ke.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
         <div class="card-content empty-state" role="status">
           ${this._t(`common.entity_unavailable`)}
         </div>
-      </ha-card>`;let n=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||``,r=t.attributes.latitude,i=t.attributes.longitude,a=t.attributes.stop_name||n,o=typeof r==`number`&&typeof i==`number`?`${r},${i}`:a?encodeURIComponent(/Linz/i.test(a)?a:`${a}, Linz`):``,s=o?yt(`https://www.google.com/maps/search/?api=1&query=${o}`):null,c=this._t(`card.open_in_maps`),l=t.attributes.departures??[],u=new Set((this.config.lines??[]).map(e=>e.trim()).filter(Boolean)),d=this.config.line_directions,f=/* @__PURE__ */ new Map;if(d&&typeof d==`object`)for(let[e,t]of Object.entries(d)){let n=typeof t==`string`?t.trim().toUpperCase():``;(n===`H`||n===`R`)&&f.set(e.trim(),n)}let p=this.config.walk_times??{},m=u.size>0||f.size>0||Object.values(p).some(e=>typeof e==`number`&&e>0),h=l.filter(e=>{if(u.size>0&&!u.has(e.line))return!1;let t=f.get(e.line);if(t&&e.dir_code&&e.dir_code!==t)return!1;let n=p[e.line];if(typeof n==`number`&&n>0){let t=this._countdownFor(e);if(t===null||t<n)return!1}return!0}),g=typeof this.config.max_departures==`number`?Math.max(0,this.config.max_departures):h.length,_=this._computeHeroGroup(h),v=_[0],ee=this.config.show_hero?new Set(_):/* @__PURE__ */ new Set,te=h.filter(e=>!ee.has(e)),y=g===0?[]:te.slice(0,g),b=ct(v?.mot),x=this._userLineColor(v?.line)??Y(v?.mot),S=this._accentText(this._userLineColor(v?.line)??lt(v?.mot)),C=(x?`--header-color: ${x};`:``)+(S?`--header-text: ${S};`:``),w=new Set(h.map(e=>e.line).filter(Boolean)),T=(t.attributes.alerts??[]).filter(e=>{let t=e.affected_lines||[];return t.length===0||t.some(e=>w.has(e))}),E=v?.direction||``,D=this.config.show_platform?this._platformText(v):``,O=D?`${E} · ${this._platformLabel(v,!0)} ${D}`:E,k=!!this.config.pulse_live,A=!!this.config.enable_animations;return I`
+      </ha-card>`;let n=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||``,r=t.attributes.latitude,i=t.attributes.longitude,a=t.attributes.stop_name||n,o=typeof r==`number`&&typeof i==`number`?`${r},${i}`:a?encodeURIComponent(/Linz/i.test(a)?a:`${a}, Linz`):``,s=o?yt(`https://www.google.com/maps/search/?api=1&query=${o}`):null,c=this._t(`card.open_in_maps`),l=t.attributes.departures??[],u=new Set((this.config.lines??[]).map(e=>e.trim()).filter(Boolean)),d=this.config.line_directions,f=/* @__PURE__ */ new Map;if(d&&typeof d==`object`)for(let[e,t]of Object.entries(d)){let n=typeof t==`string`?t.trim().toUpperCase():``;(n===`H`||n===`R`)&&f.set(e.trim(),n)}let p=this.config.walk_times??{},m=u.size>0||f.size>0||Object.values(p).some(e=>typeof e==`number`&&e>0),h=l.filter(e=>{if(u.size>0&&!u.has(e.line))return!1;let t=f.get(e.line);if(t&&e.dir_code&&e.dir_code!==t)return!1;let n=p[e.line];if(typeof n==`number`&&n>0){let t=this._countdownFor(e);if(t===null||t<n)return!1}return!0}),g=typeof this.config.max_departures==`number`?Math.max(0,this.config.max_departures):h.length,_=this._computeHeroGroup(h),v=_[0],ee=this.config.show_hero?new Set(_):/* @__PURE__ */ new Set,te=h.filter(e=>!ee.has(e)),y=g===0?[]:te.slice(0,g),b=ct(v?.mot),x=this._userLineColor(v?.line)??Y(v?.mot),S=this._accentText(this._userLineColor(v?.line)??lt(v?.mot)),C=(x?`--header-color: ${x};`:``)+(S?`--header-text: ${S};`:``),w=new Set(h.map(e=>e.line).filter(Boolean)),T=(t.attributes.alerts??[]).filter(e=>{let t=e.affected_lines||[];return t.length===0||t.some(e=>w.has(e))}),E=v?.direction||``,D=this.config.show_platform?this._platformText(v):``,O=E?I`<span lang="de">${E}</span>${D?` · ${this._platformLabel(v,!0)} ${D}`:``}`:D?`${this._platformLabel(v,!0)} ${D}`:``,k=!!this.config.pulse_live,A=!!this.config.enable_animations;return I`
       <ha-card
         class=${G({"no-pulse":!k,"with-animations":A})}
       >
@@ -1713,7 +1713,7 @@ if(super(e),e.type!==ke.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
                 <ha-icon icon=${b}></ha-icon>
               </span>
               <div class="title-block">
-                <h3 class="title">${n}</h3>
+                <h3 class="title" lang=${this.config.name?R:`de`}>${n}</h3>
                 ${O?I`<p class="subtitle">${O}</p>`:R}
               </div>
               ${s?I`<div class="head-actions">
@@ -1765,8 +1765,8 @@ if(super(e),e.type!==ke.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
                 <li
                   class=${G({alert:!0,"alert-high":this._isHighPriority(e.priority)})}
                 >
-                  <div class="alert-title">${e.title}</div>
-                  ${e.description?I`<div class="alert-body">${e.description}</div>`:R}
+                  <div class="alert-title" lang="de">${e.title}</div>
+                  ${e.description?I`<div class="alert-body" lang="de">${e.description}</div>`:R}
                   ${e.affected_lines.length?I`<div class="alert-lines">
                         ${this._t(`card.affected_lines`)}:
                         ${e.affected_lines.join(`, `)}
@@ -1803,9 +1803,9 @@ if(super(e),e.type!==ke.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
       >
         ${this._renderLineBadge(e)}
         ${t?I`<span class="hero-dest-group">
-              <span class="hero-direction">${e.direction||``}</span>
+              <span class="hero-direction" lang="de">${e.direction||``}</span>
               <span class="hero-clock" aria-hidden="true">${t}</span>
-            </span>`:I`<span class="hero-direction">${e.direction||``}</span>`}
+            </span>`:I`<span class="hero-direction" lang="de">${e.direction||``}</span>`}
         ${!e.is_cancelled&&n?I`<span class="hero-platform"
               >${this._platformLabel(e,!0)} ${n}</span
             >`:R}
@@ -1846,7 +1846,7 @@ if(super(e),e.type!==ke.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
       >
         ${this._renderLineBadge(e)}
         <span class="row-main">
-          <span class="row-direction">${e.direction||``}</span>
+          <span class="row-direction" lang="de">${e.direction||``}</span>
           ${s?I`<span class="row-hint" title=${s}>${s}</span>`:R}
         </span>
         <span class="row-tail">
@@ -1897,7 +1897,7 @@ if(super(e),e.type!==ke.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
             class=${G({"stops-ahead-stop":!0,terminus:n===e.length-1})}
           >
             <span class="stops-ahead-dot" aria-hidden="true"></span>
-            <span class="stops-ahead-name">${t.name}</span>
+            <span class="stops-ahead-name" lang="de">${t.name}</span>
             <span
               class=${G({"stops-ahead-time":!0,late:!!this.config.show_delay_colors&&typeof r==`number`&&r>0,early:!!this.config.show_delay_colors&&typeof r==`number`&&r<0})}
               >${this._clockTime(t.arrival)}</span
