@@ -46,7 +46,7 @@ The card tests live next to the code as `src/**/*.test.ts` and run through `vp t
 - `coordinator.py` — `DataUpdateCoordinator` subclass with realtime-aware sort, exponential backoff on consecutive failures, and per-stop alerts slice.
 - `alerts.py` — XML_ADDINFO_REQUEST fetcher + 5-min domain-wide refresh task with refcounted lifecycle.
 - `rate_limit.py` — lock-serialised 15 s domain-wide cooldown shared between the coordinator's departure polls and the alerts refresh.
-- `const.py` — `BASE_REQUEST_HEADERS` is the single source of truth for outbound headers (User-Agent, Accept, Accept-Encoding: gzip). Every new HTTP call site MUST send it.
+- `const.py` — `BASE_REQUEST_HEADERS` is the single source of truth for outbound headers (User-Agent, Accept). Every new HTTP call site MUST send it. It deliberately leaves out `Accept-Encoding`: aiohttp's own offer already gets gzip, and setting the header would narrow it.
 - `migration.py` — the v1 → v2 line-filter remap, shared by `async_migrate_entry` and the coordinator's self-heal.
 - `card_registration.py` — Lovelace JS module + `?v=` cache-busting.
 - `config_flow.py`, `sensor.py`, `diagnostics.py`, `__init__.py` — standard HA platform pieces.
@@ -54,7 +54,7 @@ The card tests live next to the code as `src/**/*.test.ts` and run through `vp t
 ## CI guards
 
 - A backtick inside a Lit `css` or `html` template, comments included, ends the template early, and the card then fails at load while the build stays green. `vp check` catches it.
-- `tests/test_user_agent.py` parametrises every outbound call site and asserts both `User-Agent` and `Accept-Encoding: gzip`. Adding a new HTTP call? Add it to the parametrize table.
+- `tests/test_user_agent.py` parametrises every outbound call site and asserts the `User-Agent` and that no `Accept-Encoding` is pinned. Adding a new HTTP call? Add it to the parametrize table.
 
 View per-file coverage locally:
 
@@ -77,4 +77,4 @@ pytest tests/ --cov-report=term-missing
 
 ## Fair-use note
 
-Please don't drop the `User-Agent` constant or the `Accept-Encoding: gzip` header on outbound requests, and please don't lower the `MIN_POLL_SECONDS` or `DOMAIN_COOLDOWN_SECONDS` floors without thinking carefully about the multi-stop install case. The conservative defaults are what keep this integration unobtrusive on LINZ AG's side.
+Please don't drop the `User-Agent` constant or pin an `Accept-Encoding` on outbound requests, and please don't lower the `MIN_POLL_SECONDS` or `DOMAIN_COOLDOWN_SECONDS` floors without thinking carefully about the multi-stop install case. The conservative defaults are what keep this integration unobtrusive on LINZ AG's side.

@@ -61,9 +61,9 @@ them.
   `state_class`, so HA stops generating long-term statistics on a
   value that has no meaningful long-term aggregate (the next-
   departure ETA isn't a measurement worth charting).
-- **gzip-compressed responses.** Every outbound call sends
-  `Accept-Encoding: gzip`; the EFAController honours it (~7× saving
-  on departure responses, similar on the alerts feed).
+- **gzip-compressed responses.** Every request accepts compressed
+  replies, and the EFAController sends gzip (about 7× smaller
+  departure responses, similar on the alerts feed).
 - **`lines_at_stop` attribute.** Every line the current timetable runs
   through the stop — including rush-hour, seasonal and nightline routes
   with nothing departing right now — exposed for templates and the
@@ -270,8 +270,8 @@ Not in the search yet? In HACS, open ⋮ → **Custom repositories**, add `https
   arrival.
 - Every outbound request carries a canonical `User-Agent` of the
   form `HomeAssistant/<ha_ver> linz_linien_austria/<int_ver>` so
-  LINZ AG's log parser can identify this integration specifically,
-  plus `Accept-Encoding: gzip` for compressed responses.
+  LINZ AG's log parser can identify this integration specifically.
+  Responses arrive gzip-compressed.
 - All public response strings are passed through unchanged (CC BY
   4.0 attribution shipped on every entity via the standard
   `attribution` state attribute).

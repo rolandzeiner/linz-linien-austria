@@ -34,7 +34,7 @@ USER_AGENT: Final = (
 
 # Headers sent on every outbound request — DM_REQUEST, STOPFINDER_REQUEST,
 # ADDINFO_REQUEST. Every call site must pass this rather than assembling
-# its own dict, so a future caller can't silently drop one of the two
+# its own dict, so a future caller can't silently drop one of the
 # guarantees below; `tests/test_user_agent.py` asserts both at every call
 # site so the drift is caught at CI time, not at the next bandwidth audit.
 #
@@ -43,14 +43,14 @@ USER_AGENT: Final = (
 #   blocking every HA install. Format documented in the
 #   ``ha-integration-platinum`` skill.
 # * ``Accept`` — every endpoint here is queried via ``outputFormat=JSON``.
-# * ``Accept-Encoding: gzip`` — the EFAController honours it and compresses
-#   bodies ~7×. ``aiohttp`` decompresses transparently on the response
-#   side, so no parsing change is needed. Without this header the server
-#   defaults to identity encoding.
+# * No ``Accept-Encoding``, on purpose. ``aiohttp`` sends its own offer
+#   (``gzip, deflate, zstd`` on aiohttp 3.14.5) and decompresses whatever
+#   comes back; a value set here would replace that offer rather than add
+#   to it. The EFAController honours gzip and compresses bodies ~7×, and
+#   the default offer already asks for it.
 BASE_REQUEST_HEADERS: Final[dict[str, str]] = {
     "User-Agent": USER_AGENT,
     "Accept": "application/json",
-    "Accept-Encoding": "gzip",
 }
 
 # Config entry / options keys
@@ -156,10 +156,9 @@ COORD_OUTPUT_FORMAT: Final = "WGS84[dd.ddddd]"
 #
 # 2. No conditional GET. The EFAController sends neither `ETag` nor
 #    `Last-Modified` on any endpoint, so there is nothing to revalidate
-#    against and a 304 fast path is impossible. `Accept-Encoding: gzip`
-#    is honoured and is the only transfer saving available (it ships in
-#    ``BASE_REQUEST_HEADERS`` above; wiener-linien keeps the equivalent
-#    in its own ``http.py``, which this integration has no counterpart to).
+#    against and a 304 fast path is impossible. gzip is honoured
+#    and is the only transfer saving available (aiohttp's default
+#    `Accept-Encoding` offer asks for it; see ``BASE_REQUEST_HEADERS``).
 # ----------------------------------------------------------------------
 # XML_ADDINFO_REQUEST returns the active line/stop-info notices that
 # the LinzMobil app surfaces in its alerts banner. Refreshed on a
