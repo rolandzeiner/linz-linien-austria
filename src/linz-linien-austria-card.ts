@@ -342,10 +342,12 @@ export class LinzLinienAustriaCard extends LitElement {
     // The hero always uses filtered[0] regardless of `max_departures`
     // so a setting of 0 ("hero only, no list") can still pick a next
     // departure. The list slice is computed separately and may be empty.
+    // Unset means no cap, not `filtered.length`: on an empty stop that
+    // would be 0 and hide the "No upcoming departures" row with the list.
     const max =
       typeof this.config.max_departures === "number"
         ? Math.max(0, this.config.max_departures)
-        : filtered.length;
+        : Infinity;
     const heroGroup = this._computeHeroGroup(filtered);
     const next = heroGroup[0];
 

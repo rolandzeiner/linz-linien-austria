@@ -149,20 +149,28 @@ describe("empty states", () => {
     expect(text(el)).toContain("Can't reach LINZ AG LINIEN");
   });
 
-  it("still says no departures for an available, empty stop", async () => {
-    const el = await mount(
-      { entity: "sensor.hbf", max_departures: 5 },
-      hass({
-        "sensor.hbf": {
-          entity_id: "sensor.hbf",
-          state: "unknown",
-          attributes: { stop_name: "Linz Hauptbahnhof", departures: [] },
-        },
-      }),
-    );
-    expect(text(el)).toContain("No upcoming departures");
-    expect(text(el)).not.toContain("Can't reach");
-  });
+  // Without max_departures the cap used to fall back to the departure count,
+  // 0 on an empty stop, which hid the list and its empty row with it.
+  it.each([
+    ["set", { max_departures: 5 }],
+    ["unset", {}],
+  ])(
+    "still says no departures for an available, empty stop (max_departures %s)",
+    async (_, cap) => {
+      const el = await mount(
+        { entity: "sensor.hbf", ...cap },
+        hass({
+          "sensor.hbf": {
+            entity_id: "sensor.hbf",
+            state: "unknown",
+            attributes: { stop_name: "Linz Hauptbahnhof", departures: [] },
+          },
+        }),
+      );
+      expect(text(el)).toContain("No upcoming departures");
+      expect(text(el)).not.toContain("Can't reach");
+    },
+  );
 
   it("follows the card's language over Home Assistant's", async () => {
     const el = await mount({ language: "de" }, hass());
