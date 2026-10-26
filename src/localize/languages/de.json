@@ -9,6 +9,8 @@
   "card": {
     "no_departures": "Keine kommenden Abfahrten.",
     "no_matches_for_filter": "Keine kommenden Abfahrten passen zum Filter.",
+    "unreachable": "Keine Verbindung zur LINZ AG LINIEN",
+    "unreachable_detail": "Die Abfahrten erscheinen von selbst wieder, sobald die Verbindung funktioniert.",
     "platform": "Steig",
     "platform_short": "Steig",
     "platform_rail": "Gleis",

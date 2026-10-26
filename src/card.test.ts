@@ -123,6 +123,47 @@ describe("empty states", () => {
     expect(text(el)).toContain("The selected entity is not available right now.");
   });
 
+  // An outage used to read as "No upcoming departures", which is what a quiet
+  // stop says too, so a dead API looked like a broken install.
+  const unavailable = (): HomeAssistant =>
+    hass({
+      "sensor.hbf": {
+        entity_id: "sensor.hbf",
+        state: "unavailable",
+        attributes: { friendly_name: "Linz Hauptbahnhof" },
+      },
+    });
+
+  it("says it can't reach LINZ AG LINIEN when the sensor is unavailable", async () => {
+    const el = await mount({ entity: "sensor.hbf" }, unavailable());
+    const notice = el.shadowRoot!.querySelector(".empty");
+    expect(notice?.querySelector(".empty-title")?.textContent?.trim()).toBe(
+      "Can't reach LINZ AG LINIEN",
+    );
+    expect(notice?.getAttribute("role")).toBe("status");
+    expect(text(el)).not.toContain("No upcoming departures");
+  });
+
+  it("shows the notice on a hero-only card too", async () => {
+    const el = await mount({ entity: "sensor.hbf", max_departures: 0 }, unavailable());
+    expect(text(el)).toContain("Can't reach LINZ AG LINIEN");
+  });
+
+  it("still says no departures for an available, empty stop", async () => {
+    const el = await mount(
+      { entity: "sensor.hbf", max_departures: 5 },
+      hass({
+        "sensor.hbf": {
+          entity_id: "sensor.hbf",
+          state: "unknown",
+          attributes: { stop_name: "Linz Hauptbahnhof", departures: [] },
+        },
+      }),
+    );
+    expect(text(el)).toContain("No upcoming departures");
+    expect(text(el)).not.toContain("Can't reach");
+  });
+
   it("follows the card's language over Home Assistant's", async () => {
     const el = await mount({ language: "de" }, hass());
     expect(text(el)).toContain("Keine Entität ausgewählt.");

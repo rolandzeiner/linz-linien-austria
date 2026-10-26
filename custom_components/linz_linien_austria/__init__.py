@@ -35,6 +35,7 @@ from .const import (
 )
 from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordinator
 from .migration import _remap_line_keys, _try_fetch_roster
+from .outage import async_clear_outage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -283,5 +284,7 @@ async def async_remove_entry(
     ]
     if remaining:
         return
+    # Nothing is left to report an outage for.
+    async_clear_outage(hass)
     registration = JSModuleRegistration(hass)
     await registration.async_unregister()

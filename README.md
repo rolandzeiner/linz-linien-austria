@@ -49,6 +49,11 @@ them.
 - **Robust by design.** Typed coordinator + runtime_data,
   reconfigure flow, repair issues on rate-limit, full translations
   (de + en), diagnostics with defensive redaction.
+- **Outage notice.** When the LINZ AG LINIEN departure service fails,
+  you can tell it's their fault, not your setup. After 10 minutes of
+  errors from their side, a Repairs issue says so, and it clears itself
+  once departures return. The card shows *Can't reach LINZ AG LINIEN*
+  instead of an empty board. *(1.3.0)*
 - **Conservative polling.** 60 s default, 30 s per-entry floor, lock-
   serialised 15 s domain-wide cooldown across every entry + the
   alerts feed. Exponential backoff on consecutive failures (caps at
@@ -423,6 +428,12 @@ narrowed away don't surface.
   service in the next ~2 hours (Linz at 03:00). Confirm via the
   LinzMobil app; if real departures exist there, file a bug with a
   diagnostics download attached.
+- **Card says *Can't reach LINZ AG LINIEN*.** The sensor is
+  unavailable because its last poll of LINZ AG LINIEN failed, or none
+  has worked since Home Assistant started. Check **Settings → Repairs**.
+  If the outage issue is there, the fault is on LINZ AG LINIEN's side
+  and departures return on their own. If it isn't, check that your
+  Home Assistant host can reach the internet.
 - **Diagnostics for bug reports.** Settings → Devices & Services →
   Linz Linien Austria → ⋯ → Download diagnostics. Coordinate strings
   are redacted automatically.

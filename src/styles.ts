@@ -1066,6 +1066,17 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
     font-style: italic;
   }
+  /* "Can't reach LINZ AG LINIEN": a headline the eye can find, upright so
+     it doesn't read as one more quiet empty-list remark. */
+  .empty-title {
+    color: var(--primary-text-color);
+    font-style: normal;
+    font-weight: 500;
+  }
+  .empty-detail {
+    margin-block-start: var(--ha-space-1, 4px);
+    font-size: 0.875em;
+  }
 
   /* Footer — hairline divider, small text, right-pinned attribution.
      NOTE: never use backticks inside this CSS template — the whole

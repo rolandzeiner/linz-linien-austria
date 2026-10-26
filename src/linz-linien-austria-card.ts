@@ -454,13 +454,24 @@ export class LinzLinienAustriaCard extends LitElement {
         ${this.config.show_alerts && alerts.length > 0 ? this._renderAlerts(alerts) : nothing}
         ${this.config.show_hero && heroGroup.length > 0 ? this._renderHero(heroGroup) : nothing}
         ${
-          max === 0
-            ? nothing
-            : departures.length === 0 && heroDedupe.size > 0
-              ? // Hero already shows the only departure(s); no need
-                // for an empty placeholder row underneath.
-                nothing
-              : html`<ul class="departures" role="list">
+          // An unavailable sensor carries no departures, so without this
+          // the card would claim "No upcoming departures", which is what a
+          // quiet stop says too and makes an outage look like a broken
+          // install. Shown whatever `max_departures` is: a hero-only card
+          // would otherwise go blank. Doesn't say whose fault it is; the
+          // integration's Repairs issue does that.
+          stateObj.state === "unavailable"
+            ? html`<div class="empty" role="status" aria-live="polite">
+              <div class="empty-title">${this._t("card.unreachable")}</div>
+              <div class="empty-detail">${this._t("card.unreachable_detail")}</div>
+            </div>`
+            : max === 0
+              ? nothing
+              : departures.length === 0 && heroDedupe.size > 0
+                ? // Hero already shows the only departure(s); no need
+                  // for an empty placeholder row underneath.
+                  nothing
+                : html`<ul class="departures" role="list">
                 ${
                   departures.length === 0
                     ? html`<li class="empty">

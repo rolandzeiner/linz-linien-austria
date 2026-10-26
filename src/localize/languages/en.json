@@ -9,6 +9,8 @@
   "card": {
     "no_departures": "No upcoming departures.",
     "no_matches_for_filter": "No upcoming departures match the filter.",
+    "unreachable": "Can't reach LINZ AG LINIEN",
+    "unreachable_detail": "Departures come back on their own once the connection works again.",
     "platform": "Platform",
     "platform_short": "Pl.",
     "platform_rail": "Track",
