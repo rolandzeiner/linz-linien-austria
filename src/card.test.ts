@@ -176,6 +176,19 @@ describe("empty states", () => {
     const el = await mount({ language: "de" }, hass());
     expect(text(el)).toContain("Keine Entität ausgewählt.");
   });
+
+  // A profile language switch hands the card a new hass whose states are
+  // unchanged; the re-render gate used to skip it and keep the old text.
+  it.each([
+    ["no entity", {}, "Keine Entität ausgewählt."],
+    ["a missing entity", { entity: "sensor.gone" }, "Die ausgewählte Entität"],
+  ])("repaints on a language switch with %s", async (_, config, german) => {
+    const h = hass();
+    const el = await mount(config, h);
+    el.hass = { ...h, language: "de" };
+    await el.updateComplete;
+    expect(text(el)).toContain(german);
+  });
 });
 
 describe("language of parts", () => {

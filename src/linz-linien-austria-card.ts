@@ -165,6 +165,9 @@ export class LinzLinienAustriaCard extends LitElement {
     if (changedProps.has("config")) return true;
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
     if (!oldHass) return true;
+    // A language switch changes no entity state; without this the card keeps
+    // the old language until its sensor next updates.
+    if (oldHass.language !== this.hass.language) return true;
     if (!this.config.entity) return false;
     return oldHass.states[this.config.entity] !== this.hass.states[this.config.entity];
   }
