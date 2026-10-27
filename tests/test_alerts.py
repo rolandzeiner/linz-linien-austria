@@ -28,12 +28,11 @@ from custom_components.linz_linien_austria.alerts import (
     async_stop_alerts_refresh,
     get_alerts_for_lines,
 )
+from custom_components.linz_linien_austria.api import ADDINFO_ENDPOINT, API_BASE_URL
 from custom_components.linz_linien_austria.const import (
-    ADDINFO_ENDPOINT,
     ALERTS_KEY,
     ALERTS_REFRESH_SECONDS,
     ALERTS_REFRESH_UNSUB_KEY,
-    API_BASE_URL,
     DOMAIN,
 )
 

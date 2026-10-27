@@ -153,6 +153,6 @@ def classify(err: Exception) -> Fault:
         return Fault.OUTAGE if err.status >= 500 else Fault.ANSWERED
     if isinstance(err, EfaPayloadError):
         return Fault.OUTAGE
-    # EfaTimeoutError, the bare EfaApiError for connection failures, and
+    # EfaTimeoutError, EfaConnectionError, and
     # anything unforeseen: none of these proves the server is at fault.
     return Fault.INCONCLUSIVE

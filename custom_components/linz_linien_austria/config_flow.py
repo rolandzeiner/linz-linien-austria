@@ -53,6 +53,7 @@ from .const import (
     DOMAIN,
     MAX_POLL_SECONDS,
     MIN_POLL_SECONDS,
+    USER_AGENT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -142,7 +143,9 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 session = async_get_clientsession(self.hass)
                 try:
-                    candidates = await search_stops(session, query, limit=10)
+                    candidates = await search_stops(
+                        session, query, user_agent=USER_AGENT, limit=10
+                    )
                 except EfaApiError as err:
                     _LOGGER.warning("Stop search failed: %s", err)
                     errors["base"] = "cannot_connect"
@@ -181,7 +184,10 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
                 session = async_get_clientsession(self.hass)
                 try:
                     await fetch_departures(
-                        session, self._selected_stop["stop_id"], limit=1
+                        session,
+                        self._selected_stop["stop_id"],
+                        user_agent=USER_AGENT,
+                        limit=1,
                     )
                 except EfaApiError as err:
                     _LOGGER.warning("DM probe failed: %s", err)

@@ -22,13 +22,13 @@ from custom_components.linz_linien_austria.const import (
     CONF_STOP_ID,
     CONF_STOP_NAME,
     DOMAIN,
-    MAX_STOPS_AHEAD,
     SEQUENCE_UPSTREAM_LIMIT,
 )
 from custom_components.linz_linien_austria.coordinator import (
     LinzLinienAustriaCoordinator,
 )
 from custom_components.linz_linien_austria.parser import (
+    MAX_STOPS_AHEAD,
     _iso_from_efa_compact,
     _parse_dm,
     _parse_onward_stops,
@@ -167,7 +167,7 @@ async def test_request_omits_sequence_flags_by_default() -> None:
         new_callable=AsyncMock,
         return_value={"departureList": []},
     ) as get_json:
-        await fetch_departures(AsyncMock(), "60501720", limit=20)
+        await fetch_departures(AsyncMock(), "60501720", user_agent="UA", limit=20)
     params = get_json.await_args.args[2]
     assert "depType" not in params
     assert "includeCompleteStopSeq" not in params
@@ -181,7 +181,11 @@ async def test_request_carries_sequence_flags_when_enabled() -> None:
         return_value={"departureList": []},
     ) as get_json:
         await fetch_departures(
-            AsyncMock(), "60501720", limit=10, include_stop_sequence=True
+            AsyncMock(),
+            "60501720",
+            user_agent="UA",
+            limit=10,
+            include_stop_sequence=True,
         )
     params = get_json.await_args.args[2]
     assert params["depType"] == "stopEvents"

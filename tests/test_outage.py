@@ -20,16 +20,14 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
 )
 
 from custom_components.linz_linien_austria.api import (
+    API_BASE_URL,
+    DM_ENDPOINT,
     EfaApiError,
     EfaHttpError,
     EfaPayloadError,
     EfaTimeoutError,
 )
-from custom_components.linz_linien_austria.const import (
-    API_BASE_URL,
-    DM_ENDPOINT,
-    DOMAIN,
-)
+from custom_components.linz_linien_austria.const import DOMAIN
 from custom_components.linz_linien_austria.coordinator import (
     LinzLinienAustriaCoordinator,
 )

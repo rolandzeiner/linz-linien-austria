@@ -3,6 +3,7 @@
 from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
+import aiohttp
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_SCAN_INTERVAL
@@ -12,6 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.linz_linien_austria.api import (
     EfaApiError,
+    EfaConnectionError,
     EfaHttpError,
     EfaPayloadError,
     EfaTimeoutError,
@@ -612,6 +614,30 @@ async def test_generic_api_error_uses_connection_translation(
         with pytest.raises(UpdateFailed) as excinfo:
             await coordinator._async_update_data()
         assert excinfo.value.translation_key == "api_connection_error"
+
+
+async def test_connection_error_reports_the_underlying_error_type(
+    hass: HomeAssistant,
+) -> None:
+    """The placeholders name the aiohttp error, not the wrapper class."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+    coordinator = LinzLinienAustriaCoordinator(hass, entry)
+
+    with (
+        patch(
+            "custom_components.linz_linien_austria.coordinator.fetch_departures",
+            new_callable=AsyncMock,
+            side_effect=EfaConnectionError(aiohttp.ClientConnectionError("refused")),
+        ),
+        pytest.raises(UpdateFailed) as excinfo,
+    ):
+        await coordinator._async_update_data()
+    assert excinfo.value.translation_key == "api_connection_error"
+    assert excinfo.value.translation_placeholders == {
+        "error_type": "ClientConnectionError",
+        "error": "refused",
+    }
 
 
 async def test_non_update_failed_error_still_notes_failure(

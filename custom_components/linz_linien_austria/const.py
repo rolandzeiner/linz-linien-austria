@@ -32,27 +32,6 @@ USER_AGENT: Final = (
     f"(+https://github.com/rolandzeiner/linz-linien-austria)"
 )
 
-# Headers sent on every outbound request — DM_REQUEST, STOPFINDER_REQUEST,
-# ADDINFO_REQUEST. Every call site must pass this rather than assembling
-# its own dict, so a future caller can't silently drop one of the
-# guarantees below; `tests/test_user_agent.py` asserts both at every call
-# site so the drift is caught at CI time, not at the next bandwidth audit.
-#
-# * ``User-Agent`` — identifies this integration to LINZ AG's log parsers
-#   so they can rate-limit / contact us specifically rather than blanket-
-#   blocking every HA install. Format documented in the
-#   ``ha-integration-platinum`` skill.
-# * ``Accept`` — every endpoint here is queried via ``outputFormat=JSON``.
-# * No ``Accept-Encoding``, on purpose. ``aiohttp`` sends its own offer
-#   (``gzip, deflate, zstd`` on aiohttp 3.14.5) and decompresses whatever
-#   comes back; a value set here would replace that offer rather than add
-#   to it. The EFAController honours gzip and compresses bodies ~7×, and
-#   the default offer already asks for it.
-BASE_REQUEST_HEADERS: Final[dict[str, str]] = {
-    "User-Agent": USER_AGENT,
-    "Accept": "application/json",
-}
-
 # Config entry / options keys
 CONF_STOP_ID: Final = "stop_id"
 CONF_STOP_NAME: Final = "stop_name"
@@ -100,13 +79,6 @@ CONF_SHOW_STOP_SEQUENCE: Final = "show_stop_sequence"
 # parameter suppresses it, so it is dropped client-side on receipt.
 SEQUENCE_UPSTREAM_LIMIT: Final = 10
 
-# Hard cap on onward stops kept per departure. The longest Linz routes
-# run ~30 stops end to end, so a vehicle leaving its first stop can
-# legitimately carry near that many; 25 keeps the common case whole
-# while bounding the attribute payload if the upstream ever returns
-# something pathological.
-MAX_STOPS_AHEAD: Final = 25
-
 # Polling policy
 # Linz AG Linien EFA fair-use: keep aggregate request rate well below the
 # rate the live mobile/web frontends drive. 30 s minimum lets users with
@@ -126,20 +98,8 @@ DOMAIN_COOLDOWN_SECONDS: Final = 15
 # integration is broken" yet far above any realistic transient hiccup.
 BACKOFF_CAP_SECONDS: Final = 1800
 
-# Upstream API — EFA (Elektronische Fahrplanauskunft) by Mentz GmbH.
-# Same Mentz EFA endpoint the official LinzMobil app and the linzag.at
-# website query. JSON output is supported via outputFormat=JSON.
-# Reference: https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/fahrplan/
-#            EFA_XML_Schnittstelle_20151217.pdf (Dec 2015)
-API_BASE_URL: Final = "https://www.linzag.at/static"
-DM_ENDPOINT: Final = "/XML_DM_REQUEST"  # Departure Monitor
-STOPFINDER_ENDPOINT: Final = "/XML_STOPFINDER_REQUEST"  # Stop search
-
-# Ask the EFA for decimal-degree WGS84 instead of its projected NAV5
-# default. Sent on every request that can return a position; without it
-# `ref.coords` carries Gauss-Krüger easting/northing that looks like a
-# plausible float pair but is unusable as a geographic location.
-COORD_OUTPUT_FORMAT: Final = "WGS84[dd.ddddd]"
+# Upstream URLs, request headers and COORD_OUTPUT_FORMAT live in api.py,
+# which must stay free of Home Assistant.
 
 # --- Two upstream capabilities this deployment does NOT have ----------
 # Both were probed directly against EFAController/10.6.30.4 (2026-07-24).
@@ -158,15 +118,8 @@ COORD_OUTPUT_FORMAT: Final = "WGS84[dd.ddddd]"
 #    `Last-Modified` on any endpoint, so there is nothing to revalidate
 #    against and a 304 fast path is impossible. gzip is honoured
 #    and is the only transfer saving available (aiohttp's default
-#    `Accept-Encoding` offer asks for it; see ``BASE_REQUEST_HEADERS``).
+#    `Accept-Encoding` offer asks for it; see ``api.request_headers``).
 # ----------------------------------------------------------------------
-# XML_ADDINFO_REQUEST returns the active line/stop-info notices that
-# the LinzMobil app surfaces in its alerts banner. Refreshed on a
-# domain-wide 5-min cadence — these don't change any faster than
-# operator-side editorial activity (typically a few times an hour) and
-# hammering the endpoint per-entry would waste fair-use budget.
-ADDINFO_ENDPOINT: Final = "/XML_ADDINFO_REQUEST"
-
 # Alerts (line/stop info) — domain-wide cadence shared across all entries.
 # 5 min is plenty: editorial events arrive a few times per hour at most
 # and per-entry polling would burn fair-use budget for no benefit.
