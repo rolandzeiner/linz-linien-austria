@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/custom_components/linz_linien_austria/brand/icon.png" width="40" height="40" alt="" align="absmiddle"> Linz Linien Austria
+# <sub><sub><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/custom_components/linz_linien_austria/brand/icon.png" width="40" height="40" alt=""></sub></sub> Linz Linien Austria
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![HA min version](https://img.shields.io/badge/Home%20Assistant-%3E%3D2025.1-blue.svg)](https://www.home-assistant.io/)
