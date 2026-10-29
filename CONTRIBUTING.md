@@ -13,7 +13,8 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 - Work on `dev`. PRs target `dev`.
 - Releases are tagged from `main` after merging `dev → main`.
-- Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`).
+- Conventional commits (`feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`).
+- Users install through the Marketplace (HACS before Home Assistant 2026.11), which downloads the `linz_linien_austria.zip` that `.github/workflows/release.yml` attaches to each GitHub release: a flat archive of `custom_components/linz_linien_austria/`. Nobody runs `npm` on install, so the built card bundle in `www/` is committed.
 
 ## Card-version sync
 
@@ -36,7 +37,7 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 ## Card tests
 
-The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract and the empty states. The departure rendering has no tests yet.
+The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract, the empty states and the language handling. `src/toolchain.test.ts` guards the `vite` override (see *Tooling & config*). The departure rendering has no tests yet.
 
 ## Module map (Python side)
 
@@ -47,12 +48,14 @@ The card tests live next to the code as `src/**/*.test.ts` and run through `vp t
 - `alerts.py` — parses the XML_ADDINFO_REQUEST notices (fetched through `api.fetch_addinfo`) and runs the 5-min domain-wide refresh task with refcounted lifecycle.
 - `rate_limit.py` — lock-serialised 15 s domain-wide cooldown shared between the coordinator's departure polls and the alerts refresh.
 - `const.py` — config keys, cadences and the `USER_AGENT` callers pass to `api.py`.
+- `outage.py` — domain-wide outage detection: after 10 minutes of upstream-side failures it raises the `upstream_unavailable` Repairs issue, and clears it on the first good answer.
 - `migration.py` — the v1 → v2 line-filter remap, shared by `async_migrate_entry` and the coordinator's self-heal.
 - `card_registration.py` — Lovelace JS module + `?v=` cache-busting.
 - `config_flow.py`, `sensor.py`, `diagnostics.py`, `__init__.py` — standard HA platform pieces.
 
 ## CI guards
 
+- `validate.yml` runs the gate below plus hassfest, HACS validation (`hacs/action`), the floor-Python compile, a check that the committed bundle equals a fresh build, and the `_dev_fixture.py` guard.
 - A backtick inside a Lit `css` or `html` template, comments included, ends the template early, and the card then fails at load while the build stays green. `vp check` catches it.
 - `tests/test_user_agent.py` parametrises every outbound call site and asserts the `User-Agent` and that no `Accept-Encoding` is pinned. Adding a new HTTP call? Add it to the parametrize table.
 

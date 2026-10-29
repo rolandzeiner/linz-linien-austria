@@ -1,340 +1,250 @@
 # <sub><sub><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/custom_components/linz_linien_austria/brand/icon.png" width="40" height="40" alt=""></sub></sub> Linz Linien Austria
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Catalog-41BDF5.svg)](https://www.home-assistant.io/integrations/marketplace/)
 [![HA min version](https://img.shields.io/badge/Home%20Assistant-%3E%3D2025.1-blue.svg)](https://www.home-assistant.io/)
 [![Version](https://img.shields.io/github/v/release/rolandzeiner/linz-linien-austria?label=version&color=blue)](https://github.com/rolandzeiner/linz-linien-austria/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![vibe-coded](https://img.shields.io/badge/vibe-coded-ff69b4?logo=musicbrainz&logoColor=white)](https://en.wikipedia.org/wiki/Vibe_coding)
 [![Live demo](https://img.shields.io/badge/live-demo-2196F3.svg)](https://demo.rolandzeiner.at/#linz)
 
-Live LINZ AG LINIEN departure monitor for Home Assistant — with a
-matching Lit 3 Lovelace card. Polls the same EFA (Elektronische
-Fahrplanauskunft) endpoint the official LinzMobil app uses, including
-realtime delays and trip cancellations where the upstream provides
-them.
+Live departures for any stop in and around Linz, from the [LINZ AG LINIEN](https://www.linzag.at/) timetable service (EFA, the same source the LinzMobil app uses). You get a countdown sensor per stop with realtime delays, cancellations and disruption notices, plus a matching Lovelace card.
 
 ## Screenshots
+
+### Cards
 
 <table>
   <tr>
     <td align="center"><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/card.webp" height="320" alt="Lovelace card" /></td>
     <td align="center"><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/card-config.webp" height="320" alt="Card editor" /></td>
-    <td align="center"><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/config-flow.webp" height="320" alt="Config flow" /></td>
   </tr>
   <tr>
     <td align="center"><em>Lovelace card</em></td>
     <td align="center"><em>Card editor</em></td>
-    <td align="center"><em>Config flow</em></td>
   </tr>
 </table>
 
+### Setup
+
+<img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/config-flow.webp" height="320" alt="Config flow" />
+
 ## Features
 
-### Integration
-
-- **One config entry per stop.** Search-by-name flow — no hunting for
-  stop IDs.
-- **Realtime-aware countdown sensor** (`SensorDeviceClass.DURATION`,
-  unit minutes). The full upcoming departure list, sorted by realtime
-  arrival time, lives on `extra_state_attributes` for templates and
-  the bundled card.
-- **Trip cancellations.** `realtimeTripStatus == TRIP_CANCELLED` is
-  surfaced as `departures[].is_cancelled`; cancelled rows render
-  visually as "Entfällt" with strikethrough on both card and rows.
-- **Service-disruption alerts** (XML_ADDINFO_REQUEST). Fetched once on
-  a 5-minute domain-wide cadence and sliced per stop. Each entry's
-  sensor exposes alerts via the `alerts` attribute; the card renders
-  them as a collapsible banner with high-priority items pinned to the
-  top.
-- **Robust by design.** Typed coordinator + runtime_data,
-  reconfigure flow, repair issues on rate-limit, full translations
-  (de + en), diagnostics with defensive redaction.
-- **Outage notice.** When the LINZ AG LINIEN departure service fails,
-  you can tell it's their fault, not your setup. After 10 minutes of
-  errors from their side, a Repairs issue says so, and it clears itself
-  once departures return. The card shows *Can't reach LINZ AG LINIEN*
-  instead of an empty board. *(1.3.0)*
-- **Conservative polling.** 60 s default, 30 s per-entry floor, lock-
-  serialised 15 s domain-wide cooldown across every entry + the
-  alerts feed. Exponential backoff on consecutive failures (caps at
-  30 min) so a sustained outage settles into a slow poll instead of
-  hammering the upstream. Request-refresh storms (options-flow save,
-  manual reload, dashboard edit-mode flip) are absorbed by a 15 s
-  debouncer so the EFA endpoint never sees a burst of redundant
-  requests.
-- **No long-term statistics noise.** The countdown sensor now omits
-  `state_class`, so HA stops generating long-term statistics on a
-  value that has no meaningful long-term aggregate (the next-
-  departure ETA isn't a measurement worth charting).
-- **gzip-compressed responses.** Every request accepts compressed
-  replies, and the EFAController sends gzip (about 7× smaller
-  departure responses, similar on the alerts feed).
-- **`lines_at_stop` attribute.** Every line the current timetable runs
-  through the stop — including rush-hour, seasonal and nightline routes
-  with nothing departing right now — exposed for templates and the
-  bundled card. Read from the upstream's own line roster, so it is
-  complete from the first refresh and correct immediately after a
-  reconfigure. *(0.6.0, rebuilt in 0.7.0)*
-- **`line_destinations` attribute.** The same roster per direction, with
-  each direction's destination:
-  `{"2": {"H": "solarCity", "R": "Universität"}}`. A direction appears
-  only if it runs from this stop, so a template can tell a one-way line
-  from one with nothing due right now. *(1.2.0)*
-- **Stop coordinates.** The sensor carries the stop's `latitude` and
-  `longitude`, so the card's map link opens the actual bay instead of
-  guessing from the stop name, and templates can compute distances.
-  *(0.7.0)*
-- **Live delay reasons.** When the operator publishes why a trip is
-  running late ("Behinderung! Verspätung! Bitte Geduld!"), it appears on
-  the departure as `delay_hint` and reads as a caption on the card.
-  *(0.7.0)*
-- **Named bays and operator.** Each departure carries `stop_bay`
-  (`Hauptbahnhof (Busterminal)` vs `(Kärntnerstraße)` vs
-  `(Tiefgeschoß)`) and `operator`. At a sprawling stop the bay name says
-  more than the platform digit — and it's the only location cue on the
-  lines where the upstream reports no platform at all. *(0.7.0)*
-- **Onward stops, opt-in.** Turn on *Show onward stops* and every
-  departure carries the rest of its trip — each remaining stop with a
-  live predicted arrival and the delay carried to it, so you can see
-  whether a late tram is expected to recover before your stop. Off by
-  default: it roughly triples the data fetched per refresh, so while it
-  is on the departure list is shortened to 10. *(0.7.0)*
-- **Stable line filter.** The optional line filter keys on the
-  upstream's direction code rather than the destination text. Lines with
-  a branching terminus publish a different destination per vehicle, so
-  the old text keys could drop a line from the filter at random.
-  Existing filters are migrated automatically. *(0.7.0)*
-
-### Bundled Lovelace card (`linz-linien-austria-card`)
-
-- **Hero block** — large countdown for the next non-cancelled
-  departure, MoT-tinted (orange tram, blue U-Bahn, plum bus, grey
-  train) with a Live pill and optional Steig (platform) marker on
-  one row. Skips cancelled trips when picking the hero so the big
-  number always reads as a real ETA.
-- **Realtime cue** — small green bullet leading the time on rows
-  where realtime data was available (WCAG 1.4.1: redundant cue for
-  colour-blind / sunlight-glare users).
-- **Readable in both themes** — line colours are chosen to sit behind
-  white badge text, and several of them turn unreadable once they paint
-  the text itself. The card lightens or deepens each colour to suit your
-  Home Assistant theme, so a countdown keeps its line's identity instead
-  of washing out into plain white. Every combination clears WCAG AA.
-  *(0.7.4)*
-- **Onward-stop trail** — when *Show onward stops* is on, clicking a
-  departure row, or the next-departure hero, unfolds the rest of the trip
-  as a route-line diagram: a vertical line in the line's own colour, a dot
-  per remaining stop, and a hollow ring on the terminus. The trail lines
-  up under the line badge, so it reads as descending from that departure.
-  Each stop carries its predicted arrival, tinted when late, so a delay
-  that recovers further down the route is visible at a glance. Rows and
-  the hero are keyboard-operable — Tab to one, Enter or Space to open it.
-  *(0.7.0)*
-- **Delay reason caption** — when the operator says why a trip is late,
-  the reason appears under the destination on the row and under the
-  hero's line badge, in the same warning colour as a late time. Hidden
-  on cancelled trips, where "Entfällt" already tells the whole story.
-  *(0.7.0)*
-- **Trip cancellations** — strikethrough line + direction, "Entfällt"
-  label, no platform shown.
-- **Line badge** — fixed-width pill, MoT-tinted, with mode icon
-  (`mdi:tram`, `mdi:bus`, `mdi:subway-variant`, `mdi:train`).
-- **Header** — icon-tile + stop name + direction subtitle. Tile icon
-  and accent recolour to match the next departing line's MoT. Maps
-  icon-link on the right opens Google Maps for the stop.
-- **Service-disruption banner** — collapsible `<details>` with chevron
-  affordance. Pre-filtered to alerts whose `affected_lines` overlap a
-  line currently visible in the card (post-card-filter). Toggle on/off
-  via *Show traffic info* in the editor.
-- **Card-side line filter** — chip widget with MDI-iconed chips
-  (mode-of-transport icon + line number, MoT-coloured). Click to
-  toggle. The picker shows every line ever seen at this stop (not
-  just currently-departing), so nightline / rush-hour / seasonal
-  routes stay visible even outside their live service window
-  *(0.6.0)*. Custom-value text input is still available for lines
-  the picker hasn't observed yet.
-- **Per-line direction filter** — at a two-platform stop, half the
-  board is the direction you aren't travelling, and the line filter
-  can't separate them: both directions run the same line number. Each
-  line gets its own Hinfahrt / Rückfahrt / both control in the editor,
-  labelled with the destination it heads for. Per line rather than
-  card-wide, because the operator defines direction per line — "H" on
-  the 2 and "H" on the 46 point different ways. It matches on that
-  stable code rather than the destination text, so a short-turning trip
-  that still serves your direction stays on the board. Replacement
-  services carry no direction code and are always shown. *(1.1.0)*
-  Directions a line doesn't run from your stop are greyed out, and each
-  button's tooltip names its destination, even for lines with nothing
-  due right now. *(1.2.0)*
-- **Per-line walk time (Fußweg)** — drop departures that you couldn't
-  catch given your walk to the stop. Per-line minutes input in the
-  editor; each line's walk time is independent.
-- **Per-line colour override** — pill-style colour picker per line in
-  the editor; the chosen colour replaces the MoT default on the
-  badge, in the hero accent, in the header tile when that line is the
-  next departure, and on a row's own countdown once it reads Jetzt.
-- **Optional departure time** — show the wall-clock time as well as the
-  countdown: in front of it on a row ("15:44  4 Min"), beside the destination
-  in the next-departure block. The countdown answers "can I still make
-  it?"; the clock answers "which departure is this?" — the question you
-  have when you're still at home deciding whether to leave. It follows
-  the countdown's own source, so the two agree on which departure they
-  describe. Toggle *Show departure time* in the editor. *(1.1.0)*
-  On a row the clock now sits in front of the countdown, so the minutes
-  line up at the right edge, cancelled rows included. *(1.2.0)*
-- **Delay colours you can switch off** — the countdown turns red when a
-  departure runs late and blue when it runs early, and the onward-stop
-  times follow suit. Prefer a calmer board? Switch off *Colour-code
-  delays* in the editor and every time shows in the default colour.
-  Cancelled trips stay red either way. *(1.2.0)*
-- **Optional Steig display** — toggle in the editor; appears in the
-  hero subtitle and at the right edge of each row when the upstream
-  reports a non-zero platform.
-- **Hero-only mode** — `max_departures: 0` renders the hero block
-  with no row list below.
-- **Header toggle** — `hide_header: true` collapses the icon-tile +
-  stop name + direction subtitle row when you want a denser dashboard
-  tile (the hero countdown still leads).
-- **Responsive density tiers** — container queries scale font sizes,
-  badge widths, and row spacing across three breakpoints (compact /
-  default / wide), so the same card reads cleanly whether it sits in
-  a sidebar column or fills a section view.
-- **Gleis vs Steig per row** — platform label follows the upstream
-  Mode-of-Transport: `Gleis` for ÖBB-style heavy rail, `Steig` for
-  everything else (tram, bus, U-Bahn). No global config needed.
-- **A11y-first** — `prefers-reduced-motion` catch-all, focus rings,
-  ≥44 px touch targets, container queries for narrow column layouts,
-  `aria-pressed` on chip toggles, MoT name in row aria-labels for
-  screen readers.
+- One entry per stop, found by searching its name. No stop IDs to look up.
+- A countdown sensor to the next departure, with realtime delays, cancellations and the full departure list for templates.
+- Service-disruption notices for the lines at your stop, shown as a collapsible banner on the card.
+- Optional onward stops: the rest of each trip, with a live predicted arrival at every stop.
+- A departure-board card with a large next-departure countdown and line badges coloured by mode of transport.
+- Card filters per line: which lines, which direction, and your walk time, so departures you can't catch disappear.
+- A Repairs notice when the LINZ AG LINIEN departure service is down, so you know the fault isn't on your side.
+- The card speaks German and English, reads well in light and dark themes, works by keyboard and respects reduced motion.
 
 ## Requirements
 
-- Home Assistant **2025.1** or newer.
-- Outbound connectivity to `https://www.linzag.at/static` (the EFA
-  endpoint is open and unauthenticated).
+- Home Assistant **2025.1.0** or newer.
+- Internet access to `https://www.linzag.at/static`. The service is open: no account or API key.
 
 ## Installation
 
-### HACS (recommended)
+### Marketplace (recommended)
 
-1. Open HACS and search for **Linz Linien Austria**.
-2. Select it and choose **Download**.
-3. Restart Home Assistant.
+The Marketplace is HACS, built into Home Assistant since 2026.11.
 
-[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=linz-linien-austria&category=integration)
+1. In Home Assistant, go to **Settings → Marketplace** and search for **Linz Linien Austria**.
+2. Select it, then select **Install**. The setup starts right away, no restart needed.
 
-Not in the search yet? In HACS, open ⋮ → **Custom repositories**, add `https://github.com/rolandzeiner/linz-linien-austria` with type **Integration**, then search again.
+[![Open this repository in the Marketplace of your Home Assistant.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rolandzeiner&repository=linz-linien-austria&category=integration)
+
+On Home Assistant older than 2026.11, use HACS instead: search for **Linz Linien Austria**, select **Download**, then restart Home Assistant.
 
 ### Manual
 
-1. Copy `custom_components/linz_linien_austria/` into your HA
-   `config/custom_components/`.
-2. Restart Home Assistant.
+1. Download `linz_linien_austria.zip` from the [latest release](https://github.com/rolandzeiner/linz-linien-austria/releases/latest).
+2. Unpack it into `config/custom_components/linz_linien_austria/`.
+3. Restart Home Assistant.
 
 ## Setup
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=linz_linien_austria)
 
-1. **Settings → Devices & Services → + Add Integration**.
-2. Search for **Linz Linien Austria**.
-3. Type part of a stop name (e.g. `Hauptbahnhof`). The flow returns
-   matching stops directly from LINZ AG.
-4. Pick the stop, set the polling cadence (default 60 s) and how
-   many departures to fetch (default 20).
-5. The card resource is auto-registered the first time an entry is
-   added — if you run Lovelace in YAML mode, add the line manually:
-   ```yaml
-   resources:
-     - url: /linz-linien-austria/linz-linien-austria-card.js
-       type: module
-   ```
+1. Go to **Settings → Devices & services → Add integration** and search for **Linz Linien Austria**.
+2. Type part of a stop name, for example `Hauptbahnhof`.
+3. Pick your stop from the matches.
+4. Set the polling interval and how many departures to fetch, then select **Submit**.
 
-## Data updates
+Add one entry per stop. To change an entry's settings later, use **Reconfigure** (the same three fields as the last step) or the options below.
 
-- The EFA Departure Monitor (`XML_DM_REQUEST?outputFormat=JSON`) is
-  polled at the configured cadence. The integration enforces a
-  30-second per-entry floor and a lock-serialised 15-second
-  domain-wide cooldown so parallel entries can't collectively flood
-  the upstream.
-- Departures are sorted by realtime-corrected arrival before being
-  exposed on the sensor — cancelled trips sink to the bottom.
-- A successful poll updates the `next_departure` sensor's state (the
-  realtime-corrected countdown in minutes) and refreshes the
-  `departures` attribute (full upcoming list, capped at 45 entries
-  to bound the payload sent on every update).
-- Service-disruption alerts (`XML_ADDINFO_REQUEST`) refresh on an
-  independent 5-min domain-wide cadence; the cache is shared across
-  all entries. If a refresh fails, the alerts already shown stay
-  until the feed answers again. From the second failure in a row,
-  the wait between tries doubles, up to 30 minutes.
-- With *Show onward stops* on, each poll also asks for every trip's
-  remaining stop list, which roughly triples the response. The upstream
-  fetch is clamped to 10 departures to bound that, and around half of
-  what the upstream sends back is the stops the vehicle has already
-  passed — there's no way to ask it not to, so those are discarded on
-  arrival.
-- Every outbound request carries a canonical `User-Agent` of the
-  form `HomeAssistant/<ha_ver> linz_linien_austria/<int_ver>` so
-  LINZ AG's log parser can identify this integration specifically.
-  Responses arrive gzip-compressed.
-- All public response strings are passed through unchanged (CC BY
-  4.0 attribution shipped on every entity via the standard
-  `attribution` state attribute).
-
-## Configuration parameters
-
-### Integration
-
-| Field | Default | Notes |
+| Field | Default | Description |
 |---|---|---|
-| Stop name (search) | — | Partial match; LINZ AG returns up to 10 candidates. |
-| Polling interval | `60` s | Minimum 30 s; 15 s domain-wide cooldown still applies. |
-| Departures to fetch | `20` | The upstream fetch size. The integration also fetches some extra headroom so the realtime sort stays stable. The sensor exposes the full sorted result (capped at 45). **Raise this value if you use a tight card-side `lines` filter** so the card has enough pre-filter rows to pick from. |
-| Lines filter (options) | empty | Pick from the dropdown, which lists every line at the stop by destination. Empty = all. |
-| Show onward stops | off | Adds each trip's remaining stops with live arrival times. Roughly triples the data fetched per refresh (~23 KB vs ~8 KB per poll at a busy stop), so the upstream fetch is clamped to 10 departures while it's on. |
+| **Stop name** | — | At least two characters. Up to 10 matching stops come back. |
+| **Stop** | — | The stop to monitor. Each stop can be added once. |
+| **Polling interval (seconds)** | `60` | 30 to 600, in steps of 5. |
+| **Departures to fetch** | `20` | 1 to 30. How many departures to ask for per refresh; the integration asks for a few extra so the realtime sort stays complete. Raise it if a tight card filter leaves too few rows. |
+| **Show onward stops** | off | Adds each trip's remaining stops with live arrival times. Roughly triples the data per refresh, so the departure list is shortened to 10 while it is on. |
 
-### Card
+## Options
 
-| Field | Default | Notes |
+Open **Settings → Devices & services → Linz Linien Austria → Configure**.
+
+| Field | Default | Description |
 |---|---|---|
-| `entity` | required | Pick a `sensor.*_next_departure` from this integration. |
-| `name` | (auto) | Optional override for the card heading. |
-| `lines` | (none) | Card-side line filter — array of line numbers, e.g. `["2", "45"]`. Empty = no filter. |
-| `line_directions` | (none) | Per-line direction filter, e.g. `{"2": "H"}`. A line listed here shows only that direction; a line left out shows both. Per line because `dir_code` is defined per line — "H" on line 2 and "H" on line 46 are unrelated directions of travel. Keys on the stable `dir_code` rather than the headsign, so short-turning trips that still serve your direction are kept. Departures without a `dir_code` (replacement services) always pass. In the visual editor each line's buttons name the destination they head for. |
-| `walk_times` | (none) | Per-line walk time in minutes, e.g. `{"2": 5}`. Departures whose effective countdown is below this value are dropped. |
-| `line_colors` | (none) | Per-line colour override, e.g. `{"2": "#1565c0"}`. |
-| `show_hero` | `true` | Show the big "next departure" countdown block. |
-| `show_platform` | `false` | Show the Steig in the subtitle and at the right edge of each row. |
-| `show_absolute_time` | `false` | Show the wall-clock departure time as well as the countdown — in front of the countdown on a row (`15:44  4 Min`), so the minutes stay lined up at the right edge, and beside the destination in the next-departure block, where putting it under the big number would push the line and destination away from it. When the next-departure block groups several departures, each shows its own time: they share a countdown rounded to the minute but not a departure minute, so two entries at *Jetzt* can read 10:42 and 10:43. Uses the realtime prediction when the countdown beside it is also realtime-corrected, the scheduled time otherwise. |
-| `show_delay_colors` | `true` | Colour the countdown red when a departure runs late and blue when it runs early, and the onward-stop times the same way. Set `false` to show every time in the default colour. Cancelled trips stay red. |
-| `show_alerts` | `true` | Show the collapsible service-disruption banner. |
-| `hide_header` | `false` | Hide the icon-tile + stop name + subtitle row for a denser tile. |
-| `pulse_live` | `true` | Pulse animation on the green Live bullet. `prefers-reduced-motion` overrides regardless. |
-| `enable_animations` | `false` | One-shot card-mount fade plus longer transitions on recolouring elements. |
-| `max_departures` | (none) | Cap rendered rows. `0` = hero-only mode. Card-side filters trim BEFORE this cap. |
+| **Polling interval (seconds)** | `60` | As in *Setup*. |
+| **Departures to fetch** | `20` | As in *Setup*. |
+| **Lines to keep (empty = all)** | empty | The lines and directions to keep, listed by destination ("2 → solarCity"). Other departures never reach the sensor. The list fills once the stop has been fetched. |
+| **Show onward stops** | off | As in *Setup*. |
 
-## Use cases
+## Entities
 
-- "When does the next tram leave?" — show the bare countdown on a
-  glance dashboard.
-- "Should I leave now?" — automation that sends a notification when a
-  specific line is N minutes away.
-- "Live departure board" — drop the bundled card next to your weather
-  card and you've got a station monitor.
+### Sensor
 
-## Lovelace card example
+| Entity | Example | State |
+|---|---|---|
+| Next departure | `sensor.linz_donau_hauptbahnhof_next_departure` | Minutes until the next departure (device class duration), realtime-corrected where the upstream has realtime data, scheduled otherwise. |
+
+The sensor has no state class, so Home Assistant keeps no long-term statistics for it. Each entry is one device, made by **LINZ AG LINIEN**, model **EFA Echtzeit**.
+
+### Attributes
+
+| Attribute | Description |
+|---|---|
+| `departures` | Upcoming departures, sorted by realtime arrival with cancelled trips last, at most 45. See the table below. |
+| `departures_count` | Number of departures in the list. |
+| `next_line`, `next_direction`, `next_mot` | Line, destination and mode of transport of the first departure. |
+| `next_delay_minutes`, `next_delay_hint` | Its delay, and the operator's reason when one is published. |
+| `next_is_realtime`, `next_is_cancelled` | Whether it is realtime-tracked, and whether it is cancelled (true only when every departure is). |
+| `next_scheduled`, `next_realtime` | Its scheduled and predicted departure time (ISO). |
+| `next_stop_bay` | Its named bay, for example `Hauptbahnhof (Busterminal)`. |
+| `alerts`, `alerts_count` | Disruption notices affecting a line at this stop, plus system-wide notices. |
+| `lines_at_stop` | Every line in the stop's current timetable, including night, rush-hour and seasonal lines with nothing due right now. |
+| `line_destinations` | The same per direction: `{"2": {"H": "solarCity", "R": "Universität"}}`. A direction appears only if it runs from this stop. |
+| `stop_id`, `stop_name`, `resolved_stop` | The configured stop, and the stop as the upstream last returned it. |
+| `latitude`, `longitude` | The stop's position, once the first fetch has returned it. |
+| `attribution` | `Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0` |
+
+`departures`, `alerts`, `lines_at_stop`, `line_destinations`, `next_scheduled` and `next_realtime` are not written to the recorder.
+
+Each item in `departures`:
+
+| Key | Description |
+|---|---|
+| `line`, `direction`, `origin` | Line number, destination and origin. |
+| `dir_code` | The operator's direction code, `H` or `R`, defined per line. Missing on replacement services. |
+| `mot`, `mot_name` | Mode of transport, as number and name. |
+| `countdown`, `countdown_rt` | Minutes until departure: scheduled, and realtime-corrected. |
+| `scheduled`, `realtime`, `is_realtime` | Departure times (ISO) and whether a realtime prediction exists. |
+| `delay_minutes`, `delay_hint` | Delay and the operator's reason for it. |
+| `platform`, `stop_bay`, `operator` | Platform number, named bay and operating company. |
+| `is_cancelled`, `trip_status` | Cancellation flag and the upstream's trip status. |
+| `stops_ahead` | With **Show onward stops** on: the remaining stops, each with `name`, `stop_id`, `arrival` and `delay_minutes`. |
+
+Each item in `alerts` carries `info_id`, `title`, `description`, `description_html`, `affected_lines`, `info_type`, `priority`, `valid_from`, `valid_to` and `created`.
+
+## Cards
+
+The integration registers the card resource itself. If your dashboards run in YAML mode, add it by hand:
+
+```yaml
+resources:
+  - url: /linz-linien-austria/linz-linien-austria-card.js
+    type: module
+```
+
+Minimal card:
 
 ```yaml
 type: custom:linz-linien-austria-card
 entity: sensor.linz_donau_hauptbahnhof_next_departure
-show_hero: true
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `entity` | required | A `sensor.*_next_departure` from this integration. |
+| `name` | stop name | Card heading. |
+| `lines` | all | Lines to show, for example `["2", "45"]`. |
+| `line_directions` | both | One direction per line, for example `{"2": "H"}`. The editor labels each button with its destination. Departures without a direction code always show. |
+| `walk_times` | none | Your walk to the stop in minutes per line, for example `{"2": 5}`. Departures you can't reach in time are hidden. |
+| `line_colors` | mode colour | Badge colour per line, for example `{"2": "#1565c0"}`. |
+| `max_departures` | all | Rows to show. `0` shows only the next-departure block. Filters apply first. |
+| `show_hero` | `true` | Show the large next-departure countdown. |
+| `show_platform` | `false` | Show the platform (Steig, or Gleis for trains). |
+| `show_absolute_time` | `false` | Show the departure time next to the countdown. |
+| `show_delay_colors` | `true` | Colour times red when late and blue when early. Cancelled trips stay red. |
+| `show_alerts` | `true` | Show the disruption banner, limited to lines visible on the card. |
+| `hide_header` | `false` | Hide the stop name and icon row. |
+| `pulse_live` | `true` | Pulse the realtime dot. Reduced motion turns it off. |
+| `enable_animations` | `false` | Fade the card in and animate colour changes. |
+
+With **Show onward stops** on, select a departure (or press Enter or Space on it) to unfold the rest of its trip.
+
+## Data updates
+
+- Each stop is polled at its polling interval (see *Setup*). All entries share one 15-second cooldown, so stops are fetched one after another, never at once.
+- After a second failed poll in a row, the interval doubles on every further failure, up to 30 minutes. The first successful poll restores your interval.
+- After 10 minutes of errors from the departure service, a Repairs issue says the fault is on LINZ AG LINIEN's side. It clears itself once departures return. A rate-limit reply raises its own Repairs issue.
+- Disruption notices are fetched every 5 minutes in one request for all stops. If that fails, the notices already shown stay, and the wait between tries doubles from the second failure, up to 30 minutes.
+- Saving options or editing a dashboard triggers at most one extra refresh per 15 seconds.
+- Responses arrive gzip-compressed. Requests identify themselves as `HomeAssistant/<version> linz_linien_austria/<version>`.
+
+## Examples
+
+- Show the countdown on a glance dashboard: "when does the next tram leave?"
+- Get a notification when your line is a few minutes away, so you leave on time.
+- Put the card next to your weather card as a departure board by the door.
+- Get told when a disruption notice affects the line you take to work.
+
+Notify when tram 2 towards solarCity is less than 4 minutes away:
+
+```yaml
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.linz_donau_hauptbahnhof_next_departure
+    below: 4
+conditions:
+  - condition: template
+    value_template: >-
+      {{ state_attr('sensor.linz_donau_hauptbahnhof_next_departure', 'next_line') == '2'
+         and state_attr('sensor.linz_donau_hauptbahnhof_next_departure', 'next_direction') == 'solarCity' }}
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      title: "Tram 2 in {{ states('sensor.linz_donau_hauptbahnhof_next_departure') }} min"
+      message: Time to head out.
+```
+
+<details>
+<summary>Notify when a disruption notice affects line 2</summary>
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: sensor.linz_donau_hauptbahnhof_next_departure
+    attribute: alerts_count
+conditions:
+  - condition: template
+    value_template: >-
+      {{ state_attr('sensor.linz_donau_hauptbahnhof_next_departure', 'alerts')
+         | selectattr('affected_lines', 'contains', '2') | list | count > 0 }}
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      title: Line 2 disruption
+      message: >-
+        {{ (state_attr('sensor.linz_donau_hauptbahnhof_next_departure', 'alerts')
+            | selectattr('affected_lines', 'contains', '2') | first).title }}
+```
+
+</details>
+
+<details>
+<summary>A card with filters, walk times and a custom line colour</summary>
+
+```yaml
+type: custom:linz-linien-austria-card
+entity: sensor.linz_donau_hauptbahnhof_next_departure
 show_platform: true
 show_absolute_time: true
 max_departures: 8
 lines: ["2", "3", "45"]
-# One direction per line. "H" / "R" are the operator's own codes and
-# are scoped to each line's own route, so they are set per line rather
-# than card-wide; the visual editor labels them with destinations.
 line_directions:
   "2": "H"
 walk_times:
@@ -344,136 +254,61 @@ line_colors:
   "2": "#1565c0"
 ```
 
-## Automation example
+</details>
 
-```yaml
-# Notify when the next tram 2 toward solarCity is 3 minutes out.
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.linz_donau_hauptbahnhof_next_departure
-    below: 4
-condition:
-  - condition: template
-    value_template: >-
-      {{ state_attr('sensor.linz_donau_hauptbahnhof_next_departure',
-                    'next_line') == '2' and
-         state_attr('sensor.linz_donau_hauptbahnhof_next_departure',
-                    'next_direction') == 'solarCity' }}
-action:
-  - service: notify.mobile_app_phone
-    data:
-      title: Tram 2 in {{ states('sensor.linz_donau_hauptbahnhof_next_departure') }} min
-      message: Time to head out.
-```
+## Known limitations
 
-## Service-disruption alerts
-
-Active line-info / stop-info notices are fetched from
-`XML_ADDINFO_REQUEST` on a domain-wide 5-minute cadence (one shared
-request, regardless of how many entries you have). Each
-`next_departure` sensor surfaces the alerts whose `affected_lines`
-overlap the lines currently serving its stop, plus any system-wide
-notices, via the `alerts` state attribute.
-
-The bundled card renders them as a collapsible banner above the
-departure list. Click the chevron to expand. The banner is
-pre-filtered to alerts that touch a line you'll actually see in the
-card (after your `lines` filter), so disruptions for routes you've
-narrowed away don't surface.
+- An entry covers one stop. To monitor a different stop, add a new entry; **Reconfigure** can't change the stop.
+- Every stop is a request of its own, since the service can't return several stops at once. With the shared 15-second cooldown, four or more stops at the default interval are polled less often than you set; raise the interval to match.
+- `departures` holds at most 45 entries. At a busy stop like Hauptbahnhof that covers only a few minutes.
+- With **Show onward stops** on, at most 10 departures are fetched.
+- Realtime data, delay reasons and named bays appear only where LINZ AG LINIEN publishes them. Other departures show scheduled times.
+- Replacement services carry no direction code, so the card's direction filter always shows them.
 
 ## Troubleshooting
 
-- **"Cannot connect" during setup.** The EFA endpoint occasionally
-  returns 5xx during scheduled maintenance windows. Retry in a
-  minute. If it persists, verify connectivity to
-  `https://www.linzag.at/static/XML_DM_REQUEST?outputFormat=JSON`.
-- **Sensor unavailable, banner says "rate limit hit".** The
-  integration has hit the upstream's rate floor — usually because
-  too many entries are polling on a tight interval. Raise the scan
-  interval in the options flow or remove redundant entries. The
-  banner clears automatically on the next successful refresh. The
-  coordinator's exponential backoff also widens the polling cadence
-  on consecutive failures so a sustained outage doesn't keep
-  hammering.
-- **Sensors appear one after another after a restart.** Entries share
-  the 15-second domain-wide cooldown, so each stop's first poll waits
-  a slot behind the one before it: with three stops, the third sensor
-  lands around 30 seconds in. Nothing is wrong and nothing is lost —
-  the board fills as each poll returns, and only the first cycle is
-  staggered this way. With four or more stops, raise the scan interval
-  so the cadence you configured is the cadence you get.
-- **The direction filter still shows the other direction.** Rows that
-  carry no `dir_code` pass the filter by design — the upstream omits
-  the code on replacement services, and silently hiding a
-  Schienenersatzverkehr would be the worse failure. A stop where both
-  directions share a code is a data problem upstream; check the
-  `departures` attribute on the sensor to see what the operator
-  publishes. Note the filter is per line: setting a direction on the 2
-  does not constrain the 46.
-- **Card shows fewer rows than `max_departures`.** Card-side filters
-  (`lines`, `walk_times`, `line_directions`) trim rows BEFORE the display
-  cap, and the
-  integration only fetches `Departures to fetch` rows from upstream.
-  Raise the integration's `Departures to fetch` so the card has more
-  pre-filter rows to draw from. (Editor helper text spells this out
-  in both the lines-filter and max-departures fields.)
-- **Line filter looks empty after updating to 0.7.0.** The filter's
-  storage format changed and is migrated on upgrade. If the upstream was
-  unreachable at that moment, the migration is finished on the next
-  successful refresh instead — the stop shows every line until then. A
-  line whose destination has changed since you selected it can't be
-  matched and is dropped, with the reason logged; re-select it in the
-  options flow.
-- **Card shows "No upcoming departures."** The stop has no scheduled
-  service in the next ~2 hours (Linz at 03:00). Confirm via the
-  LinzMobil app; if real departures exist there, file a bug with a
-  diagnostics download attached.
-- **Card says *Can't reach LINZ AG LINIEN*.** The sensor is
-  unavailable because its last poll of LINZ AG LINIEN failed, or none
-  has worked since Home Assistant started. Check **Settings → Repairs**.
-  If the outage issue is there, the fault is on LINZ AG LINIEN's side
-  and departures return on their own. If it isn't, check that your
-  Home Assistant host can reach the internet.
-- **Diagnostics for bug reports.** Settings → Devices & Services →
-  Linz Linien Austria → ⋯ → Download diagnostics. Coordinate strings
-  are redacted automatically.
-- **Debug logs.**
-  ```yaml
-  # configuration.yaml
-  logger:
-    default: info
-    logs:
-      custom_components.linz_linien_austria: debug
-  ```
+- **"Could not reach LINZ AG LINIEN" during setup.** The service sometimes fails during maintenance. Try again in a minute; if it persists, check that Home Assistant can reach `https://www.linzag.at/static`.
+- **Repairs shows "Linz Linien Austria rate limit hit".** Too many entries poll too often. Raise the polling interval or remove stops you don't need. The issue clears after the next successful poll.
+- **Sensors appear one after another after a restart.** Each stop's first poll waits its turn behind the shared 15-second cooldown, so the third stop lands about 30 seconds in. Only the first round is staggered.
+- **The card shows "Can't reach LINZ AG LINIEN".** The last poll failed, or none has worked since Home Assistant started. If **Settings → Repairs** has the outage issue, the fault is upstream and departures return on their own. If not, check your Home Assistant host's internet connection.
+- **The card shows fewer rows than `max_departures`.** Card filters remove rows before the limit applies, and the sensor holds only what **Departures to fetch** asked for. Raise **Departures to fetch**.
+- **The direction filter still shows the other direction.** Those rows carry no direction code (replacement services). The filter is per line: a direction set on the 2 doesn't affect the 46.
+- **The line filter looks empty after an update from a version before 0.7.0.** The filter is migrated on update. If LINZ AG LINIEN was unreachable then, it finishes on the next successful poll. A line whose destination has changed since can't be matched and is dropped (the log says which); select it again under **Options**.
+- **The card shows "No upcoming departures".** Nothing is scheduled at the stop soon (Linz at 03:00). If the LinzMobil app shows departures, open an issue and attach diagnostics.
 
-## Events
+To download diagnostics, go to **Settings → Devices & services → Linz Linien Austria**, open the entry's ⋮ menu and select **Download diagnostics**. Stop coordinates are redacted.
 
-This integration does not currently fire HA bus events. State-change
-triggers on the sensor itself are sufficient for typical automations.
+To turn on debug logging, add this to `configuration.yaml` and restart:
+
+```yaml
+logger:
+  logs:
+    custom_components.linz_linien_austria: debug
+```
 
 ## Removal
 
-1. **Settings → Devices & Services** → find Linz Linien Austria → ⋯
-   → **Delete**.
-2. The bundled Lovelace card resource is auto-removed when the
-   *last* config entry is deleted.
-3. Remove `custom_components/linz_linien_austria/` from the HA
-   config (manual installs only; HACS removes it automatically).
+1. Go to **Settings → Devices & services → Linz Linien Austria**, open each entry's ⋮ menu and select **Delete**. Deleting the last entry also removes the card resource.
+2. In **Settings → Marketplace**, open **Linz Linien Austria**, then ⋮ → **Uninstall**. If an entry is still set up, the Marketplace offers **Delete and uninstall**, and a Repairs issue asks you to restart.
 
-## License & attribution
+On Home Assistant older than 2026.11, remove it in HACS instead and restart. For a manual install, delete `config/custom_components/linz_linien_austria/` and restart.
 
-This integration is licensed under [MIT](LICENSE).
+## Attribution
 
-Data is sourced from LINZ AG LINIEN's open EFA endpoint, which
-carries a CC BY 4.0 attribution requirement. See
-[ATTRIBUTION](ATTRIBUTION) for the contractual wording. The
-integration emits this string on every sensor via the `attribution`
-state attribute, and the bundled card displays it in its footer.
+Departure, stop and disruption data: LINZ AG LINIEN GmbH, [Elektronische Fahrplanauskunft der LINZ AG LINIEN](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The sensor carries `Datenquelle: LINZ AG LINIEN (data.linz.gv.at), CC BY 4.0` in its `attribution` attribute, and the card shows it in its footer. Full wording: [ATTRIBUTION](https://github.com/rolandzeiner/linz-linien-austria/blob/main/ATTRIBUTION).
+
+Icon: Font Awesome Free, CC BY 4.0.
+
+## License
+
+MIT, see [LICENSE](https://github.com/rolandzeiner/linz-linien-austria/blob/main/LICENSE).
+
+Development setup and the verification gate: [CONTRIBUTING.md](https://github.com/rolandzeiner/linz-linien-austria/blob/main/CONTRIBUTING.md).
 
 ## Disclaimer
 
-This integration is not affiliated with or endorsed by LINZ AG LINIEN GmbH. All departure, stop, and service-disruption data is provided by LINZ AG LINIEN's [open EFA endpoint](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/) and published under the Creative Commons Attribution (CC BY 4.0) license. The developer assumes no liability for the accuracy, completeness, or timeliness of the displayed departures, including delays, cancellations, or disruptions. Use at your own risk.
+This integration is not affiliated with or endorsed by LINZ AG LINIEN GmbH. Departure, stop and disruption data comes from the [LINZ AG LINIEN timetable service](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/) under CC BY 4.0. **Departures, delays and cancellations can change at short notice; check the display at the stop or the LinzMobil app before you rely on a connection.** The developer assumes no liability for the accuracy, completeness or timeliness of the displayed data. Use at your own risk.
 
 ---
 
-Diese Integration steht in keiner Verbindung zur LINZ AG LINIEN GmbH und wird von dieser nicht unterstützt. Alle Abfahrts-, Haltestellen- und Verkehrsmeldungsdaten stammen von der [offenen EFA-Schnittstelle der LINZ AG LINIEN](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/) und werden unter der Creative-Commons-Lizenz Namensnennung 4.0 (CC BY 4.0) veröffentlicht. Für die Richtigkeit, Vollständigkeit und Aktualität der angezeigten Abfahrten — einschließlich Verspätungen, Ausfällen oder Störungen — wird keine Haftung übernommen. Nutzung auf eigene Verantwortung.
+Diese Integration steht in keiner Verbindung zur LINZ AG LINIEN GmbH und wird von ihr nicht unterstützt. Abfahrts-, Haltestellen- und Störungsdaten stammen von der [Fahrplanauskunft der LINZ AG LINIEN](https://data.linz.gv.at/katalog/linz_ag/linz_ag_linien/) und stehen unter CC BY 4.0. **Abfahrten, Verspätungen und Ausfälle können sich kurzfristig ändern; prüf die Anzeige an der Haltestelle oder die LinzMobil-App, bevor du dich auf eine Verbindung verlässt.** Für die Richtigkeit, Vollständigkeit und Aktualität der angezeigten Daten wird keine Haftung übernommen. Nutzung auf eigene Verantwortung.
