@@ -11,22 +11,18 @@ Live departures for any stop in and around Linz, from the [LINZ AG LINIEN](https
 
 ## Screenshots
 
-### Cards
-
 <table>
   <tr>
     <td align="center"><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/card.webp" height="320" alt="Lovelace card" /></td>
     <td align="center"><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/card-config.webp" height="320" alt="Card editor" /></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/config-flow.webp" height="320" alt="Config flow" /></td>
   </tr>
   <tr>
     <td align="center"><em>Lovelace card</em></td>
     <td align="center"><em>Card editor</em></td>
+    <td align="center"><em>Config flow</em></td>
   </tr>
 </table>
-
-### Setup
-
-<img src="https://raw.githubusercontent.com/rolandzeiner/linz-linien-austria/main/screenshots/config-flow.webp" height="320" alt="Config flow" />
 
 ## Features
 
