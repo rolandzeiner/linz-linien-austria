@@ -182,8 +182,33 @@ export class LinzLinienAustriaCard extends LitElement {
     return oldHass.states[this.config.entity] !== this.hass.states[this.config.entity];
   }
 
+  /** Height in 50 px units, which masonry balances its columns with and
+   *  a sections cell starts from when "Fit height to content" is switched
+   *  off. Each section's height was measured in a 525 px column, the
+   *  departure rows included (a narrower card wraps more and runs taller):
+   *  footer and padding 30, header 52, alerts banner 56, hero 66, list
+   *  8 + 43 per row, where an empty list still shows one row. */
   public getCardSize(): number {
-    return 6;
+    const stateObj = this.config.entity ? this.hass?.states[this.config.entity] : undefined;
+    const all = (stateObj?.attributes.departures as Departure[] | undefined) ?? [];
+    const { filtered } = filterDepartures(all, this.config);
+    const hero = this.config.show_hero ? this._computeHeroGroup(filtered).length : 0;
+    const cap =
+      typeof this.config.max_departures === "number"
+        ? Math.max(0, this.config.max_departures)
+        : Infinity;
+    const rows = Math.max(1, Math.min(cap, filtered.length - hero));
+    const alerts =
+      this.config.show_alerts &&
+      visibleAlerts((stateObj?.attributes.alerts as AlertInfo[] | undefined) ?? [], filtered)
+        .length > 0;
+    const px =
+      30 +
+      (this.config.hide_header ? 0 : 52) +
+      (alerts ? 56 : 0) +
+      (hero > 0 ? 66 : 0) +
+      (cap === 0 ? 0 : 8 + 43 * rows);
+    return Math.ceil(px / 50);
   }
 
   public getGridOptions(): {
@@ -192,7 +217,22 @@ export class LinzLinienAustriaCard extends LitElement {
     min_columns: number;
     min_rows: number;
   } {
-    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
+    // min_rows measured: below 5 rows a 240 px card (six columns) can no
+    // longer fit its header, alerts banner, hero and footer, so the
+    // departure list has nothing left to scroll in.
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 5 };
+  }
+
+  // True in a sections cell with a set number of rows, where the height is
+  // the cell's and the departure list has to scroll inside it. The rows in
+  // force are the stored ones when the user resized the card, else the
+  // default; testing the stored value alone would miss a numeric default,
+  // and testing the default alone a user's resize. Outside a sections cell
+  // (masonry, a stack, the picker) the card takes its natural height.
+  private get _fixedHeight(): boolean {
+    if (this.layout !== "grid") return false;
+    const stored = (this.config.grid_options as { rows?: unknown } | undefined)?.rows;
+    return typeof (stored ?? this.getGridOptions().rows) === "number";
   }
 
   /** Lit's textbook one-shot init hook — fires after the first render
@@ -296,6 +336,7 @@ export class LinzLinienAustriaCard extends LitElement {
         class=${classMap({
           "no-pulse": !pulseLive,
           "with-animations": enableAnimations,
+          "fixed-height": this._fixedHeight,
         })}
       >
         ${renderVersionBanner(this._versionMismatch, ctx)}

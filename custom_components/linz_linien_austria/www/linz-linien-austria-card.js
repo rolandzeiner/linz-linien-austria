@@ -190,6 +190,27 @@ if(super(e),e.type!==Ne.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
     --linz-metric-size: 2.75rem;
   }
 
+  /* A set number of rows (_fixedHeight in the card): the height is the
+     cell's, so the departure list takes what is left and scrolls, the way
+     HA's logbook and calendar cards fit a list into their cell. Everything
+     else keeps its natural height. Only here, because a flex column stops
+     the vertical margins between the sections collapsing, which would move
+     them by a few pixels in every auto-height card too. */
+  ha-card.fixed-height {
+    display: flex;
+    flex-direction: column;
+  }
+  ha-card.fixed-height > * {
+    flex-shrink: 0;
+  }
+  ha-card.fixed-height > .departures {
+    flex: 1 1 auto;
+    /* min-block-size: 0 is what lets a flex child shrink below its
+       content size; without it overflow-y never engages. */
+    min-block-size: 0;
+    overflow-y: auto;
+  }
+
   ha-card {
     overflow: hidden;
     container-type: inline-size;
@@ -1709,7 +1730,7 @@ if(super(e),e.type!==Ne.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
         ${this._renderLinesFilter()}
         ${this._renderPerLineSection()}
       </div>
-    `}static{this.styles=jt}};Z([z({attribute:!1})],Q.prototype,`hass`,void 0),Z([B()],Q.prototype,`_config`,void 0),Q=Z([Ae(`linz-linien-austria-card-editor`)],Q),window.customCards=window.customCards||[],window.customCards.push({type:`linz-linien-austria-card`,name:`Linz Linien Austria`,description:`Live LINZ AG LINIEN departure monitor.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/linz-linien-austria`,getEntitySuggestion:(e,t)=>!t.startsWith(`sensor.`)||e?.entities?.[t]?.platform!==`linz_linien_austria`?null:{config:{type:`custom:linz-linien-austria-card`,entity:t}}});var $=class extends R{constructor(...e){super(...e),this._versionMismatch=null,this._versionCheckDone=!1,this._expandedStops=/* @__PURE__ */ new Set}static getConfigElement(){return document.createElement(`linz-linien-austria-card-editor`)}static getStubConfig(e){let t={};if(!e)return t;let n=Object.keys(e.states).find(t=>{if(!t.startsWith(`sensor.`))return!1;let n=e.states[t]?.attributes;return n!==void 0&&typeof n.stop_id==`string`&&Array.isArray(n.departures)});return n&&(t.entity=n),t}setConfig(e){if(!e||typeof e!=`object`)throw Error(`Invalid configuration / Ungültige Konfiguration`);this.config=Pt(e)}_t(e,t){return G(e,{configLanguage:this.config?.language,hassLanguage:this.hass?.language},t)}shouldUpdate(e){if(!this.config)return!1;if(e.has(`config`)||e.has(`layout`))return!0;let t=e.get(`hass`);return!t||t.language!==this.hass.language?!0:this.config.entity?t.states[this.config.entity]!==this.hass.states[this.config.entity]:!1}getCardSize(){return 6}getGridOptions(){return{columns:12,rows:`auto`,min_columns:6,min_rows:4}}firstUpdated(){this._maybeRunVersionCheck()}updated(e){this._maybeRunVersionCheck()}_maybeRunVersionCheck(){!this._versionCheckDone&&this.hass&&(this._versionCheckDone=!0,xt(this.hass).then(e=>{e&&this.isConnected&&(this._versionMismatch=e)}))}render(){let e={configLanguage:this.config?.language,hassLanguage:this.hass?.language};if(!this.hass)return k`<ha-card><div class="card-content">…</div></ha-card>`;if(!this.config.entity)return k`<ha-card>
+    `}static{this.styles=jt}};Z([z({attribute:!1})],Q.prototype,`hass`,void 0),Z([B()],Q.prototype,`_config`,void 0),Q=Z([Ae(`linz-linien-austria-card-editor`)],Q),window.customCards=window.customCards||[],window.customCards.push({type:`linz-linien-austria-card`,name:`Linz Linien Austria`,description:`Live LINZ AG LINIEN departure monitor.`,preview:!0,documentationURL:`https://github.com/rolandzeiner/linz-linien-austria`,getEntitySuggestion:(e,t)=>!t.startsWith(`sensor.`)||e?.entities?.[t]?.platform!==`linz_linien_austria`?null:{config:{type:`custom:linz-linien-austria-card`,entity:t}}});var $=class extends R{constructor(...e){super(...e),this._versionMismatch=null,this._versionCheckDone=!1,this._expandedStops=/* @__PURE__ */ new Set}static getConfigElement(){return document.createElement(`linz-linien-austria-card-editor`)}static getStubConfig(e){let t={};if(!e)return t;let n=Object.keys(e.states).find(t=>{if(!t.startsWith(`sensor.`))return!1;let n=e.states[t]?.attributes;return n!==void 0&&typeof n.stop_id==`string`&&Array.isArray(n.departures)});return n&&(t.entity=n),t}setConfig(e){if(!e||typeof e!=`object`)throw Error(`Invalid configuration / Ungültige Konfiguration`);this.config=Pt(e)}_t(e,t){return G(e,{configLanguage:this.config?.language,hassLanguage:this.hass?.language},t)}shouldUpdate(e){if(!this.config)return!1;if(e.has(`config`)||e.has(`layout`))return!0;let t=e.get(`hass`);return!t||t.language!==this.hass.language?!0:this.config.entity?t.states[this.config.entity]!==this.hass.states[this.config.entity]:!1}getCardSize(){let e=this.config.entity?this.hass?.states[this.config.entity]:void 0,{filtered:t}=Dt(e?.attributes.departures??[],this.config),n=this.config.show_hero?this._computeHeroGroup(t).length:0,r=typeof this.config.max_departures==`number`?Math.max(0,this.config.max_departures):1/0,i=Math.max(1,Math.min(r,t.length-n)),a=this.config.show_alerts&&Ot(e?.attributes.alerts??[],t).length>0,o=30+(this.config.hide_header?0:52)+(a?56:0)+(n>0?66:0)+(r===0?0:8+43*i);return Math.ceil(o/50)}getGridOptions(){return{columns:12,rows:`auto`,min_columns:6,min_rows:5}}get _fixedHeight(){return this.layout===`grid`&&typeof(this.config.grid_options?.rows??this.getGridOptions().rows)==`number`}firstUpdated(){this._maybeRunVersionCheck()}updated(e){this._maybeRunVersionCheck()}_maybeRunVersionCheck(){!this._versionCheckDone&&this.hass&&(this._versionCheckDone=!0,xt(this.hass).then(e=>{e&&this.isConnected&&(this._versionMismatch=e)}))}render(){let e={configLanguage:this.config?.language,hassLanguage:this.hass?.language};if(!this.hass)return k`<ha-card><div class="card-content">…</div></ha-card>`;if(!this.config.entity)return k`<ha-card>
         ${wt(this._versionMismatch,e)}
         <div class="card-content empty-state" role="status">
           ${this._t(`common.no_entity_picked`)}
@@ -1721,7 +1742,7 @@ if(super(e),e.type!==Ne.ATTRIBUTE||e.name!==`style`||e.strings?.length>2)throw E
         </div>
       </ha-card>`;let n=this.config.name||t.attributes.stop_name||t.attributes.friendly_name||``,r=t.attributes.departures??[],{filtered:i,anyFilterActive:a}=Dt(r,this.config),o=typeof this.config.max_departures==`number`?Math.max(0,this.config.max_departures):1/0,s=this._computeHeroGroup(i),c=this.config.show_hero?new Set(s):/* @__PURE__ */ new Set,l=i.filter(e=>!c.has(e)),u=o===0?[]:l.slice(0,o),d=Ot(t.attributes.alerts??[],i),f=!!this.config.pulse_live,p=!!this.config.enable_animations;return k`
       <ha-card
-        class=${V({"no-pulse":!f,"with-animations":p})}
+        class=${V({"no-pulse":!f,"with-animations":p,"fixed-height":this._fixedHeight})}
       >
         ${wt(this._versionMismatch,e)}
         ${this.config.hide_header?j:this._renderHeader(n,kt(t.attributes.latitude,t.attributes.longitude,t.attributes.stop_name||n),s[0])}

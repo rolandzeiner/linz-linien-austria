@@ -305,3 +305,81 @@ describe("stops ahead", () => {
     expect(stops[2]?.classList.contains("terminus")).toBe(true);
   });
 });
+
+describe("card size", () => {
+  const trip = (line: string, countdown: number) => ({
+    line,
+    direction: "Universität",
+    countdown,
+    scheduled: "2026-10-23T10:00:00+02:00",
+  });
+  const sized = (
+    config: Record<string, unknown>,
+    departures: unknown[],
+    alerts: unknown[] = [],
+  ) => {
+    const el = document.createElement("linz-linien-austria-card") as Card & {
+      getCardSize(): number;
+    };
+    el.setConfig({ type: "custom:linz-linien-austria-card", entity: "sensor.hbf", ...config });
+    el.hass = hass({
+      "sensor.hbf": { entity_id: "sensor.hbf", state: "3", attributes: { departures, alerts } },
+    });
+    return el.getCardSize();
+  };
+  const seven = [1, 3, 5, 7, 9, 11, 13].map((m, i) => trip(String(i + 1), m));
+  const alert = {
+    info_id: "a",
+    title: "Umleitung",
+    description: "",
+    description_html: "",
+    affected_lines: [],
+    info_type: "lineInfo",
+    priority: "normal",
+  };
+
+  // Rendered heights measured in a 525 px column, divided by 50.
+  it.each<[string, Record<string, unknown>, number]>([
+    ["header, alerts, hero and six rows (469 px)", { max_departures: 6 }, 10],
+    ["hero only (204 px)", { max_departures: 0 }, 5],
+    ["no header (417 px)", { max_departures: 6, hide_header: true }, 9],
+    ["one row (254 px)", { max_departures: 1 }, 6],
+  ])("follows what is shown: %s", (_, config, size) => {
+    expect(sized(config, seven, [alert])).toBe(size);
+  });
+
+  it("counts an empty list as one row", () => {
+    expect(sized({ show_hero: false }, [])).toBe(3);
+  });
+});
+
+describe("fixed height", () => {
+  const stop = () =>
+    hass({
+      "sensor.hbf": {
+        entity_id: "sensor.hbf",
+        state: "3",
+        attributes: { stop_name: "Hbf", departures: [] },
+      },
+    });
+  const fixed = async (layout: string | undefined, grid?: Record<string, unknown>) => {
+    const el = (await mount(
+      { entity: "sensor.hbf", ...(grid ? { grid_options: grid } : {}) },
+      stop(),
+    )) as Card & { layout?: string | undefined };
+    el.layout = layout;
+    await el.updateComplete;
+    return el.shadowRoot!.querySelector("ha-card")!.classList.contains("fixed-height");
+  };
+
+  // The list scrolls inside a set height only where there is one: a sections
+  // cell whose rows, stored by a resize, are a number.
+  it.each<[string, string | undefined, Record<string, unknown> | undefined, boolean]>([
+    ["a resized sections cell", "grid", { rows: 4 }, true],
+    ["a sections cell on the auto default", "grid", undefined, false],
+    ["a sections cell set back to auto", "grid", { rows: "auto" }, false],
+    ["masonry", undefined, { rows: 4 }, false],
+  ])("%s", async (_, layout, grid, expected) => {
+    expect(await fixed(layout, grid)).toBe(expected);
+  });
+});

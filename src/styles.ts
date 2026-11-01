@@ -110,6 +110,27 @@ export const cardStyles = css`
     --linz-metric-size: 2.75rem;
   }
 
+  /* A set number of rows (_fixedHeight in the card): the height is the
+     cell's, so the departure list takes what is left and scrolls, the way
+     HA's logbook and calendar cards fit a list into their cell. Everything
+     else keeps its natural height. Only here, because a flex column stops
+     the vertical margins between the sections collapsing, which would move
+     them by a few pixels in every auto-height card too. */
+  ha-card.fixed-height {
+    display: flex;
+    flex-direction: column;
+  }
+  ha-card.fixed-height > * {
+    flex-shrink: 0;
+  }
+  ha-card.fixed-height > .departures {
+    flex: 1 1 auto;
+    /* min-block-size: 0 is what lets a flex child shrink below its
+       content size; without it overflow-y never engages. */
+    min-block-size: 0;
+    overflow-y: auto;
+  }
+
   ha-card {
     overflow: hidden;
     container-type: inline-size;
