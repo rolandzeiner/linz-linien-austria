@@ -575,14 +575,9 @@ export class LinzLinienAustriaCard extends LitElement {
       const first = filtered[0];
       return first ? [first] : [];
     }
-    const cdOf = (d: Departure): number => {
-      if (typeof d.countdown_rt === "number") return d.countdown_rt;
-      if (typeof d.countdown === "number") return d.countdown;
-      return Number.POSITIVE_INFINITY;
-    };
     let minCd = Number.POSITIVE_INFINITY;
     for (const d of live) {
-      const cd = cdOf(d);
+      const cd = countdownFor(d) ?? Number.POSITIVE_INFINITY;
       if (cd < minCd) minCd = cd;
     }
     if (!Number.isFinite(minCd)) {
@@ -597,9 +592,9 @@ export class LinzLinienAustriaCard extends LitElement {
     // strict tie-only grouping so a 5-min lead doesn't pull a 6-min
     // entry into the hero.
     if (minCd <= 0) {
-      return live.filter((d) => cdOf(d) <= 0);
+      return live.filter((d) => (countdownFor(d) ?? Number.POSITIVE_INFINITY) <= 0);
     }
-    return live.filter((d) => cdOf(d) === minCd);
+    return live.filter((d) => (countdownFor(d) ?? Number.POSITIVE_INFINITY) === minCd);
   }
 
   private _renderHero(group: Departure[]): TemplateResult {

@@ -69,7 +69,7 @@ export interface LovelaceCardEditor extends HTMLElement {
 /** `bubbles: true` + `composed: true` are required so the event crosses
  *  the editor's shadow boundary and reaches the dashboard's
  *  card-editor listener. */
-export function fireEvent<T>(node: HTMLElement, type: string, detail: T): void {
+export function fireEvent(node: HTMLElement, type: string, detail: unknown): void {
   node.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
 }
 
