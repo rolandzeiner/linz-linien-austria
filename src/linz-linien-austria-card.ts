@@ -21,7 +21,8 @@ import type {
 import { translate } from "./localize/localize";
 import { motColor, motColorOrDefault, motIcon } from "./mot";
 import { accentTextColor, NEUTRAL_ACCENT_TEXT } from "./color";
-import { checkCardVersionWS, renderVersionBanner, safeHttpsUri } from "./shared-render";
+import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
+import { countdownFor, filterDepartures, mapsUrlFor, visibleAlerts } from "./departures";
 import { cardStyles } from "./styles";
 import { normaliseConfig } from "./config";
 
@@ -246,101 +247,8 @@ export class LinzLinienAustriaCard extends LitElement {
 
     const stopName =
       this.config.name || stateObj.attributes.stop_name || stateObj.attributes.friendly_name || "";
-
-    // Maps URL — prefer the stop's WGS84 position, which the integration
-    // now gets straight from the EFA (`coordOutputFormat=WGS84`). A
-    // lat/lon query lands on the actual bay; the name query below can
-    // only land on whatever Google decides the name means. The name
-    // path stays as the fallback for entries whose first fetch hasn't
-    // resolved a position yet, and carries an explicit "Linz" so
-    // non-Linz stops can't collide with same-named stops elsewhere.
-    const lat = stateObj.attributes.latitude;
-    const lon = stateObj.attributes.longitude;
-    const resolvedStopName = stateObj.attributes.stop_name || stopName;
-    const mapsQuery =
-      typeof lat === "number" && typeof lon === "number"
-        ? `${lat},${lon}`
-        : resolvedStopName
-          ? encodeURIComponent(
-              /Linz/i.test(resolvedStopName) ? resolvedStopName : `${resolvedStopName}, Linz`,
-            )
-          : "";
-    // Self-built URL — passed through `safeHttpsUri` defensively so a
-    // future contributor can't wire an upstream attribute through this
-    // binding and silently bypass the allowlist.
-    const mapsUrl = mapsQuery
-      ? safeHttpsUri(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
-      : null;
-    const openInMapsLabel = this._t("card.open_in_maps");
-    // NOTE: header icon + accent are derived from `next` further down,
-    // after `next` has been assigned. Don't reference it here — `const`
-    // TDZ would throw at render time and silently blank the card.
-
     const allDepartures = (stateObj.attributes.departures as Departure[] | undefined) ?? [];
-
-    // Card-side line filter — applied BEFORE the max-departures cap so
-    // capping doesn't accidentally hide everything that matched the
-    // user's selected lines. Empty set means "no filter, pass through".
-    const lineFilter = new Set((this.config.lines ?? []).map((l) => l.trim()).filter(Boolean));
-    // Direction filter, per line — keyed on the stable `dir_code`, never
-    // on the headsign. The upstream rewrites `direction` for branching
-    // termini (a short-turning line 2 reads "Simonystraße", not
-    // "Universität"), so filtering on it would drop trips that do serve
-    // the direction the user asked for.
-    //
-    // Per line rather than card-wide because `dir_code` is scoped to a
-    // line's own route: "H" on line 2 and "H" on line 46 point in
-    // unrelated directions, so one card-wide code cannot express "only
-    // the way I travel" at a multi-line stop.
-    //
-    // Normalised because YAML is hand-written: "h" and "H " behave like
-    // "H". Anything that is not a known code is dropped, so a typo
-    // degrades to "no filter for that line" rather than to "filter
-    // everything out". The typeof guard keeps a non-string value
-    // (`line_directions: {"2": true}`) from throwing inside render() and
-    // blanking the whole card.
-    const rawLineDirections = this.config.line_directions;
-    const dirFilter = new Map<string, "H" | "R">();
-    if (rawLineDirections && typeof rawLineDirections === "object") {
-      for (const [line, code] of Object.entries(rawLineDirections)) {
-        const norm = typeof code === "string" ? code.trim().toUpperCase() : "";
-        if (norm === "H" || norm === "R") dirFilter.set(line.trim(), norm);
-      }
-    }
-    // Walk-time (Fußweg) filter — drop any departure whose effective
-    // countdown is less than the configured walk time for that line.
-    // Keyed by the bare line number; a missing or non-positive entry
-    // means "no walk-time filter for this line".
-    const walkTimes = this.config.walk_times ?? {};
-    // Whether any card-side filter is in a position to remove rows.
-    // Derived once, here beside the filters themselves, rather than
-    // re-stated at the empty state — restating it is exactly how the
-    // walk-time filter came to be missing from that check: the list
-    // dropped rows the message then denied having dropped, so a stop
-    // that was merely out of reach on foot reported itself as having no
-    // service at all. A non-positive walk time is a no-op in the filter
-    // below and must not count here either, or a stale `"2": 0` left in
-    // saved YAML would permanently change the empty-state wording.
-    const anyFilterActive =
-      lineFilter.size > 0 ||
-      dirFilter.size > 0 ||
-      Object.values(walkTimes).some((w) => typeof w === "number" && w > 0);
-    const filtered = allDepartures.filter((d) => {
-      if (lineFilter.size > 0 && !lineFilter.has(d.line)) return false;
-      // A row without a `dir_code` passes regardless of the filter:
-      // the upstream omits the code on replacement services, and
-      // hiding a Schienenersatzverkehr is a worse failure than showing
-      // one surplus row of the opposite direction. A line with no entry
-      // in the map shows both directions.
-      const wantDir = dirFilter.get(d.line);
-      if (wantDir && d.dir_code && d.dir_code !== wantDir) return false;
-      const walk = walkTimes[d.line];
-      if (typeof walk === "number" && walk > 0) {
-        const cd = this._countdownFor(d);
-        if (cd === null || cd < walk) return false;
-      }
-      return true;
-    });
+    const { filtered, anyFilterActive } = filterDepartures(allDepartures, this.config);
 
     // The hero always uses filtered[0] regardless of `max_departures`
     // so a setting of 0 ("hero only, no list") can still pick a next
@@ -352,7 +260,6 @@ export class LinzLinienAustriaCard extends LitElement {
         ? Math.max(0, this.config.max_departures)
         : Infinity;
     const heroGroup = this._computeHeroGroup(filtered);
-    const next = heroGroup[0];
 
     // Dedupe by object identity: heroGroup members are references into
     // `filtered`, so the post-dedupe slice keeps "max 10" meaning
@@ -362,52 +269,10 @@ export class LinzLinienAustriaCard extends LitElement {
     const remaining = filtered.filter((d) => !heroDedupe.has(d));
     const departures = max === 0 ? [] : remaining.slice(0, max);
 
-    // Header icon + accent track the next departing line so the header
-    // reads as one with the hero. User line-colour override wins over
-    // the MoT default; both fall back to the tram tint when `next` is
-    // missing.
-    const headerIcon = motIcon(next?.mot);
-    const headerColor = this._userLineColor(next?.line) ?? motColor(next?.mot);
-    // The text half resolves the tram default explicitly rather than
-    // letting CSS fall back to --linz-accent: #f08000 as a glyph is
-    // 2.26:1 on a light card, so the fallback branch is exactly the one
-    // that needs clamping.
-    const headerText = this._accentText(
-      this._userLineColor(next?.line) ?? motColorOrDefault(next?.mot),
+    const alerts = visibleAlerts(
+      (stateObj.attributes.alerts as AlertInfo[] | undefined) ?? [],
+      filtered,
     );
-    const headerStyle =
-      (headerColor ? `--header-color: ${headerColor};` : "") +
-      (headerText ? `--header-text: ${headerText};` : "");
-
-    // Alerts pre-filter: only show notices whose `affected_lines` overlap
-    // a line we are *actually about to display* (i.e. survived the
-    // card-side `lines` filter and is in the upcoming-departures
-    // snapshot). System-wide notices (no `affected_lines`) fall through
-    // unfiltered. The integration-side alerts list is broader — it
-    // includes every line that serves the stop, even ones not currently
-    // departing — so this trim avoids surfacing detours for routes the
-    // user doesn't care about right now.
-    const visibleLines = new Set(filtered.map((d) => d.line).filter(Boolean));
-    const allAlerts = (stateObj.attributes.alerts as AlertInfo[] | undefined) ?? [];
-    const alerts = allAlerts.filter((a) => {
-      const affected = a.affected_lines || [];
-      if (affected.length === 0) return true; // system-wide
-      return affected.some((line) => visibleLines.has(line));
-    });
-
-    // With show_platform on, append a Steig marker. Falls back to
-    // direction-only when `_platformText()` reduces the upstream value
-    // to empty (some terminals emit "0" / "" for non-numbered bays).
-    const directionText = next?.direction || "";
-    const platformText = this.config.show_platform ? this._platformText(next) : "";
-    // The destination is upstream German; the platform label is localised.
-    const subtitle = directionText
-      ? html`<span lang="de">${directionText}</span>${
-          platformText ? ` · ${this._platformLabel(next, true)} ${platformText}` : ""
-        }`
-      : platformText
-        ? `${this._platformLabel(next, true)} ${platformText}`
-        : "";
 
     // Classes land on <ha-card> so descendant selectors in styles.ts
     // can scope the animation rules. `prefers-reduced-motion` overrides
@@ -426,7 +291,88 @@ export class LinzLinienAustriaCard extends LitElement {
         ${
           this.config.hide_header
             ? nothing
-            : html`<header class="head" style=${headerStyle}>
+            : this._renderHeader(
+                stopName,
+                mapsUrlFor(
+                  stateObj.attributes.latitude,
+                  stateObj.attributes.longitude,
+                  stateObj.attributes.stop_name || stopName,
+                ),
+                heroGroup[0],
+              )
+        }
+        ${this.config.show_alerts && alerts.length > 0 ? this._renderAlerts(alerts) : nothing}
+        ${this.config.show_hero && heroGroup.length > 0 ? this._renderHero(heroGroup) : nothing}
+        ${
+          // An unavailable sensor carries no departures, so without this
+          // the card would claim "No upcoming departures", which is what a
+          // quiet stop says too and makes an outage look like a broken
+          // install. Shown whatever `max_departures` is: a hero-only card
+          // would otherwise go blank. Doesn't say whose fault it is; the
+          // integration's Repairs issue does that.
+          stateObj.state === "unavailable"
+            ? html`<div class="empty" role="status" aria-live="polite">
+              <div class="empty-title">${this._t("card.unreachable")}</div>
+              <div class="empty-detail">${this._t("card.unreachable_detail")}</div>
+            </div>`
+            : max === 0
+              ? nothing
+              : departures.length === 0 && heroDedupe.size > 0
+                ? // Hero already shows the only departure(s); no need
+                  // for an empty placeholder row underneath.
+                  nothing
+                : this._renderList(
+                    departures,
+                    anyFilterActive && allDepartures.length > 0
+                      ? "card.no_matches_for_filter"
+                      : "card.no_departures",
+                  )
+        }
+        <div class="foot">
+          <span class="timestamp">${this._t("card.attribution")}</span>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  private _renderHeader(
+    stopName: string,
+    mapsUrl: string | null,
+    next: Departure | undefined,
+  ): TemplateResult {
+    const openInMapsLabel = this._t("card.open_in_maps");
+    // Header icon + accent track the next departing line so the header
+    // reads as one with the hero. User line-colour override wins over
+    // the MoT default; both fall back to the tram tint when `next` is
+    // missing.
+    const headerIcon = motIcon(next?.mot);
+    const headerColor = this._userLineColor(next?.line) ?? motColor(next?.mot);
+    // The text half resolves the tram default explicitly rather than
+    // letting CSS fall back to --linz-accent: #f08000 as a glyph is
+    // 2.26:1 on a light card, so the fallback branch is exactly the one
+    // that needs clamping.
+    const headerText = this._accentText(
+      this._userLineColor(next?.line) ?? motColorOrDefault(next?.mot),
+    );
+    const headerStyle =
+      (headerColor ? `--header-color: ${headerColor};` : "") +
+      (headerText ? `--header-text: ${headerText};` : "");
+
+    // With show_platform on, append a Steig marker. Falls back to
+    // direction-only when `_platformText()` reduces the upstream value
+    // to empty (some terminals emit "0" / "" for non-numbered bays).
+    const directionText = next?.direction || "";
+    const platformText = this.config.show_platform ? this._platformText(next) : "";
+    // The destination is upstream German; the platform label is localised.
+    const subtitle = directionText
+      ? html`<span lang="de">${directionText}</span>${
+          platformText ? ` · ${this._platformLabel(next, true)} ${platformText}` : ""
+        }`
+      : platformText
+        ? `${this._platformLabel(next, true)} ${platformText}`
+        : "";
+
+    return html`<header class="head" style=${headerStyle}>
               <span class="icon-tile" aria-hidden="true">
                 <ha-icon icon=${headerIcon}></ha-icon>
               </span>
@@ -454,37 +400,16 @@ export class LinzLinienAustriaCard extends LitElement {
                   </div>`
                   : nothing
               }
-            </header>`
-        }
-        ${this.config.show_alerts && alerts.length > 0 ? this._renderAlerts(alerts) : nothing}
-        ${this.config.show_hero && heroGroup.length > 0 ? this._renderHero(heroGroup) : nothing}
-        ${
-          // An unavailable sensor carries no departures, so without this
-          // the card would claim "No upcoming departures", which is what a
-          // quiet stop says too and makes an outage look like a broken
-          // install. Shown whatever `max_departures` is: a hero-only card
-          // would otherwise go blank. Doesn't say whose fault it is; the
-          // integration's Repairs issue does that.
-          stateObj.state === "unavailable"
-            ? html`<div class="empty" role="status" aria-live="polite">
-              <div class="empty-title">${this._t("card.unreachable")}</div>
-              <div class="empty-detail">${this._t("card.unreachable_detail")}</div>
-            </div>`
-            : max === 0
-              ? nothing
-              : departures.length === 0 && heroDedupe.size > 0
-                ? // Hero already shows the only departure(s); no need
-                  // for an empty placeholder row underneath.
-                  nothing
-                : html`<ul class="departures" role="list">
+            </header>`;
+  }
+
+  /** The departure list, or its one empty row. */
+  private _renderList(departures: Departure[], emptyKey: string): TemplateResult {
+    return html`<ul class="departures" role="list">
                 ${
                   departures.length === 0
                     ? html`<li class="empty">
-                      ${
-                        anyFilterActive && allDepartures.length > 0
-                          ? this._t("card.no_matches_for_filter")
-                          : this._t("card.no_departures")
-                      }
+                      ${this._t(emptyKey)}
                     </li>`
                     : repeat(
                         departures,
@@ -492,13 +417,7 @@ export class LinzLinienAustriaCard extends LitElement {
                         (d) => this._renderRow(d),
                       )
                 }
-              </ul>`
-        }
-        <div class="foot">
-          <span class="timestamp">${this._t("card.attribution")}</span>
-        </div>
-      </ha-card>
-    `;
+              </ul>`;
   }
 
   /** EFA's priority vocabulary isn't fully documented and varies across
@@ -627,7 +546,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // the block. (`.hero-meta` is gone — see the interleaving note on
     // the group.map below.)
     const lead = group[0]!;
-    const minutes = this._countdownFor(lead);
+    const minutes = countdownFor(lead);
     const minutesLabel = lead.is_cancelled
       ? this._t("card.cancelled")
       : minutes === null
@@ -852,7 +771,7 @@ export class LinzLinienAustriaCard extends LitElement {
   }
 
   private _renderRow(d: Departure): TemplateResult | TemplateResult[] {
-    const minutes = this._countdownFor(d);
+    const minutes = countdownFor(d);
     // `show_delay_colors: false` keeps every countdown in the neutral
     // default colour. Only the late/early tint goes — cancelled red and
     // the "Jetzt" line accent are states, not delay signals.
@@ -1242,7 +1161,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  agree. It is kept as the gate anyway because the two fields used to
    *  diverge — `countdown_rt` additionally required a usable `delay`
    *  (`-9999` is the unknown-sentinel and gets dropped), so a row with
-   *  `realDateTime` and no usable delay left `_countdownFor` on the
+   *  `realDateTime` and no usable delay left `countdownFor` on the
    *  scheduled value while the clock read the prediction, and the two
    *  halves of one readout disagreed by exactly the delay. A browser
    *  holding a cached card against an older integration can still meet
@@ -1256,12 +1175,6 @@ export class LinzLinienAustriaCard extends LitElement {
   private _clockTimeFor(d: Departure): string | null {
     const useRealtime = typeof d.countdown_rt === "number" && d.realtime !== undefined;
     return this._clockTime(useRealtime ? d.realtime : d.scheduled) || null;
-  }
-
-  private _countdownFor(d: Departure): number | null {
-    if (typeof d.countdown_rt === "number") return d.countdown_rt;
-    if (typeof d.countdown === "number") return d.countdown;
-    return null;
   }
 
   static override styles: CSSResultGroup = cardStyles;
