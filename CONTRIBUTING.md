@@ -13,7 +13,8 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 - Work on `dev`. PRs target `dev`.
 - Releases are tagged from `main` after merging `dev → main`.
-- Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`).
+- Conventional commits (`feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`).
+- Users install through the Marketplace (HACS before Home Assistant 2026.11), which downloads the `linz_linien_austria.zip` that `.github/workflows/release.yml` attaches to each GitHub release: a flat archive of `custom_components/linz_linien_austria/`. Nobody runs `npm` on install, so the built card bundle in `www/` is committed.
 
 ## Card-version sync
 
@@ -29,6 +30,7 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
   - **Decorators are not configured.** Rolldown reads `tsconfig.json` itself and enables Lit's legacy decorators from it. If that ever regresses, class fields overwrite Lit's accessors and reactivity dies while the build stays green — diff a built bundle's Lit reactive-property list to catch it.
 - **The `vite` override in `package.json` must name the same version as `vite-plus`.** It keeps npm from installing upstream Vite next to Vite+'s core. Dependabot bumps `vite-plus` but not the override, and `src/toolchain.test.ts` fails until you bump both.
 - **The build does not type-check.** `vp check` is the only thing between a type error and a green build, which is why the gate runs it as its own step.
+- **`lint.plugins` replaces Oxlint's defaults.** It names `typescript`, `unicorn` and `oxc` next to `vitest`; drop one and its rules stop running without a word. The `vitest/*` rules fail a committed `.only` or `.skip`, a test without an assertion, a duplicate title and a conditional `expect`, and `reportUnusedDisableDirectives` fails an `oxlint-disable` comment that no longer suppresses anything.
 - `pyproject.toml` — source of truth for ruff (target-version, line-length), mypy (strict, ignore_missing_imports, files) and coverage config. Change rules here, not in CI flags.
   - **`target-version` tracks the oldest Python we support, never the one CI runs.** `hacs.json` promises HA ≥ 2025.1.0, which runs on Python 3.12, so `target-version = "py312"` — even though the venv and CI are on 3.14. Pointing it at the CI interpreter lets ruff rewrite code into syntax our users cannot parse and then stay silent about it; that is how wiener-linien-austria v1.7.1 shipped a SyntaxError. The `compile-floor-python` CI job byte-compiles the shipped package on 3.12 as an independent backstop. Raise all three together or not at all.
 - `pytest.ini` — pytest config and the **`--cov-fail-under=90` coverage gate**. `pytest tests/` automatically runs with coverage; CI fails fast if a new commit drops coverage below the gate.
@@ -36,25 +38,27 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 ## Card tests
 
-The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract and the empty states. The departure rendering has no tests yet.
+The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract, the stub config, the empty states, the onward-stops panel and the language handling. `src/card-render.test.ts` snapshots the rendered markup across header, maps link, the line / direction / walk-time filters, hero, list cap, alerts and the empty states; a deliberate change to what the card draws updates those snapshots with `npx vp test run -u`, and the diff in `src/__snapshots__/` is part of the review. `src/editor.test.ts` covers the editor's line chips, per-line rows and form wiring (missing-entity warning, label fallback, default stripping). `src/toolchain.test.ts` guards the `vite` override (see *Tooling & config*).
 
 ## Module map (Python side)
 
-- `api.py` — EFA HTTP transport and request parameters. JSON-only; sends `const.BASE_REQUEST_HEADERS`.
+- `api.py` — every request to LINZ AG: the URLs, the request headers (`request_headers()`: User-Agent and Accept, deliberately no `Accept-Encoding`, since aiohttp's own offer already gets gzip and setting the header would narrow it), the request parameters and the `EfaApiError` hierarchy. Callers pass in the session and the User-Agent. Every new HTTP call goes through here. **`api.py`, `parser.py` and `text.py` must not import Home Assistant or `const.py`** (which pulls in HA for the User-Agent); `tests/test_api_client.py` fails on any such import.
 - `parser.py` — pure parsing of the EFA payloads into the shapes the coordinator and the card consume. No network, so it is tested against captured fixtures.
 - `text.py` — the HTML decoder shared by the alert and departure-hint parsers.
 - `coordinator.py` — `DataUpdateCoordinator` subclass with realtime-aware sort, exponential backoff on consecutive failures, and per-stop alerts slice.
-- `alerts.py` — XML_ADDINFO_REQUEST fetcher + 5-min domain-wide refresh task with refcounted lifecycle.
+- `alerts.py` — parses the XML_ADDINFO_REQUEST notices (fetched through `api.fetch_addinfo`) and runs the 5-min domain-wide refresh task with refcounted lifecycle.
 - `rate_limit.py` — lock-serialised 15 s domain-wide cooldown shared between the coordinator's departure polls and the alerts refresh.
-- `const.py` — `BASE_REQUEST_HEADERS` is the single source of truth for outbound headers (User-Agent, Accept, Accept-Encoding: gzip). Every new HTTP call site MUST send it.
+- `const.py` — config keys, cadences and the `USER_AGENT` callers pass to `api.py`.
+- `outage.py` — domain-wide outage detection: after 10 minutes of upstream-side failures it raises the `upstream_unavailable` Repairs issue, and clears it on the first good answer.
 - `migration.py` — the v1 → v2 line-filter remap, shared by `async_migrate_entry` and the coordinator's self-heal.
 - `card_registration.py` — Lovelace JS module + `?v=` cache-busting.
 - `config_flow.py`, `sensor.py`, `diagnostics.py`, `__init__.py` — standard HA platform pieces.
 
 ## CI guards
 
+- `validate.yml` runs the gate below plus hassfest, HACS validation (`hacs/action`), the floor-Python compile, a check that the committed bundle equals a fresh build, and the `_dev_fixture.py` guard.
 - A backtick inside a Lit `css` or `html` template, comments included, ends the template early, and the card then fails at load while the build stays green. `vp check` catches it.
-- `tests/test_user_agent.py` parametrises every outbound call site and asserts both `User-Agent` and `Accept-Encoding: gzip`. Adding a new HTTP call? Add it to the parametrize table.
+- `tests/test_user_agent.py` parametrises every outbound call site and asserts the `User-Agent` and that no `Accept-Encoding` is pinned. Adding a new HTTP call? Add it to the parametrize table.
 
 View per-file coverage locally:
 
@@ -77,4 +81,4 @@ pytest tests/ --cov-report=term-missing
 
 ## Fair-use note
 
-Please don't drop the `User-Agent` constant or the `Accept-Encoding: gzip` header on outbound requests, and please don't lower the `MIN_POLL_SECONDS` or `DOMAIN_COOLDOWN_SECONDS` floors without thinking carefully about the multi-stop install case. The conservative defaults are what keep this integration unobtrusive on LINZ AG's side.
+Please don't drop the `User-Agent` constant or pin an `Accept-Encoding` on outbound requests, and please don't lower the `MIN_POLL_SECONDS` or `DOMAIN_COOLDOWN_SECONDS` floors without thinking carefully about the multi-stop install case. The conservative defaults are what keep this integration unobtrusive on LINZ AG's side.

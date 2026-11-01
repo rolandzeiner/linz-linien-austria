@@ -1,20 +1,19 @@
 """Regression tests for outbound HTTP headers.
 
-Two header guarantees the integration relies on:
+Header guarantees the integration relies on:
 
 1. ``User-Agent`` — identifies this integration to LINZ AG so operators
    can rate-limit / contact us specifically. Malformed UA is silent
    failure (the integration still works, only the upstream's log parser
    breaks). Nothing flags this at build time, so we guard at test time.
-2. ``Accept-Encoding: gzip`` — the EFAController honours it and shrinks
-   bodies ~7×. Forgetting it adds 25–30 KB per refresh per entry. Same
-   silent-failure shape as the UA: the integration still works, just
-   wastes bandwidth.
+2. No ``Accept-Encoding``. aiohttp's own offer (``gzip, deflate, zstd``)
+   already gets the EFAController's ~7× gzip compression; passing the
+   header would replace that offer instead of adding to it.
 
-Every outbound call site gets a parametrised test that asserts BOTH
-headers are present. ``const.py::BASE_REQUEST_HEADERS`` is the
-single source of truth; if a future call site reaches for ``session.get``
-directly without going through it, this test will catch the drift.
+Every outbound call site gets a parametrised test that asserts both.
+``api.py::request_headers`` is the single source of truth; if a future call
+site reaches for ``session.get`` directly without going through it, this
+test will catch the drift.
 """
 
 from __future__ import annotations
@@ -29,10 +28,10 @@ from homeassistant.core import HomeAssistant
 from custom_components.linz_linien_austria.alerts import async_fetch_alerts
 from custom_components.linz_linien_austria.api import (
     fetch_departures,
+    request_headers,
     search_stops,
 )
 from custom_components.linz_linien_austria.const import (
-    BASE_REQUEST_HEADERS,
     DOMAIN,
     INTEGRATION_VERSION,
     USER_AGENT,
@@ -62,20 +61,19 @@ def test_user_agent_follows_canonical_format() -> None:
 
 def test_base_headers_carry_both_guards() -> None:
     """Single source of truth for outbound headers."""
-    assert BASE_REQUEST_HEADERS["User-Agent"] == USER_AGENT
-    assert BASE_REQUEST_HEADERS["Accept-Encoding"] == "gzip"
-    assert BASE_REQUEST_HEADERS["Accept"] == "application/json"
+    headers = request_headers(USER_AGENT)
+    assert headers == {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
 
 # --- Per-call-site assertion helpers -----------------------------------------
 
 
 async def _call_dm(session: Any) -> None:
-    await fetch_departures(session, "60501720", limit=1)
+    await fetch_departures(session, "60501720", user_agent=USER_AGENT, limit=1)
 
 
 async def _call_stopfinder(session: Any) -> None:
-    await search_stops(session, "Hauptbahnhof")
+    await search_stops(session, "Hauptbahnhof", user_agent=USER_AGENT)
 
 
 async def _call_alerts(session: Any) -> None:
@@ -103,10 +101,10 @@ async def test_outbound_call_sends_required_headers(
     caller: Any,
     body_key: str,
 ) -> None:
-    """Every outbound call site must carry both UA + gzip headers.
+    """Every outbound call site carries the UA and leaves Accept-Encoding to aiohttp.
 
     Adding a new caller? Append a row above. The test fails if the new
-    code path bypasses ``base_request_headers``.
+    code path bypasses ``request_headers``.
     """
     session = MagicMock()
     # Production sites use `async with session.get(...)`. `session.get`
@@ -118,7 +116,6 @@ async def test_outbound_call_sends_required_headers(
     assert sent["User-Agent"] == USER_AGENT, (
         f"{call_site}: missing or malformed User-Agent"
     )
-    assert sent["Accept-Encoding"] == "gzip", (
-        f"{call_site}: missing Accept-Encoding: gzip — "
-        "outbound bandwidth ~7× larger without it"
+    assert "Accept-Encoding" not in sent, (
+        f"{call_site}: Accept-Encoding would narrow aiohttp's own offer"
     )

@@ -24,7 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import EfaApiError, fetch_departures
-from .const import CONF_LINES_LEGACY, CONF_STOP_ID
+from .const import CONF_LINES_LEGACY, CONF_STOP_ID, USER_AGENT
 
 if TYPE_CHECKING:
     from .coordinator import LinzLinienAustriaConfigEntry
@@ -50,7 +50,7 @@ async def _try_fetch_roster(
     session = async_get_clientsession(hass)
     try:
         payload = await fetch_departures(
-            session, str(entry.data[CONF_STOP_ID]), limit=1
+            session, str(entry.data[CONF_STOP_ID]), user_agent=USER_AGENT, limit=1
         )
     except EfaApiError as err:
         _LOGGER.debug("Roster fetch during migration failed: %s", err)

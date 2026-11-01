@@ -16,6 +16,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import CoreState, Event, HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 
 from .alerts import (
@@ -35,6 +36,7 @@ from .const import (
 )
 from .coordinator import LinzLinienAustriaConfigEntry, LinzLinienAustriaCoordinator
 from .migration import _remap_line_keys, _try_fetch_roster
+from .outage import async_clear_outage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -275,7 +277,12 @@ async def async_remove_entry(
     No per-entry persisted state is left to clean up: the ``lines_at_stop`` Store
     this used to remove is gone as of entry schema v2 (``async_migrate_entry``
     deletes any file left behind by v1).
+
+    The entry's own Repairs issue goes every time, before that guard: nothing
+    else clears it once the coordinator is gone, and it would keep warning
+    about a stop nobody tracks any more.
     """
+    ir.async_delete_issue(hass, DOMAIN, f"rate_limited_{entry.entry_id}")
     remaining = [
         e
         for e in hass.config_entries.async_entries(DOMAIN)
@@ -283,5 +290,7 @@ async def async_remove_entry(
     ]
     if remaining:
         return
+    # Nothing is left to report an outage for.
+    async_clear_outage(hass)
     registration = JSModuleRegistration(hass)
     await registration.async_unregister()

@@ -98,6 +98,10 @@
     "rate_limited": {
       "title": "Linz Linien Austria rate limit hit",
       "description": "The upstream LINZ AG LINIEN API replied with a rate-limit error to polls for **{entry_title}**. Raise the scan interval or reduce the number of concurrent entries."
+    },
+    "upstream_unavailable": {
+      "title": "LINZ AG LINIEN isn't sending departures",
+      "description": "The LINZ AG LINIEN departure service has been answering with errors for more than 10 minutes. The fault is on LINZ AG LINIEN's side: your Home Assistant setup and your stops are fine, and there's nothing you need to change. Departures come back on their own as soon as the service works again, and this message goes away with them."
     }
   }
 }

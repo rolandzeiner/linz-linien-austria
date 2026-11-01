@@ -5,7 +5,8 @@ Covers:
 * setup → unload happy path
 * `async_remove_entry` only unregisters the Lovelace resource when the
   LAST config entry is removed (otherwise the card resource stays so
-  the surviving entry's UI keeps working)
+  the surviving entry's UI keeps working), and always deletes the
+  removed entry's own Repairs issue
 * `async_unload_entry` decrements the entry-count and stops the
   domain-wide alerts refresh on transition to zero
 """
@@ -19,6 +20,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.linz_linien_austria.api import EfaTimeoutError
@@ -123,6 +125,30 @@ async def test_remove_entry_keeps_card_when_others_remain(
         await hass.async_block_till_done()
 
     unregister.assert_not_awaited()
+
+
+async def test_remove_entry_deletes_its_repair_issue(hass: HomeAssistant) -> None:
+    """The removed entry's issue goes, even while other entries remain."""
+    entry_a = _make_entry(stop_id="60501720", title="Linz, Hauptbahnhof")
+    entry_b = _make_entry(stop_id="60501070", title="Linz, Hauptplatz")
+    for entry in (entry_a, entry_b):
+        entry.add_to_hass(hass)
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"rate_limited_{entry.entry_id}",
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="rate_limited",
+            translation_placeholders={"entry_title": entry.title},
+        )
+
+    assert await hass.config_entries.async_remove(entry_a.entry_id)
+    await hass.async_block_till_done()
+
+    registry = ir.async_get(hass)
+    assert registry.async_get_issue(DOMAIN, f"rate_limited_{entry_a.entry_id}") is None
+    assert registry.async_get_issue(DOMAIN, f"rate_limited_{entry_b.entry_id}")
 
 
 async def test_ws_card_version_returns_bundled_version(

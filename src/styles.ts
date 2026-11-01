@@ -13,19 +13,31 @@ export const cardStyles = css`
        resolution; the card just opts in. */
     color-scheme: light dark;
     display: block;
-    /* Fill the grid cell the dashboard gave us.
-       A sections view puts a fixed pixel height on the cell WRAPPER whenever
-       the card's rows are numeric -- which a user also causes by dragging the
-       row handle, since a stored grid_options overrides what getGridOptions()
-       returns -- and styles nothing inside that wrapper.
-       This host is display: block, so IT is the containing block for the
-       ha-card below, and a percentage height against a containing block whose
-       own height is auto computes to auto. Without this line ha-card therefore
-       sizes to its content, overflows a cell too short for it, and is painted
-       over the card underneath. Taking the cell's height here is what gives
-       ha-card's 100% something to resolve against.
-       In an auto-height cell it resolves to auto -- the height it already had
-       -- so it costs nothing there. */
+  }
+
+  /* Fill the grid cell the dashboard gave us.
+     A sections view puts a fixed pixel height on the cell WRAPPER whenever
+     the card's rows are numeric -- which a user also causes by dragging the
+     row handle, since a stored grid_options overrides what getGridOptions()
+     returns -- and styles nothing inside that wrapper.
+     This host is display: block, so IT is the containing block for ha-card,
+     and a percentage height against a containing block whose own height is
+     auto computes to auto. The two declarations therefore only work as a
+     pair: without the host's, ha-card sizes to its content, overflows a cell
+     too short for it, and is painted over the card underneath. ha-card's
+     overflow: hidden then clips inside the card rather than the card
+     spilling past its own cell.
+     Gated on the layout HA sets on the card ("grid" in a sections view and
+     its edit dialog, "panel" in a panel view), the way Mushroom and HA's tile
+     card gate it. The add-card picker sets none and centres each preview in
+     a tile as tall as the tallest preview in its row; an ungated 100%
+     resolves against that tile and stretches the card down to it. */
+  :host([layout="grid"]),
+  :host([layout="panel"]) {
+    block-size: 100%;
+  }
+  :host([layout="grid"]) ha-card,
+  :host([layout="panel"]) ha-card {
     block-size: 100%;
   }
 
@@ -98,14 +110,28 @@ export const cardStyles = css`
     --linz-metric-size: 2.75rem;
   }
 
-  ha-card {
-    /* Resolves against the height :host just took from the cell, so
-       overflow: hidden clips inside the card rather than the card spilling
-       past its own cell. The two declarations only work as a pair: core cards
-       that set this one alone leave :host at its default inline display, where
-       the cell wrapper is ha-card's containing block instead. */
-    block-size: 100%;
+  /* A set number of rows (_fixedHeight in the card): the height is the
+     cell's, so the departure list takes what is left and scrolls, the way
+     HA's logbook and calendar cards fit a list into their cell. Everything
+     else keeps its natural height. Only here, because a flex column stops
+     the vertical margins between the sections collapsing, which would move
+     them by a few pixels in every auto-height card too. */
+  ha-card.fixed-height {
+    display: flex;
+    flex-direction: column;
+  }
+  ha-card.fixed-height > * {
+    flex-shrink: 0;
+  }
+  ha-card.fixed-height > .departures {
+    flex: 1 1 auto;
+    /* min-block-size: 0 is what lets a flex child shrink below its
+       content size; without it overflow-y never engages. */
+    min-block-size: 0;
+    overflow-y: auto;
+  }
 
+  ha-card {
     overflow: hidden;
     container-type: inline-size;
     container-name: linzcard;
@@ -1059,12 +1085,26 @@ export const cardStyles = css`
     background: #6a1b9a;
   }
 
+  .alert-state {
+    padding: var(--ha-space-4, 16px);
+  }
   .empty-state,
   .empty {
     padding: var(--ha-space-5, 20px) var(--ha-space-4, 16px);
     text-align: center;
     color: var(--secondary-text-color);
     font-style: italic;
+  }
+  /* "Can't reach LINZ AG LINIEN": a headline the eye can find, upright so
+     it doesn't read as one more quiet empty-list remark. */
+  .empty-title {
+    color: var(--primary-text-color);
+    font-style: normal;
+    font-weight: 500;
+  }
+  .empty-detail {
+    margin-block-start: var(--ha-space-1, 4px);
+    font-size: 0.875em;
   }
 
   /* Footer — hairline divider, small text, right-pinned attribution.

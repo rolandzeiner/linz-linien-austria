@@ -34,23 +34,20 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_interval
 
+from .api import EfaApiError, EfaPayloadError, fetch_addinfo
 from .const import (
-    ADDINFO_ENDPOINT,
     ALERTS_KEY,
     ALERTS_REFRESH_SECONDS,
     ALERTS_REFRESH_UNSUB_KEY,
-    API_BASE_URL,
     BACKOFF_CAP_SECONDS,
-    BASE_REQUEST_HEADERS,
     DOMAIN,
+    USER_AGENT,
 )
 from .parser import _iso_local
 from .rate_limit import async_enforce_domain_cooldown
 from .text import decode_html
 
 _LOGGER = logging.getLogger(__name__)
-
-REQUEST_TIMEOUT_SEC = 30
 
 
 @dataclass(slots=True)
@@ -212,30 +209,13 @@ async def async_fetch_alerts(
     includes a 200 whose JSON lacks the envelope: read as "no notices",
     it cleared the cache and reset the tick's backoff on every request.
     """
-    url = f"{API_BASE_URL}{ADDINFO_ENDPOINT}"
-    params = {
-        "outputFormat": "JSON",
-        "filterPublicationStatus": "current",
-    }
-    timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SEC)
     try:
-        # `async with` pairs the response with deterministic release of
-        # the underlying connection slot. See api.py::_get_json for the
-        # detailed rationale; same pool-management concern applies here.
-        async with session.get(
-            url, params=params, headers=BASE_REQUEST_HEADERS, timeout=timeout
-        ) as resp:
-            resp.raise_for_status()
-            data = await resp.json(content_type=None)
-    except aiohttp.ClientError as err:
-        _LOGGER.debug("alerts fetch failed (network): %s", err)
-        return None
-    except (ValueError, TimeoutError) as err:
+        data = await fetch_addinfo(session, user_agent=USER_AGENT)
+    except EfaPayloadError as err:
         _LOGGER.debug("alerts fetch failed (parse): %s", err)
         return None
-
-    if not isinstance(data, dict):
-        _LOGGER.debug("alerts fetch returned non-dict payload: %r", type(data))
+    except EfaApiError as err:
+        _LOGGER.debug("alerts fetch failed (network): %s", err)
         return None
     return _parse_addinfo(data)
 

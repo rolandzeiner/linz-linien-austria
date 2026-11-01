@@ -13,10 +13,16 @@ stays free of EFA schema knowledge.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final
 
-from .const import MAX_STOPS_AHEAD
 from .text import decode_html, flatten_lines
+
+# Hard cap on onward stops kept per departure. The longest Linz routes
+# run ~30 stops end to end, so a vehicle leaving its first stop can
+# legitimately carry near that many; 25 keeps the common case whole
+# while bounding the attribute payload if the upstream ever returns
+# something pathological.
+MAX_STOPS_AHEAD: Final = 25
 
 
 def _parse_stopfinder(payload: dict[str, Any]) -> list[dict[str, Any]]:

@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .alerts import get_alerts_for_lines, served_lines_from_data
 from .api import (
     EfaApiError,
+    EfaConnectionError,
     EfaHttpError,
     EfaPayloadError,
     EfaTimeoutError,
@@ -37,8 +38,10 @@ from .const import (
     MAX_DEPARTURES_IN_ATTRS,
     MIN_POLL_SECONDS,
     SEQUENCE_UPSTREAM_LIMIT,
+    USER_AGENT,
 )
 from .migration import _has_legacy_line_filter, _remap_line_keys
+from .outage import Fault, async_note_fault, classify
 from .rate_limit import async_enforce_domain_cooldown
 
 _LOGGER = logging.getLogger(__name__)
@@ -295,12 +298,7 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # says the list gets shorter.
             upstream_limit = min(upstream_limit, SEQUENCE_UPSTREAM_LIMIT)
         try:
-            payload = await fetch_departures(
-                self._session,
-                self._stop_id,
-                limit=upstream_limit,
-                include_stop_sequence=self._show_stop_sequence,
-            )
+            payload = await self._request_departures(upstream_limit)
         except EfaTimeoutError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -327,6 +325,15 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 translation_domain=DOMAIN,
                 translation_key="api_invalid_response",
                 translation_placeholders={"error": str(err)},
+            ) from err
+        except EfaConnectionError as err:
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="api_connection_error",
+                translation_placeholders={
+                    "error_type": err.error_type,
+                    "error": err.error,
+                },
             ) from err
         except EfaApiError as err:
             raise UpdateFailed(
@@ -418,6 +425,28 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # plain labels above.
             "served_lines": served_lines,
         }
+
+    async def _request_departures(self, limit: int) -> dict[str, Any]:
+        """Make the DM request and report its outcome to the outage tracker.
+
+        The one place every real departure request passes, setup retries
+        included (``async_config_entry_first_refresh`` lands here too), and
+        nothing else: the post-fetch parse and line-filter heal run outside
+        it, so a local bug there can never read as a LINZ AG outage.
+        """
+        try:
+            payload = await fetch_departures(
+                self._session,
+                self._stop_id,
+                user_agent=USER_AGENT,
+                limit=limit,
+                include_stop_sequence=self._show_stop_sequence,
+            )
+        except EfaApiError as err:
+            async_note_fault(self.hass, classify(err))
+            raise
+        async_note_fault(self.hass, Fault.ANSWERED)
+        return payload
 
 
 def _line_dir_key(dep: dict[str, Any]) -> str:

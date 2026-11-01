@@ -21,7 +21,8 @@ import type {
 import { translate } from "./localize/localize";
 import { motColor, motColorOrDefault, motIcon } from "./mot";
 import { accentTextColor, NEUTRAL_ACCENT_TEXT } from "./color";
-import { checkCardVersionWS, renderVersionBanner, safeHttpsUri } from "./shared-render";
+import { checkCardVersionWS, renderVersionBanner } from "./shared-render";
+import { countdownFor, filterDepartures, mapsUrlFor, visibleAlerts } from "./departures";
 import { cardStyles } from "./styles";
 import { normaliseConfig } from "./config";
 
@@ -110,6 +111,17 @@ export class LinzLinienAustriaCard extends LitElement {
 
   @property({ attribute: false }) public hass!: HomeAssistant;
 
+  // Set by HA: "grid" in a sections view, "panel" in a panel view, unset in
+  // the add-card picker and masonry. Reflected so the styles can fill the
+  // cell only when there is one -- see the grid-cell rules in styles.ts.
+  @property({ reflect: true }) public layout?: string;
+
+  // Set by HA to true while the card is the live preview in the edit-card
+  // dialog. The reload banner stays out of it: a Reload there throws away
+  // the edit in progress, and the dashboard behind the dialog shows the
+  // banner anyway.
+  @property({ type: Boolean }) public preview = false;
+
   @state() private config!: LinzLinienAustriaCardConfig;
 
   // Reload-banner state — flipped once the WS card-version probe sees
@@ -163,14 +175,46 @@ export class LinzLinienAustriaCard extends LitElement {
   protected override shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this.config) return false;
     if (changedProps.has("config")) return true;
+    // Lit reflects attributes inside update(), so returning false here in
+    // the cycle that changes layout leaves the attribute stale and the
+    // grid-cell selectors in styles.ts never match.
+    if (changedProps.has("layout") || changedProps.has("preview")) return true;
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
     if (!oldHass) return true;
+    // A language switch changes no entity state; without this the card keeps
+    // the old language until its sensor next updates.
+    if (oldHass.language !== this.hass.language) return true;
     if (!this.config.entity) return false;
     return oldHass.states[this.config.entity] !== this.hass.states[this.config.entity];
   }
 
+  /** Height in 50 px units, which masonry balances its columns with and
+   *  a sections cell starts from when "Fit height to content" is switched
+   *  off. Each section's height was measured in a 525 px column, the
+   *  departure rows included (a narrower card wraps more and runs taller):
+   *  footer and padding 30, header 52, alerts banner 56, hero 66, list
+   *  8 + 43 per row, where an empty list still shows one row. */
   public getCardSize(): number {
-    return 6;
+    const stateObj = this.config.entity ? this.hass?.states[this.config.entity] : undefined;
+    const all = (stateObj?.attributes.departures as Departure[] | undefined) ?? [];
+    const { filtered } = filterDepartures(all, this.config);
+    const hero = this.config.show_hero ? this._computeHeroGroup(filtered).length : 0;
+    const cap =
+      typeof this.config.max_departures === "number"
+        ? Math.max(0, this.config.max_departures)
+        : Infinity;
+    const rows = Math.max(1, Math.min(cap, filtered.length - hero));
+    const alerts =
+      this.config.show_alerts &&
+      visibleAlerts((stateObj?.attributes.alerts as AlertInfo[] | undefined) ?? [], filtered)
+        .length > 0;
+    const px =
+      30 +
+      (this.config.hide_header ? 0 : 52) +
+      (alerts ? 56 : 0) +
+      (hero > 0 ? 66 : 0) +
+      (cap === 0 ? 0 : 8 + 43 * rows);
+    return Math.ceil(px / 50);
   }
 
   public getGridOptions(): {
@@ -179,7 +223,22 @@ export class LinzLinienAustriaCard extends LitElement {
     min_columns: number;
     min_rows: number;
   } {
-    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 4 };
+    // min_rows measured: below 5 rows a 240 px card (six columns) can no
+    // longer fit its header, alerts banner, hero and footer, so the
+    // departure list has nothing left to scroll in.
+    return { columns: 12, rows: "auto", min_columns: 6, min_rows: 5 };
+  }
+
+  // True in a sections cell with a set number of rows, where the height is
+  // the cell's and the departure list has to scroll inside it. The rows in
+  // force are the stored ones when the user resized the card, else the
+  // default; testing the stored value alone would miss a numeric default,
+  // and testing the default alone a user's resize. Outside a sections cell
+  // (masonry, a stack, the picker) the card takes its natural height.
+  private get _fixedHeight(): boolean {
+    if (this.layout !== "grid") return false;
+    const stored = (this.config.grid_options as { rows?: unknown } | undefined)?.rows;
+    return typeof (stored ?? this.getGridOptions().rows) === "number";
   }
 
   /** Lit's textbook one-shot init hook — fires after the first render
@@ -224,7 +283,7 @@ export class LinzLinienAustriaCard extends LitElement {
 
     if (!this.config.entity) {
       return html`<ha-card>
-        ${renderVersionBanner(this._versionMismatch, ctx)}
+        ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
         <div class="card-content empty-state" role="status">
           ${this._t("common.no_entity_picked")}
         </div>
@@ -233,121 +292,36 @@ export class LinzLinienAustriaCard extends LitElement {
 
     const stateObj = this.hass.states[this.config.entity];
     if (!stateObj) {
+      // Same warning and wording as HA's own cards (hui-warning, which isn't
+      // public API): the entity id is what the user has to go and look up.
+      // ha-alert carries role="alert", so no role on the wrapper.
       return html`<ha-card>
-        ${renderVersionBanner(this._versionMismatch, ctx)}
-        <div class="card-content empty-state" role="status">
-          ${this._t("common.entity_unavailable")}
+        ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
+        <div class="card-content alert-state">
+          <ha-alert alert-type="warning">
+            ${this._t("common.entity_unavailable", { entity: this.config.entity })}
+          </ha-alert>
         </div>
       </ha-card>`;
     }
 
     const stopName =
       this.config.name || stateObj.attributes.stop_name || stateObj.attributes.friendly_name || "";
-
-    // Maps URL — prefer the stop's WGS84 position, which the integration
-    // now gets straight from the EFA (`coordOutputFormat=WGS84`). A
-    // lat/lon query lands on the actual bay; the name query below can
-    // only land on whatever Google decides the name means. The name
-    // path stays as the fallback for entries whose first fetch hasn't
-    // resolved a position yet, and carries an explicit "Linz" so
-    // non-Linz stops can't collide with same-named stops elsewhere.
-    const lat = stateObj.attributes.latitude;
-    const lon = stateObj.attributes.longitude;
-    const resolvedStopName = stateObj.attributes.stop_name || stopName;
-    const mapsQuery =
-      typeof lat === "number" && typeof lon === "number"
-        ? `${lat},${lon}`
-        : resolvedStopName
-          ? encodeURIComponent(
-              /Linz/i.test(resolvedStopName) ? resolvedStopName : `${resolvedStopName}, Linz`,
-            )
-          : "";
-    // Self-built URL — passed through `safeHttpsUri` defensively so a
-    // future contributor can't wire an upstream attribute through this
-    // binding and silently bypass the allowlist.
-    const mapsUrl = mapsQuery
-      ? safeHttpsUri(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
-      : null;
-    const openInMapsLabel = this._t("card.open_in_maps");
-    // NOTE: header icon + accent are derived from `next` further down,
-    // after `next` has been assigned. Don't reference it here — `const`
-    // TDZ would throw at render time and silently blank the card.
-
     const allDepartures = (stateObj.attributes.departures as Departure[] | undefined) ?? [];
-
-    // Card-side line filter — applied BEFORE the max-departures cap so
-    // capping doesn't accidentally hide everything that matched the
-    // user's selected lines. Empty set means "no filter, pass through".
-    const lineFilter = new Set((this.config.lines ?? []).map((l) => l.trim()).filter(Boolean));
-    // Direction filter, per line — keyed on the stable `dir_code`, never
-    // on the headsign. The upstream rewrites `direction` for branching
-    // termini (a short-turning line 2 reads "Simonystraße", not
-    // "Universität"), so filtering on it would drop trips that do serve
-    // the direction the user asked for.
-    //
-    // Per line rather than card-wide because `dir_code` is scoped to a
-    // line's own route: "H" on line 2 and "H" on line 46 point in
-    // unrelated directions, so one card-wide code cannot express "only
-    // the way I travel" at a multi-line stop.
-    //
-    // Normalised because YAML is hand-written: "h" and "H " behave like
-    // "H". Anything that is not a known code is dropped, so a typo
-    // degrades to "no filter for that line" rather than to "filter
-    // everything out". The typeof guard keeps a non-string value
-    // (`line_directions: {"2": true}`) from throwing inside render() and
-    // blanking the whole card.
-    const rawLineDirections = this.config.line_directions;
-    const dirFilter = new Map<string, "H" | "R">();
-    if (rawLineDirections && typeof rawLineDirections === "object") {
-      for (const [line, code] of Object.entries(rawLineDirections)) {
-        const norm = typeof code === "string" ? code.trim().toUpperCase() : "";
-        if (norm === "H" || norm === "R") dirFilter.set(line.trim(), norm);
-      }
-    }
-    // Walk-time (Fußweg) filter — drop any departure whose effective
-    // countdown is less than the configured walk time for that line.
-    // Keyed by the bare line number; a missing or non-positive entry
-    // means "no walk-time filter for this line".
-    const walkTimes = this.config.walk_times ?? {};
-    // Whether any card-side filter is in a position to remove rows.
-    // Derived once, here beside the filters themselves, rather than
-    // re-stated at the empty state — restating it is exactly how the
-    // walk-time filter came to be missing from that check: the list
-    // dropped rows the message then denied having dropped, so a stop
-    // that was merely out of reach on foot reported itself as having no
-    // service at all. A non-positive walk time is a no-op in the filter
-    // below and must not count here either, or a stale `"2": 0` left in
-    // saved YAML would permanently change the empty-state wording.
-    const anyFilterActive =
-      lineFilter.size > 0 ||
-      dirFilter.size > 0 ||
-      Object.values(walkTimes).some((w) => typeof w === "number" && w > 0);
-    const filtered = allDepartures.filter((d) => {
-      if (lineFilter.size > 0 && !lineFilter.has(d.line)) return false;
-      // A row without a `dir_code` passes regardless of the filter:
-      // the upstream omits the code on replacement services, and
-      // hiding a Schienenersatzverkehr is a worse failure than showing
-      // one surplus row of the opposite direction. A line with no entry
-      // in the map shows both directions.
-      const wantDir = dirFilter.get(d.line);
-      if (wantDir && d.dir_code && d.dir_code !== wantDir) return false;
-      const walk = walkTimes[d.line];
-      if (typeof walk === "number" && walk > 0) {
-        const cd = this._countdownFor(d);
-        if (cd === null || cd < walk) return false;
-      }
-      return true;
-    });
+    // Filters first, then the cap below: the other way round, capping
+    // could hide every row that matched the user's selected lines.
+    const { filtered, anyFilterActive } = filterDepartures(allDepartures, this.config);
 
     // The hero always uses filtered[0] regardless of `max_departures`
     // so a setting of 0 ("hero only, no list") can still pick a next
     // departure. The list slice is computed separately and may be empty.
+    // Unset means no cap, not `filtered.length`: on an empty stop that
+    // would be 0 and hide the "No upcoming departures" row with the list.
     const max =
       typeof this.config.max_departures === "number"
         ? Math.max(0, this.config.max_departures)
-        : filtered.length;
+        : Infinity;
     const heroGroup = this._computeHeroGroup(filtered);
-    const next = heroGroup[0];
 
     // Dedupe by object identity: heroGroup members are references into
     // `filtered`, so the post-dedupe slice keeps "max 10" meaning
@@ -357,6 +331,79 @@ export class LinzLinienAustriaCard extends LitElement {
     const remaining = filtered.filter((d) => !heroDedupe.has(d));
     const departures = max === 0 ? [] : remaining.slice(0, max);
 
+    const alerts = visibleAlerts(
+      (stateObj.attributes.alerts as AlertInfo[] | undefined) ?? [],
+      filtered,
+    );
+
+    // Classes land on <ha-card> so descendant selectors in styles.ts
+    // can scope the animation rules. `prefers-reduced-motion` overrides
+    // both regardless of the toggles.
+    const pulseLive = !!this.config.pulse_live;
+    const enableAnimations = !!this.config.enable_animations;
+
+    return html`
+      <ha-card
+        class=${classMap({
+          "no-pulse": !pulseLive,
+          "with-animations": enableAnimations,
+          "fixed-height": this._fixedHeight,
+        })}
+      >
+        ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
+        ${
+          this.config.hide_header
+            ? nothing
+            : this._renderHeader(
+                stopName,
+                mapsUrlFor(
+                  stateObj.attributes.latitude,
+                  stateObj.attributes.longitude,
+                  stateObj.attributes.stop_name || stopName,
+                ),
+                heroGroup[0],
+              )
+        }
+        ${this.config.show_alerts && alerts.length > 0 ? this._renderAlerts(alerts) : nothing}
+        ${this.config.show_hero && heroGroup.length > 0 ? this._renderHero(heroGroup) : nothing}
+        ${
+          // An unavailable sensor carries no departures, so without this
+          // the card would claim "No upcoming departures", which is what a
+          // quiet stop says too and makes an outage look like a broken
+          // install. Shown whatever `max_departures` is: a hero-only card
+          // would otherwise go blank. Doesn't say whose fault it is; the
+          // integration's Repairs issue does that.
+          stateObj.state === "unavailable"
+            ? html`<div class="empty" role="status" aria-live="polite">
+              <div class="empty-title">${this._t("card.unreachable")}</div>
+              <div class="empty-detail">${this._t("card.unreachable_detail")}</div>
+            </div>`
+            : max === 0
+              ? nothing
+              : departures.length === 0 && heroDedupe.size > 0
+                ? // Hero already shows the only departure(s); no need
+                  // for an empty placeholder row underneath.
+                  nothing
+                : this._renderList(
+                    departures,
+                    anyFilterActive && allDepartures.length > 0
+                      ? "card.no_matches_for_filter"
+                      : "card.no_departures",
+                  )
+        }
+        <div class="foot">
+          <span class="timestamp">${this._t("card.attribution")}</span>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  private _renderHeader(
+    stopName: string,
+    mapsUrl: string | null,
+    next: Departure | undefined,
+  ): TemplateResult {
+    const openInMapsLabel = this._t("card.open_in_maps");
     // Header icon + accent track the next departing line so the header
     // reads as one with the hero. User line-colour override wins over
     // the MoT default; both fall back to the tram tint when `next` is
@@ -374,54 +421,26 @@ export class LinzLinienAustriaCard extends LitElement {
       (headerColor ? `--header-color: ${headerColor};` : "") +
       (headerText ? `--header-text: ${headerText};` : "");
 
-    // Alerts pre-filter: only show notices whose `affected_lines` overlap
-    // a line we are *actually about to display* (i.e. survived the
-    // card-side `lines` filter and is in the upcoming-departures
-    // snapshot). System-wide notices (no `affected_lines`) fall through
-    // unfiltered. The integration-side alerts list is broader — it
-    // includes every line that serves the stop, even ones not currently
-    // departing — so this trim avoids surfacing detours for routes the
-    // user doesn't care about right now.
-    const visibleLines = new Set(filtered.map((d) => d.line).filter(Boolean));
-    const allAlerts = (stateObj.attributes.alerts as AlertInfo[] | undefined) ?? [];
-    const alerts = allAlerts.filter((a) => {
-      const affected = a.affected_lines || [];
-      if (affected.length === 0) return true; // system-wide
-      return affected.some((line) => visibleLines.has(line));
-    });
-
     // With show_platform on, append a Steig marker. Falls back to
     // direction-only when `_platformText()` reduces the upstream value
     // to empty (some terminals emit "0" / "" for non-numbered bays).
     const directionText = next?.direction || "";
     const platformText = this.config.show_platform ? this._platformText(next) : "";
-    const subtitle = platformText
-      ? `${directionText} · ${this._platformLabel(next, true)} ${platformText}`
-      : directionText;
+    // The destination is upstream German; the platform label is localised.
+    const subtitle = directionText
+      ? html`<span lang="de">${directionText}</span>${
+          platformText ? ` · ${this._platformLabel(next, true)} ${platformText}` : ""
+        }`
+      : platformText
+        ? `${this._platformLabel(next, true)} ${platformText}`
+        : "";
 
-    // Classes land on <ha-card> so descendant selectors in styles.ts
-    // can scope the animation rules. `prefers-reduced-motion` overrides
-    // both regardless of the toggles.
-    const pulseLive = !!this.config.pulse_live;
-    const enableAnimations = !!this.config.enable_animations;
-
-    return html`
-      <ha-card
-        class=${classMap({
-          "no-pulse": !pulseLive,
-          "with-animations": enableAnimations,
-        })}
-      >
-        ${renderVersionBanner(this._versionMismatch, ctx)}
-        ${
-          this.config.hide_header
-            ? nothing
-            : html`<header class="head" style=${headerStyle}>
+    return html`<header class="head" style=${headerStyle}>
               <span class="icon-tile" aria-hidden="true">
                 <ha-icon icon=${headerIcon}></ha-icon>
               </span>
               <div class="title-block">
-                <h3 class="title">${stopName}</h3>
+                <h3 class="title" lang=${this.config.name ? nothing : "de"}>${stopName}</h3>
                 ${subtitle ? html`<p class="subtitle">${subtitle}</p>` : nothing}
               </div>
               ${
@@ -444,26 +463,16 @@ export class LinzLinienAustriaCard extends LitElement {
                   </div>`
                   : nothing
               }
-            </header>`
-        }
-        ${this.config.show_alerts && alerts.length > 0 ? this._renderAlerts(alerts) : nothing}
-        ${this.config.show_hero && heroGroup.length > 0 ? this._renderHero(heroGroup) : nothing}
-        ${
-          max === 0
-            ? nothing
-            : departures.length === 0 && heroDedupe.size > 0
-              ? // Hero already shows the only departure(s); no need
-                // for an empty placeholder row underneath.
-                nothing
-              : html`<ul class="departures" role="list">
+            </header>`;
+  }
+
+  /** The departure list, or its one empty row. */
+  private _renderList(departures: Departure[], emptyKey: string): TemplateResult {
+    return html`<ul class="departures" role="list">
                 ${
                   departures.length === 0
                     ? html`<li class="empty">
-                      ${
-                        anyFilterActive && allDepartures.length > 0
-                          ? this._t("card.no_matches_for_filter")
-                          : this._t("card.no_departures")
-                      }
+                      ${this._t(emptyKey)}
                     </li>`
                     : repeat(
                         departures,
@@ -471,13 +480,7 @@ export class LinzLinienAustriaCard extends LitElement {
                         (d) => this._renderRow(d),
                       )
                 }
-              </ul>`
-        }
-        <div class="foot">
-          <span class="timestamp">${this._t("card.attribution")}</span>
-        </div>
-      </ha-card>
-    `;
+              </ul>`;
   }
 
   /** EFA's priority vocabulary isn't fully documented and varies across
@@ -526,8 +529,8 @@ export class LinzLinienAustriaCard extends LitElement {
                     "alert-high": this._isHighPriority(a.priority),
                   })}
                 >
-                  <div class="alert-title">${a.title}</div>
-                  ${a.description ? html`<div class="alert-body">${a.description}</div>` : nothing}
+                  <div class="alert-title" lang="de">${a.title}</div>
+                  ${a.description ? html`<div class="alert-body" lang="de">${a.description}</div>` : nothing}
                   ${
                     a.affected_lines.length
                       ? html`<div class="alert-lines">
@@ -572,14 +575,9 @@ export class LinzLinienAustriaCard extends LitElement {
       const first = filtered[0];
       return first ? [first] : [];
     }
-    const cdOf = (d: Departure): number => {
-      if (typeof d.countdown_rt === "number") return d.countdown_rt;
-      if (typeof d.countdown === "number") return d.countdown;
-      return Number.POSITIVE_INFINITY;
-    };
     let minCd = Number.POSITIVE_INFINITY;
     for (const d of live) {
-      const cd = cdOf(d);
+      const cd = countdownFor(d) ?? Number.POSITIVE_INFINITY;
       if (cd < minCd) minCd = cd;
     }
     if (!Number.isFinite(minCd)) {
@@ -594,9 +592,9 @@ export class LinzLinienAustriaCard extends LitElement {
     // strict tie-only grouping so a 5-min lead doesn't pull a 6-min
     // entry into the hero.
     if (minCd <= 0) {
-      return live.filter((d) => cdOf(d) <= 0);
+      return live.filter((d) => (countdownFor(d) ?? Number.POSITIVE_INFINITY) <= 0);
     }
-    return live.filter((d) => cdOf(d) === minCd);
+    return live.filter((d) => (countdownFor(d) ?? Number.POSITIVE_INFINITY) === minCd);
   }
 
   private _renderHero(group: Departure[]): TemplateResult {
@@ -606,7 +604,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // the block. (`.hero-meta` is gone — see the interleaving note on
     // the group.map below.)
     const lead = group[0]!;
-    const minutes = this._countdownFor(lead);
+    const minutes = countdownFor(lead);
     const minutesLabel = lead.is_cancelled
       ? this._t("card.cancelled")
       : minutes === null
@@ -760,10 +758,10 @@ export class LinzLinienAustriaCard extends LitElement {
               // aria-hidden: the section's aria-label already carries the
               // clock time, so this would otherwise be announced twice.
               html`<span class="hero-dest-group">
-              <span class="hero-direction">${d.direction || ""}</span>
+              <span class="hero-direction" lang="de">${d.direction || ""}</span>
               <span class="hero-clock" aria-hidden="true">${clock}</span>
             </span>`
-            : html`<span class="hero-direction">${d.direction || ""}</span>`
+            : html`<span class="hero-direction" lang="de">${d.direction || ""}</span>`
         }
         ${
           !d.is_cancelled && platform
@@ -831,7 +829,7 @@ export class LinzLinienAustriaCard extends LitElement {
   }
 
   private _renderRow(d: Departure): TemplateResult | TemplateResult[] {
-    const minutes = this._countdownFor(d);
+    const minutes = countdownFor(d);
     // `show_delay_colors: false` keeps every countdown in the neutral
     // default colour. Only the late/early tint goes — cancelled red and
     // the "Jetzt" line accent are states, not delay signals.
@@ -911,7 +909,7 @@ export class LinzLinienAustriaCard extends LitElement {
       >
         ${this._renderLineBadge(d)}
         <span class="row-main">
-          <span class="row-direction">${d.direction || ""}</span>
+          <span class="row-direction" lang="de">${d.direction || ""}</span>
           ${hint ? html`<span class="row-hint" title=${hint}>${hint}</span>` : nothing}
         </span>
         <span class="row-tail">
@@ -1080,7 +1078,7 @@ export class LinzLinienAustriaCard extends LitElement {
             class=${classMap({ "stops-ahead-stop": true, terminus: isTerminus })}
           >
             <span class="stops-ahead-dot" aria-hidden="true"></span>
-            <span class="stops-ahead-name">${s.name}</span>
+            <span class="stops-ahead-name" lang="de">${s.name}</span>
             <span
               class=${classMap({
                 "stops-ahead-time": true,
@@ -1221,7 +1219,7 @@ export class LinzLinienAustriaCard extends LitElement {
    *  agree. It is kept as the gate anyway because the two fields used to
    *  diverge — `countdown_rt` additionally required a usable `delay`
    *  (`-9999` is the unknown-sentinel and gets dropped), so a row with
-   *  `realDateTime` and no usable delay left `_countdownFor` on the
+   *  `realDateTime` and no usable delay left `countdownFor` on the
    *  scheduled value while the clock read the prediction, and the two
    *  halves of one readout disagreed by exactly the delay. A browser
    *  holding a cached card against an older integration can still meet
@@ -1235,12 +1233,6 @@ export class LinzLinienAustriaCard extends LitElement {
   private _clockTimeFor(d: Departure): string | null {
     const useRealtime = typeof d.countdown_rt === "number" && d.realtime !== undefined;
     return this._clockTime(useRealtime ? d.realtime : d.scheduled) || null;
-  }
-
-  private _countdownFor(d: Departure): number | null {
-    if (typeof d.countdown_rt === "number") return d.countdown_rt;
-    if (typeof d.countdown === "number") return d.countdown;
-    return null;
   }
 
   static override styles: CSSResultGroup = cardStyles;

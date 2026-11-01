@@ -1,7 +1,7 @@
 {
   "common": {
     "no_entity_picked": "Keine Entität ausgewählt. Visuellen Editor öffnen und einen Linz Linien Sensor wählen.",
-    "entity_unavailable": "Die ausgewählte Entität ist derzeit nicht verfügbar.",
+    "entity_unavailable": "Entität nicht verfügbar: {entity}",
     "version_update": "Eine neuere Kartenversion ({v}) ist verfügbar. Bitte neu laden.",
     "version_reload": "Jetzt neu laden",
     "version_reload_stuck": "Neu laden hat die neue Version nicht übernommen. Schließe diesen Browser-Tab und öffne das Dashboard erneut, oder lösche die Website-Daten für Home Assistant in den Browser-Einstellungen."
@@ -9,6 +9,8 @@
   "card": {
     "no_departures": "Keine kommenden Abfahrten.",
     "no_matches_for_filter": "Keine kommenden Abfahrten passen zum Filter.",
+    "unreachable": "Keine Verbindung zur LINZ AG LINIEN",
+    "unreachable_detail": "Die Abfahrten erscheinen von selbst wieder, sobald die Verbindung funktioniert.",
     "platform": "Steig",
     "platform_short": "Steig",
     "platform_rail": "Gleis",
