@@ -232,3 +232,63 @@ describe("language of parts", () => {
     expect(el.shadowRoot!.querySelector(".title")?.hasAttribute("lang")).toBe(false);
   });
 });
+
+describe("stub config", () => {
+  it("picks the first sensor that looks like one of this integration's stops", () => {
+    const ctor = customElements.get("linz-linien-austria-card") as unknown as {
+      getStubConfig(h?: HomeAssistant): Record<string, unknown>;
+    };
+    expect(ctor.getStubConfig()).toEqual({});
+    const h = hass({
+      "light.kitchen": { entity_id: "light.kitchen", state: "on", attributes: {} },
+      "sensor.temp": { entity_id: "sensor.temp", state: "21", attributes: {} },
+      "sensor.hbf": {
+        entity_id: "sensor.hbf",
+        state: "3",
+        attributes: { stop_id: "at:44:41111", departures: [] },
+      },
+    });
+    expect(ctor.getStubConfig(h)).toEqual({ entity: "sensor.hbf" });
+    expect(ctor.getStubConfig(hass())).toEqual({});
+  });
+});
+
+describe("stops ahead", () => {
+  it("opens a row's onward stops, colouring delays and marking the terminus", async () => {
+    const trip = (direction: string, countdown: number) => ({
+      line: "2",
+      direction,
+      countdown,
+      scheduled: "2026-10-23T10:00:00+02:00",
+      stops_ahead: [
+        { name: "Taubenmarkt", arrival: "2026-10-23T10:02:00+02:00", delay_minutes: 2 },
+        { name: "Hinsenkampplatz", arrival: "2026-10-23T10:05:00+02:00", delay_minutes: -1 },
+        { name: direction, arrival: "2026-10-23T10:12:00+02:00" },
+      ],
+    });
+    const el = await mount(
+      { entity: "sensor.hbf", show_hero: false },
+      hass({
+        "sensor.hbf": {
+          entity_id: "sensor.hbf",
+          state: "3",
+          attributes: { stop_name: "Hbf", departures: [trip("Universität", 3)] },
+        },
+      }),
+    );
+    const row = el.shadowRoot!.querySelector<HTMLElement>(".row-expandable")!;
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    row.click();
+    await el.updateComplete;
+    expect(row.getAttribute("aria-expanded")).toBe("true");
+    const stops = [...el.shadowRoot!.querySelectorAll(".stops-ahead-stop")];
+    expect(stops.map((s) => s.querySelector(".stops-ahead-name")?.textContent)).toEqual([
+      "Taubenmarkt",
+      "Hinsenkampplatz",
+      "Universität",
+    ]);
+    expect(stops[0]?.querySelector(".stops-ahead-time")?.classList.contains("late")).toBe(true);
+    expect(stops[1]?.querySelector(".stops-ahead-time")?.classList.contains("early")).toBe(true);
+    expect(stops[2]?.classList.contains("terminus")).toBe(true);
+  });
+});
