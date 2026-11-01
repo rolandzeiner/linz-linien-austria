@@ -15,7 +15,7 @@
  * `ha-card` is an HA element that does not exist here; happy-dom renders it
  * as an inert container, which is all these tests need.
  */
-import { beforeAll, afterEach, describe, expect, it } from "vite-plus/test";
+import { beforeAll, afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { HomeAssistant } from "./types";
 
@@ -401,5 +401,43 @@ describe("edit-dialog preview", () => {
     el.preview = true;
     await el.updateComplete;
     expect(text(el)).not.toContain("9.9.9");
+  });
+});
+
+describe("reload banner", () => {
+  // Started and left running, the cache deletes raced the unload and
+  // usually lost, so the reload was served the same cached bundle.
+  it("reloads only once the cache wipe has finished", async () => {
+    const order: string[] = [];
+    let finishDelete!: () => void;
+    const caches = {
+      keys: async () => ["bundle"],
+      delete: () =>
+        new Promise<boolean>((resolve) => {
+          finishDelete = () => {
+            order.push("deleted");
+            resolve(true);
+          };
+        }),
+    };
+    vi.stubGlobal("caches", caches);
+    const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {
+      order.push("reload");
+    });
+    try {
+      const h = { ...hass(), callWS: async () => ({ version: "9.9.9" }) } as HomeAssistant;
+      const el = await mount({}, h);
+      await new Promise((r) => setTimeout(r, 0));
+      await el.updateComplete;
+      el.shadowRoot!.querySelector<HTMLButtonElement>(".version-reload-btn")!.click();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(order).toEqual([]);
+      finishDelete();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(order).toEqual(["deleted", "reload"]);
+    } finally {
+      reload.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });
