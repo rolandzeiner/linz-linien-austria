@@ -265,12 +265,28 @@ class LinzLinienAustriaConfigFlow(ConfigFlow, domain=DOMAIN):
                     user_input.get(CONF_SHOW_STOP_SEQUENCE, False)
                 ),
             }
-            return self.async_update_and_abort(entry, data=new_data)
+            # The options flow writes the same three keys to entry.options,
+            # and every reader merges options over data. Drop its copies so
+            # this write is the one that counts; the line filter, which
+            # only options holds, stays.
+            new_options = {
+                key: value
+                for key, value in entry.options.items()
+                if key not in _RECONFIGURE_KEYS
+            }
+            return self.async_update_and_abort(
+                entry, data=new_data, options=new_options
+            )
 
+        # Prefill from the merged view, the same values the entities use.
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=_settings_schema(entry.data),
+            data_schema=_settings_schema({**entry.data, **entry.options}),
         )
+
+
+# The settings both reconfigure and the options flow can write.
+_RECONFIGURE_KEYS = (CONF_SCAN_INTERVAL, CONF_LIMIT, CONF_SHOW_STOP_SEQUENCE)
 
 
 def _format_candidate_label(candidate: dict[str, Any]) -> str:
