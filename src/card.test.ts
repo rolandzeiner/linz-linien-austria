@@ -90,6 +90,19 @@ describe("decorators", () => {
     }
   });
 
+  // The grid-cell rules in styles.ts select on the layout attribute; HA only
+  // sets the property, so without reflect they never match (grid-cell.test.ts).
+  it("reflects the layout HA sets, so the grid-cell styles can match", async () => {
+    const ctor = customElements.get("linz-linien-austria-card") as unknown as {
+      getPropertyOptions(name: string): { reflect?: boolean };
+    };
+    expect(ctor.getPropertyOptions("layout").reflect).toBe(true);
+    const el = await mount({}, hass());
+    (el as Card & { layout?: string }).layout = "grid";
+    await el.updateComplete;
+    expect(el.getAttribute("layout")).toBe("grid");
+  });
+
   it("leaves a mounted card's reactive properties to Lit's accessors", async () => {
     // A class field would define an own property on the instance,
     // shadowing the accessor Lit put on the prototype.
