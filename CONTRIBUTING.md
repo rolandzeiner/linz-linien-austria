@@ -37,7 +37,7 @@ Uses [`uv`](https://docs.astral.sh/uv/) — the same tool CI installs deps with.
 
 ## Card tests
 
-The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract, the empty states and the language handling. `src/toolchain.test.ts` guards the `vite` override (see *Tooling & config*). The departure rendering has no tests yet.
+The card tests live next to the code as `src/**/*.test.ts` and run through `vp test` (`npm test`). Suites that need a DOM opt into one with an `@vitest-environment happy-dom` docblock; the rest run in plain node. `src/helpers.test.ts` covers the pure helpers: config defaults, translation lookup, the mode-of-transport tables and the accent-text contrast clamp. `src/card.test.ts` mounts the card: registration, the decorator check, the config contract, the stub config, the empty states, the onward-stops panel and the language handling. `src/card-render.test.ts` snapshots the rendered markup across header, maps link, the line / direction / walk-time filters, hero, list cap and alerts; a deliberate change to what the card draws updates those snapshots with `npx vp test run -u`, and the diff in `src/__snapshots__/` is part of the review. `src/editor.test.ts` covers the editor's line chips and per-line rows. `src/toolchain.test.ts` guards the `vite` override (see *Tooling & config*).
 
 ## Module map (Python side)
 
