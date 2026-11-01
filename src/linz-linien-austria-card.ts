@@ -116,6 +116,12 @@ export class LinzLinienAustriaCard extends LitElement {
   // cell only when there is one -- see the grid-cell rules in styles.ts.
   @property({ reflect: true }) public layout?: string;
 
+  // Set by HA to true while the card is the live preview in the edit-card
+  // dialog. The reload banner stays out of it: a Reload there throws away
+  // the edit in progress, and the dashboard behind the dialog shows the
+  // banner anyway.
+  @property({ type: Boolean }) public preview = false;
+
   @state() private config!: LinzLinienAustriaCardConfig;
 
   // Reload-banner state — flipped once the WS card-version probe sees
@@ -172,7 +178,7 @@ export class LinzLinienAustriaCard extends LitElement {
     // Lit reflects attributes inside update(), so returning false here in
     // the cycle that changes layout leaves the attribute stale and the
     // grid-cell selectors in styles.ts never match.
-    if (changedProps.has("layout")) return true;
+    if (changedProps.has("layout") || changedProps.has("preview")) return true;
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
     if (!oldHass) return true;
     // A language switch changes no entity state; without this the card keeps
@@ -277,7 +283,7 @@ export class LinzLinienAustriaCard extends LitElement {
 
     if (!this.config.entity) {
       return html`<ha-card>
-        ${renderVersionBanner(this._versionMismatch, ctx)}
+        ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
         <div class="card-content empty-state" role="status">
           ${this._t("common.no_entity_picked")}
         </div>
@@ -287,7 +293,7 @@ export class LinzLinienAustriaCard extends LitElement {
     const stateObj = this.hass.states[this.config.entity];
     if (!stateObj) {
       return html`<ha-card>
-        ${renderVersionBanner(this._versionMismatch, ctx)}
+        ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
         <div class="card-content empty-state" role="status">
           ${this._t("common.entity_unavailable")}
         </div>
@@ -339,7 +345,7 @@ export class LinzLinienAustriaCard extends LitElement {
           "fixed-height": this._fixedHeight,
         })}
       >
-        ${renderVersionBanner(this._versionMismatch, ctx)}
+        ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
         ${
           this.config.hide_header
             ? nothing

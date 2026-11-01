@@ -383,3 +383,19 @@ describe("fixed height", () => {
     expect(await fixed(layout, grid)).toBe(expected);
   });
 });
+
+describe("edit-dialog preview", () => {
+  it("keeps the reload banner out of the preview", async () => {
+    const h: HomeAssistant = {
+      ...hass(),
+      callWS: async () => ({ version: "9.9.9" }),
+    } as HomeAssistant;
+    const el = (await mount({}, h)) as Card & { preview: boolean };
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+    expect(text(el)).toContain("9.9.9");
+    el.preview = true;
+    await el.updateComplete;
+    expect(text(el)).not.toContain("9.9.9");
+  });
+});
