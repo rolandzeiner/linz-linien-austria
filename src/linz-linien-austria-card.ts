@@ -257,6 +257,8 @@ export class LinzLinienAustriaCard extends LitElement {
     const stopName =
       this.config.name || stateObj.attributes.stop_name || stateObj.attributes.friendly_name || "";
     const allDepartures = (stateObj.attributes.departures as Departure[] | undefined) ?? [];
+    // Filters first, then the cap below: the other way round, capping
+    // could hide every row that matched the user's selected lines.
     const { filtered, anyFilterActive } = filterDepartures(allDepartures, this.config);
 
     // The hero always uses filtered[0] regardless of `max_departures`

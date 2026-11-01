@@ -247,7 +247,7 @@ describe("language of parts", () => {
 });
 
 describe("stub config", () => {
-  it("picks the first sensor that looks like one of this integration's stops", () => {
+  it("picks a sensor that looks like one of this integration's stops", () => {
     const ctor = customElements.get("linz-linien-austria-card") as unknown as {
       getStubConfig(h?: HomeAssistant): Record<string, unknown>;
     };

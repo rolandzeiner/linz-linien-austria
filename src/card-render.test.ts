@@ -5,7 +5,7 @@
  * render(): header and maps link, the card-side line / direction /
  * walk-time filters, the hero, the list cap, alerts and the empty states.
  * They pin what the card draws, so a restructuring of render() that keeps
- * every snapshot unchanged has kept the output unchanged.
+ * every snapshot unchanged has kept the output unchanged for these configs.
  *
  * Lit's comment markers and the whitespace between tags are stripped, so
  * moving a template around does not show up as a change; attribute order
@@ -99,9 +99,9 @@ async function markup(config: Record<string, unknown>, h: HomeAssistant): Promis
 describe("render", () => {
   it.each<[string, Record<string, unknown>, Record<string, unknown>?, string?]>([
     ["defaults", {}],
-    ["platform, alerts and a user title", { show_platform: true, name: "Home" }],
+    ["platform and a user title", { show_platform: true, name: "Home" }],
     [
-      "hidden header, no hero, no animations",
+      "hidden header, no hero, no pulse",
       { hide_header: true, show_hero: false, pulse_live: false },
     ],
     ["animations on", { enable_animations: true }],

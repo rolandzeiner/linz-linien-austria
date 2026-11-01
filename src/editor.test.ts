@@ -3,7 +3,9 @@
  *
  * The editor's own widgets below ha-form: the line-filter chips, built from
  * the stop's roster, the live departures and the saved `lines`; and the
- * per-line rows with walk time, H / R / both direction buttons and colour.
+ * per-line rows with walk time, H / R / both direction buttons and colour;
+ * plus the ha-form wiring: the missing-entity warning, the label fallback
+ * order and saving without defaults.
  * `ha-form`, `ha-icon` and `ha-alert` don't exist here and render as inert
  * containers.
  */
@@ -97,6 +99,7 @@ describe("line chips", () => {
     const { el } = await mount({}, stop({}));
     expect(chips(el)).toEqual([]);
     expect(root(el).querySelectorAll(".per-line-row")).toHaveLength(0);
+    expect(root(el).textContent).toContain("Pick an entity above to see its lines here.");
   });
 
   it("toggles a line in and out of the filter", async () => {

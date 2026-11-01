@@ -1,11 +1,15 @@
 /**
- * The card's departure and alert selection, kept free of Lit so it runs in
- * plain node: which departures survive the card-side filters, which alerts
- * concern them, and where the header's maps link points.
+ * The card's departure and alert selection, with no templates of its own:
+ * which departures survive the card-side filters, which alerts concern
+ * them, and where the header's maps link points.
  */
 import { safeHttpsUri } from "./shared-render";
 import type { AlertInfo, Departure, LinzLinienAustriaCardConfig } from "./types";
 
+/** Minutes until departure: the realtime countdown when the integration
+ *  sent one, else the scheduled one; null when neither is a number. The
+ *  card's `_clockTimeFor` gates on the same field so the countdown and the
+ *  clock beside it agree. */
 export function countdownFor(d: Departure): number | null {
   if (typeof d.countdown_rt === "number") return d.countdown_rt;
   if (typeof d.countdown === "number") return d.countdown;
@@ -27,7 +31,7 @@ export function countdownFor(d: Departure): number | null {
  *  "H". Anything that is not a known code is dropped, so a typo
  *  degrades to "no filter for that line" rather than to "filter
  *  everything out". The typeof guard keeps a non-string value
- *  (`line_directions: {"2": true}`) from throwing inside render() and
+ *  (`line_directions: {"2": true}`) from throwing during render and
  *  blanking the whole card. */
 function parseLineDirections(raw: unknown): Map<string, "H" | "R"> {
   const dirFilter = new Map<string, "H" | "R">();
@@ -40,13 +44,13 @@ function parseLineDirections(raw: unknown): Map<string, "H" | "R"> {
   return dirFilter;
 }
 
-/** Apply the card-side line, direction and walk-time filters. Runs
- *  BEFORE the max-departures cap so capping doesn't accidentally hide
+/** Apply the card-side line, direction and walk-time filters. Must be
+ *  applied before the max-departures cap, so capping doesn't hide
  *  everything that matched the user's selected lines.
  *
  *  `anyFilterActive` says whether any filter is in a position to remove
  *  rows. It is derived here beside the filters themselves, rather than
- *  re-stated at the empty state — restating it is exactly how the
+ *  re-stated in render()'s empty-state branch — restating it is exactly how the
  *  walk-time filter came to be missing from that check: the list
  *  dropped rows the message then denied having dropped, so a stop that
  *  was merely out of reach on foot reported itself as having no service
@@ -88,16 +92,16 @@ export function filterDepartures(
   return { filtered, anyFilterActive };
 }
 
-/** Only the notices whose `affected_lines` overlap a line we are
- *  *actually about to display* (i.e. survived the card-side `lines`
- *  filter and is in the upcoming-departures snapshot). System-wide
+/** Only the notices whose `affected_lines` overlap a line among
+ *  `departures`: the rows that survived the card-side line, direction
+ *  and walk-time filters, before the list cap. System-wide
  *  notices (no `affected_lines`) fall through unfiltered. The
  *  integration-side alerts list is broader — it includes every line
  *  that serves the stop, even ones not currently departing — so this
  *  trim avoids surfacing detours for routes the user doesn't care
  *  about right now. */
-export function visibleAlerts(all: AlertInfo[], shown: Departure[]): AlertInfo[] {
-  const visibleLines = new Set(shown.map((d) => d.line).filter(Boolean));
+export function visibleAlerts(all: AlertInfo[], departures: Departure[]): AlertInfo[] {
+  const visibleLines = new Set(departures.map((d) => d.line).filter(Boolean));
   return all.filter((a) => {
     const affected = a.affected_lines || [];
     if (affected.length === 0) return true; // system-wide
@@ -110,8 +114,8 @@ export function visibleAlerts(all: AlertInfo[], shown: Departure[]): AlertInfo[]
  *  query lands on the actual bay; the name query can only land on
  *  whatever Google decides the name means. The name path stays as the
  *  fallback for entries whose first fetch hasn't resolved a position
- *  yet, and carries an explicit "Linz" so non-Linz stops can't collide
- *  with same-named stops elsewhere. */
+ *  yet, and appends ", Linz" to names that don't already contain it, so
+ *  a stop name can't resolve to a same-named place elsewhere. */
 export function mapsUrlFor(lat: unknown, lon: unknown, stopName: string): string | null {
   const mapsQuery =
     typeof lat === "number" && typeof lon === "number"
@@ -119,9 +123,9 @@ export function mapsUrlFor(lat: unknown, lon: unknown, stopName: string): string
       : stopName
         ? encodeURIComponent(/Linz/i.test(stopName) ? stopName : `${stopName}, Linz`)
         : "";
-  // Self-built URL — passed through `safeHttpsUri` defensively so a
-  // future contributor can't wire an upstream attribute through this
-  // binding and silently bypass the allowlist.
+  // Self-built URL — still passed through `safeHttpsUri` so a future
+  // contributor can't route an upstream attribute into it and bypass the
+  // allowlist.
   return mapsQuery
     ? safeHttpsUri(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
     : null;
