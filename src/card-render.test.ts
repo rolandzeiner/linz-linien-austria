@@ -90,10 +90,15 @@ async function markup(config: Record<string, unknown>, h: HomeAssistant): Promis
   el.hass = h;
   document.body.append(el);
   await el.updateComplete;
-  return (el.shadowRoot?.innerHTML ?? "")
-    .replace(/<!--[^]*?-->/g, "")
-    .replace(/>\s+</g, "><")
-    .trim();
+  // Lit's comment markers are dropped as nodes, on a copy, so the live
+  // shadow root keeps the markers Lit needs to update it.
+  const copy = document.createElement("div");
+  copy.append(...[...el.shadowRoot!.childNodes].map((n) => n.cloneNode(true)));
+  const walker = document.createTreeWalker(copy, NodeFilter.SHOW_COMMENT);
+  const comments: Node[] = [];
+  while (walker.nextNode()) comments.push(walker.currentNode);
+  for (const c of comments) c.parentNode?.removeChild(c);
+  return copy.innerHTML.replace(/>\s+</g, "><").trim();
 }
 
 describe("render", () => {
