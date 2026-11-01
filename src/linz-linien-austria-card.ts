@@ -292,10 +292,15 @@ export class LinzLinienAustriaCard extends LitElement {
 
     const stateObj = this.hass.states[this.config.entity];
     if (!stateObj) {
+      // Same warning and wording as HA's own cards (hui-warning, which isn't
+      // public API): the entity id is what the user has to go and look up.
+      // ha-alert carries role="alert", so no role on the wrapper.
       return html`<ha-card>
         ${renderVersionBanner(this.preview ? null : this._versionMismatch, ctx)}
-        <div class="card-content empty-state" role="status">
-          ${this._t("common.entity_unavailable")}
+        <div class="card-content alert-state">
+          <ha-alert alert-type="warning">
+            ${this._t("common.entity_unavailable", { entity: this.config.entity })}
+          </ha-alert>
         </div>
       </ha-card>`;
     }

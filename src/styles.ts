@@ -1085,6 +1085,9 @@ export const cardStyles = css`
     background: #6a1b9a;
   }
 
+  .alert-state {
+    padding: var(--ha-space-4, 16px);
+  }
   .empty-state,
   .empty {
     padding: var(--ha-space-5, 20px) var(--ha-space-4, 16px);

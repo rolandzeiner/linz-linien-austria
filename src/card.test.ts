@@ -131,9 +131,13 @@ describe("empty states", () => {
     expect(text(el)).toContain("No entity selected.");
   });
 
-  it("says when the picked entity is missing", async () => {
+  // Same warning and wording as HA's own cards (hui-warning), with the id
+  // the user needs to go and look it up.
+  it("names the picked entity in a warning when it is missing", async () => {
     const el = await mount({ entity: "sensor.gone" }, hass());
-    expect(text(el)).toContain("The selected entity is not available right now.");
+    const alert = el.shadowRoot!.querySelector("ha-alert");
+    expect(alert?.getAttribute("alert-type")).toBe("warning");
+    expect(alert?.textContent?.trim()).toBe("Entity not available: sensor.gone");
   });
 
   // An outage used to read as "No upcoming departures", which is what a quiet
@@ -194,7 +198,7 @@ describe("empty states", () => {
   // unchanged; the re-render gate used to skip it and keep the old text.
   it.each([
     ["no entity", {}, "Keine Entität ausgewählt."],
-    ["a missing entity", { entity: "sensor.gone" }, "Die ausgewählte Entität"],
+    ["a missing entity", { entity: "sensor.gone" }, "Entität nicht verfügbar: sensor.gone"],
   ])("repaints on a language switch with %s", async (_, config, german) => {
     const h = hass();
     const el = await mount(config, h);
