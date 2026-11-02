@@ -79,7 +79,13 @@ class LinzLinienAustriaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._latitude: float | None = None
         self._longitude: float | None = None
 
-        self._rate_limited: bool = False
+        # Seeded from the registry, not False: a reload (every options save
+        # is one) builds a new coordinator, and a flag that started False
+        # would skip the delete on recovery and leave the banner up.
+        self._rate_limited: bool = (
+            ir.async_get(hass).async_get_issue(DOMAIN, f"rate_limited_{entry.entry_id}")
+            is not None
+        )
         self._unsub: list[Callable[[], None]] = []
 
         # Exponential-backoff bookkeeping for sustained API outages.

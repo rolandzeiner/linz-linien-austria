@@ -75,7 +75,7 @@ rules:
   test-coverage:
     status: done
     comment: >-
-      186 tests at 96 percent (gate 90). Config flow (search, pick,
+      244 tests at 97 percent (gate 95). Config flow (search, pick,
       probe failure, duplicate abort, reconfigure, options incl. the
       roster-backed line picker), coordinator (backoff, cooldown,
       rate-limit, line filter and its headsign-change regression,
