@@ -14,6 +14,7 @@ from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.linz_linien_austria.const import (
     CONF_LIMIT,
+    CONF_LINES,
     CONF_SEARCH_QUERY,
     CONF_STOP_ID,
     CONF_STOP_NAME,
@@ -227,6 +228,61 @@ async def test_reconfigure_updates_settings(hass: HomeAssistant) -> None:
     assert refreshed is not None
     assert refreshed.data[CONF_STOP_ID] == "60501720"  # preserved
     assert refreshed.data[CONF_SCAN_INTERVAL] == 120
+
+
+async def test_reconfigure_after_options_save_wins(hass: HomeAssistant) -> None:
+    """Options and reconfigure write the same settings to different stores.
+
+    Readers merge options over data, so an options save used to outrank
+    every later reconfigure silently. Reconfigure now prefills from the
+    merged view and drops the options copies of the keys it writes, while
+    the line filter (options-only) survives.
+    """
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    with _patch_search(SAMPLE_CANDIDATES):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SEARCH_QUERY: "Hauptbahnhof"}
+        )
+    with _patch_dm({"stop": {"stop_id": "60501720"}, "departures": []}):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_STOP_ID: "60501720"}
+        )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SCAN_INTERVAL: 60, CONF_LIMIT: 12}
+    )
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+
+    hass.config_entries.async_update_entry(
+        entry, options={CONF_SCAN_INTERVAL: 90, CONF_LIMIT: 5, CONF_LINES: ["2:H"]}
+    )
+
+    flow = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+    defaults = {
+        str(key): key.default()
+        for key in flow["data_schema"].schema
+        if callable(getattr(key, "default", None))
+    }
+    assert defaults[CONF_SCAN_INTERVAL] == 90  # the merged value, not data's 60
+
+    result = await hass.config_entries.flow.async_configure(
+        flow["flow_id"], {CONF_SCAN_INTERVAL: 120, CONF_LIMIT: 6}
+    )
+    assert result["reason"] == "reconfigure_successful"
+
+    refreshed = hass.config_entries.async_get_entry(entry.entry_id)
+    assert refreshed is not None
+    merged = {**refreshed.data, **refreshed.options}
+    assert merged[CONF_SCAN_INTERVAL] == 120
+    assert merged[CONF_LIMIT] == 6
+    assert refreshed.options == {CONF_LINES: ["2:H"]}
 
 
 # ---------------------------------------------------------------------
